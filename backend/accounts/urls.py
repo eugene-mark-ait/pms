@@ -9,6 +9,8 @@ urlpatterns = [
     path("logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path("me/", views.CurrentUserView.as_view(), name="current_user"),
     path("register/", views.RegisterView.as_view(), name="register"),
+    path("users/", views.UserSearchView.as_view(), name="user_search"),
+    path("assign-roles/", views.AssignRolesView.as_view(), name="assign_roles"),
     # Social login (JWT flow after validation)
     path("google/", views.GoogleAuthView.as_view(), name="google_auth"),
 ]

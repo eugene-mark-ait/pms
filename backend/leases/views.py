@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
-from .models import Lease
+from accounts.models import Role
+from .models import Lease, TenantProfile
 from vacancies.models import VacateNotice, VacancyListing
 from .serializers import (
     LeaseSerializer,
@@ -44,7 +45,14 @@ class LeaseListCreateView(generics.ListCreateAPIView):
         return LeaseSerializer
 
     def perform_create(self, serializer):
-        serializer.save()
+        lease = serializer.save()
+        tenant_user = lease.tenant
+        # Ensure tenant has "tenant" role
+        tenant_role, _ = Role.objects.get_or_create(name="tenant")
+        if not tenant_user.roles.filter(pk=tenant_role.pk).exists():
+            tenant_user.roles.add(tenant_role)
+        # Ensure TenantProfile exists for tenant
+        TenantProfile.objects.get_or_create(user=tenant_user)
 
 
 class LeaseDetailView(generics.RetrieveUpdateDestroyAPIView):

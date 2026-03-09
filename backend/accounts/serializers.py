@@ -33,6 +33,22 @@ class UserSerializer(serializers.ModelSerializer):
         return list(obj.roles.values_list("name", flat=True))
 
 
+class UserUpdateRolesSerializer(serializers.Serializer):
+    """Payload for assigning roles to a user (role_names list)."""
+    role_names = serializers.ListField(
+        child=serializers.CharField(max_length=50),
+        allow_empty=True,
+    )
+
+    def validate_role_names(self, value):
+        from .models import Role
+        valid = set(Role.objects.values_list("name", flat=True))
+        invalid = [n for n in value if n not in valid]
+        if invalid:
+            raise serializers.ValidationError(f"Invalid role(s): {invalid}. Valid: {list(valid)}")
+        return value
+
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
 

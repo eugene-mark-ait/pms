@@ -1,22 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearTokens } from "@/lib/api";
+import { api, clearTokens, User } from "@/lib/api";
 import { clsx } from "clsx";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/my-units", label: "My Units" },
-  { href: "/properties", label: "Properties" },
-  { href: "/units", label: "Units" },
-  { href: "/tenants", label: "Tenants" },
-  { href: "/payments", label: "Payments" },
-  { href: "/vacancies", label: "Vacancies" },
-  { href: "/complaints", label: "Complaints" },
-  { href: "/messages", label: "Messages" },
-  { href: "/settings", label: "Settings" },
+/** Nav items with roles that can see them (user needs at least one of these roles). */
+const navItems: { href: string; label: string; roles: string[] }[] = [
+  { href: "/dashboard", label: "Dashboard", roles: ["landlord", "manager", "tenant", "caretaker"] },
+  { href: "/dashboard/my-units", label: "My Units", roles: ["tenant"] },
+  { href: "/properties", label: "Properties", roles: ["landlord", "manager"] },
+  { href: "/units", label: "Units", roles: ["landlord", "manager"] },
+  { href: "/tenants", label: "Tenants", roles: ["landlord", "manager"] },
+  { href: "/payments", label: "Payments", roles: ["landlord", "manager", "tenant"] },
+  { href: "/vacancies", label: "Vacancies", roles: ["landlord", "manager"] },
+  { href: "/complaints", label: "Complaints", roles: ["landlord", "manager", "tenant"] },
+  { href: "/messages", label: "Messages", roles: ["landlord", "manager", "tenant", "caretaker"] },
+  { href: "/settings", label: "Settings", roles: ["landlord", "manager", "tenant", "caretaker"] },
 ];
+
+function navForUser(user: User | null): typeof navItems {
+  if (!user) return [navItems[0], navItems[navItems.length - 1]]; // Dashboard, Settings while loading
+  if (!user.role_names?.length) return navItems.filter((item) => item.href === "/dashboard" || item.href === "/settings");
+  return navItems.filter((item) => item.roles.some((role) => user.role_names?.includes(role)));
+}
 
 export default function DashboardLayout({
   children,
@@ -25,12 +33,20 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [navLoading, setNavLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null)).finally(() => setNavLoading(false));
+  }, []);
 
   function logout() {
     clearTokens();
     router.push("/login");
     router.refresh();
   }
+
+  const nav = navForUser(user);
 
   return (
     <div className="flex min-h-screen bg-surface-50">
@@ -41,20 +57,24 @@ export default function DashboardLayout({
           </Link>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={clsx(
-                "block px-4 py-2.5 rounded-lg text-sm font-medium transition",
-                pathname === item.href
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-surface-700 hover:bg-surface-100"
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navLoading ? (
+            <p className="px-4 py-2 text-sm text-surface-500">Loading…</p>
+          ) : (
+            nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={clsx(
+                  "block px-4 py-2.5 rounded-lg text-sm font-medium transition",
+                  pathname === item.href
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-surface-700 hover:bg-surface-100"
+                )}
+              >
+                {item.label}
+              </Link>
+            ))
+          )}
         </nav>
         <div className="p-4 border-t border-surface-200">
           <button

@@ -85,3 +85,26 @@ class ManagerAssignment(models.Model):
 
     def __str__(self):
         return f"{self.manager.email} -> {self.property.name}"
+
+
+class CaretakerAssignment(models.Model):
+    """Assignment of a caretaker to a property (by landlord)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="caretaker_assignments",
+    )
+    caretaker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="caretaker_properties",
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "caretaker_assignments"
+        unique_together = [["property", "caretaker"]]
+
+    def __str__(self):
+        return f"{self.caretaker.email} -> {self.property.name}"

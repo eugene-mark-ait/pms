@@ -5,9 +5,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
-from .serializers import UserSerializer, UserCreateSerializer
+from .serializers import UserSerializer, UserCreateSerializer, UserUpdateRolesSerializer
 from .social_auth import exchange_social_token_and_issue_jwt, PROVIDER_GOOGLE
+from .models import Role
 
 User = get_user_model()
 
@@ -52,6 +54,74 @@ class RegisterView(generics.CreateAPIView):
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class UserSearchView(APIView):
+    """
+    GET /api/auth/users/?email= or ?search= - list users (id, email, role_names).
+    Landlords and staff only; for assigning manager/caretaker/tenant.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.has_role("landlord")):
+            return Response({"detail": "Only landlords or staff can search users."}, status=status.HTTP_403_FORBIDDEN)
+        email = request.query_params.get("email", "").strip()
+        search = request.query_params.get("search", "").strip()
+        if not email and not search:
+            return Response({"detail": "Provide email= or search= query parameter."}, status=status.HTTP_400_BAD_REQUEST)
+        qs = User.objects.all().order_by("email")
+        if email:
+            qs = qs.filter(email__iexact=email)
+        if search:
+            qs = qs.filter(email__icontains=search)[:20]
+        data = [
+            {"id": str(u.id), "email": u.email, "role_names": list(u.roles.values_list("name", flat=True))}
+            for u in qs
+        ]
+        return Response(data)
+
+
+class AssignRolesView(APIView):
+    """
+    POST /api/auth/assign-roles/ - assign roles to a user.
+    Body: { "user_id": "<uuid>", "role_names": ["manager", "caretaker"] }.
+    Landlords can assign manager/caretaker/tenant; staff can assign any role.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"detail": "user_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = UserUpdateRolesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role_names = serializer.validated_data["role_names"]
+
+        target = get_object_or_404(User, pk=user_id)
+        if request.user.is_staff:
+            # Staff can set any roles
+            pass
+        elif request.user.has_role("landlord"):
+            # Landlord can only assign manager, caretaker, tenant (not landlord)
+            allowed = {"manager", "caretaker", "tenant"}
+            if not set(role_names).issubset(allowed):
+                return Response(
+                    {"detail": "Landlords can only assign manager, caretaker, or tenant roles."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        else:
+            return Response(
+                {"detail": "Only landlords or staff can assign roles."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        roles = list(Role.objects.filter(name__in=role_names))
+        target.roles.set(roles)
+        return Response(UserSerializer(target).data)
 
 
 class GoogleAuthView(APIView):

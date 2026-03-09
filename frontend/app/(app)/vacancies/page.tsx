@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, User } from "@/lib/api";
 import { format } from "date-fns";
 
 interface Vacancy {
@@ -12,15 +12,32 @@ interface Vacancy {
 }
 
 export default function VacanciesPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [list, setList] = useState<Vacancy[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
+
   useEffect(() => {
+    api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
+  }, []);
+
+  useEffect(() => {
+    if (user != null && !canView) return;
     api.get<Vacancy[] | { results: Vacancy[] }>("/vacancies/").then((res) => {
       const data = res.data;
       setList(Array.isArray(data) ? data : data.results ?? []);
     }).catch(() => setList([])).finally(() => setLoading(false));
-  }, []);
+  }, [user, canView]);
+
+  if (user && !canView) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-surface-900">Upcoming Vacancies</h1>
+        <p className="text-surface-600">You don’t have access to view vacancies.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
