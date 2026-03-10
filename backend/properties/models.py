@@ -49,13 +49,31 @@ class PropertyImage(models.Model):
 class Unit(models.Model):
     """Unit belonging to a property; has type, rent, vacancy, images."""
     class UnitType(models.TextChoices):
-        BEDSITTER = "bedsitter", "Bedsitter"
+        APARTMENT = "apartment", "Apartment"
         STUDIO = "studio", "Studio"
+        BEDSITTER = "bedsitter", "Bedsitter"
         ONE_BEDROOM = "one_bedroom", "One Bedroom"
         TWO_BEDROOM = "two_bedroom", "Two Bedroom"
         THREE_BEDROOM = "three_bedroom", "Three Bedroom"
         PENTHOUSE = "penthouse", "Penthouse"
+        DUPLEX = "duplex", "Duplex"
+        SHOP = "shop", "Shop"
+        OFFICE = "office", "Office"
+        WAREHOUSE = "warehouse", "Warehouse"
+        RETAIL_SPACE = "retail_space", "Retail Space"
+        KIOSK = "kiosk", "Kiosk"
+        PARKING_SPACE = "parking_space", "Parking Space"
+        STORAGE_UNIT = "storage_unit", "Storage Unit"
+        COMMERCIAL_SPACE = "commercial_space", "Commercial Space"
+        SERVICED_APARTMENT = "serviced_apartment", "Serviced Apartment"
+        HOSTEL_ROOM = "hostel_room", "Hostel Room"
+        AIRBNB_UNIT = "airbnb_unit", "Airbnb Unit"
         OTHER = "other", "Other"
+
+    class PaymentFrequency(models.TextChoices):
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+        YEARLY = "yearly", "Yearly"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
@@ -65,7 +83,7 @@ class Unit(models.Model):
     )
     unit_number = models.CharField(max_length=50)
     unit_type = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=UnitType.choices,
         default=UnitType.OTHER,
     )
@@ -74,6 +92,14 @@ class Unit(models.Model):
         decimal_places=2,
         default=0,
         help_text="Base rent for listing; lease can override.",
+    )
+    security_deposit = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True)
+    service_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True)
+    extra_costs = models.CharField(max_length=500, blank=True, help_text="Optional description of extra costs")
+    payment_frequency = models.CharField(
+        max_length=20,
+        choices=PaymentFrequency.choices,
+        default=PaymentFrequency.MONTHLY,
     )
     is_vacant = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

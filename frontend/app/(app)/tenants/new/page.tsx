@@ -22,9 +22,11 @@ export default function NewLeasePage() {
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [unitId, setUnitId] = useState("");
   const [tenantSearch, setTenantSearch] = useState("");
-  const [tenantResults, setTenantResults] = useState<{ id: string; email: string; role_names: string[] }[]>([]);
+  const [searchByPhone, setSearchByPhone] = useState(false);
+  const [tenantResults, setTenantResults] = useState<{ id: string; email: string; first_name?: string; last_name?: string; role_names: string[] }[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [selectedTenantEmail, setSelectedTenantEmail] = useState("");
+  const [selectedTenantName, setSelectedTenantName] = useState("");
   const [monthlyRent, setMonthlyRent] = useState("");
   const [depositAmount, setDepositAmount] = useState("0");
   const [depositPaid, setDepositPaid] = useState(false);
@@ -48,8 +50,18 @@ export default function NewLeasePage() {
     const q = tenantSearch.trim();
     if (!q) return;
     try {
-      const { data } = await api.get<{ id: string; email: string; role_names: string[] }[]>(`/auth/users/?search=${encodeURIComponent(q)}`);
-      setTenantResults(Array.isArray(data) ? data : []);
+      const param = searchByPhone ? "phone" : "search";
+      const value = searchByPhone ? q.replace(/\D/g, "") || q : q;
+      const { data } = await api.get<{ id: string; email: string; first_name?: string; last_name?: string; role_names: string[] }[]>(
+        `/auth/users/?${param}=${encodeURIComponent(value)}`
+      );
+      const list = Array.isArray(data) ? data : [];
+      setTenantResults(list);
+      if (list.length === 1 && searchByPhone) {
+        setSelectedTenantId(list[0].id);
+        setSelectedTenantEmail(list[0].email);
+        setSelectedTenantName([list[0].first_name, list[0].last_name].filter(Boolean).join(" ") || list[0].email);
+      }
     } catch {
       setTenantResults([]);
     }
@@ -115,13 +127,23 @@ export default function NewLeasePage() {
 
         <div>
           <label className="block text-sm font-medium text-surface-700 mb-1">Tenant</label>
-          <p className="text-xs text-surface-500 mb-1">Search by email and select. The user will get the tenant role automatically.</p>
+          <p className="text-xs text-surface-500 mb-1">Search by phone or email. The user will get the tenant role automatically.</p>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <label className="flex items-center gap-1.5 text-sm text-surface-600">
+              <input type="radio" checked={!searchByPhone} onChange={() => setSearchByPhone(false)} className="rounded border-surface-300 text-primary-600" />
+              Email
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-surface-600">
+              <input type="radio" checked={searchByPhone} onChange={() => setSearchByPhone(true)} className="rounded border-surface-300 text-primary-600" />
+              Phone
+            </label>
+          </div>
           <div className="flex gap-2 mb-2">
             <input
               type="text"
-              placeholder="Search by email"
+              placeholder={searchByPhone ? "e.g. 0712345678" : "Search by email"}
               value={tenantSearch}
-              onChange={(e) => { setTenantSearch(e.target.value); setSelectedTenantId(""); setSelectedTenantEmail(""); }}
+              onChange={(e) => { setTenantSearch(e.target.value); setSelectedTenantId(""); setSelectedTenantEmail(""); setSelectedTenantName(""); }}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchTenants())}
               className="flex-1 rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
             />
@@ -131,20 +153,33 @@ export default function NewLeasePage() {
           </div>
           {tenantResults.length > 0 && (
             <ul className="border border-surface-200 rounded-lg divide-y max-h-32 overflow-y-auto">
-              {tenantResults.map((u) => (
-                <li key={u.id}>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedTenantId(u.id); setSelectedTenantEmail(u.email); setTenantResults([]); setTenantSearch(u.email); }}
-                    className={`w-full text-left px-3 py-2 text-sm ${selectedTenantId === u.id ? "bg-primary-50 text-primary-700" : "hover:bg-surface-50"}`}
-                  >
-                    {u.email} {u.role_names?.length ? `(${u.role_names.join(", ")})` : ""}
-                  </button>
-                </li>
-              ))}
+              {tenantResults.map((u) => {
+                const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email;
+                return (
+                  <li key={u.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTenantId(u.id);
+                        setSelectedTenantEmail(u.email);
+                        setSelectedTenantName(name);
+                        setTenantResults([]);
+                        setTenantSearch(searchByPhone ? (u as { phone?: string }).phone || u.email : u.email);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm ${selectedTenantId === u.id ? "bg-primary-50 text-primary-700" : "hover:bg-surface-50"}`}
+                    >
+                      {name} {u.email !== name ? `(${u.email})` : ""} {u.role_names?.length ? ` · ${u.role_names.join(", ")}` : ""}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          {selectedTenantId && <p className="text-sm text-surface-600 mt-1">Selected: {selectedTenantEmail}</p>}
+          {selectedTenantId && (
+            <p className="text-sm text-surface-600 mt-1">
+              Selected: {selectedTenantName || selectedTenantEmail} ({selectedTenantEmail})
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

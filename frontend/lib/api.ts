@@ -39,6 +39,9 @@ export function clearTokens() {
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete (config.headers as Record<string, unknown>)["Content-Type"];
+  }
   return config;
 });
 

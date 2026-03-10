@@ -8,12 +8,12 @@ from .serializers import (
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
 )
-from accounts.permissions import IsLandlordOrManager, IsTenant
+from accounts.permissions import IsLandlordOrManager, IsLandlordOrManagerOrCaretaker, IsTenant
 
 
 class VacancyListingListView(generics.ListAPIView):
-    """GET /api/vacancies/ - list upcoming vacancies (landlord/manager)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """GET /api/vacancies/ - list upcoming vacancies (landlord/manager/caretaker)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = VacancyListingSerializer
 
     def get_queryset(self):
@@ -23,6 +23,8 @@ class VacancyListingListView(generics.ListAPIView):
             return qs.filter(property__landlord=user).order_by("available_from")
         if user.has_role("manager"):
             return qs.filter(property__manager_assignments__manager=user).distinct().order_by("available_from")
+        if user.has_role("caretaker"):
+            return qs.filter(property__caretaker_assignments__caretaker=user).distinct().order_by("available_from")
         return qs.none()
 
 

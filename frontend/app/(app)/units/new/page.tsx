@@ -19,6 +19,10 @@ export default function NewUnitPage() {
   const [unitNumber, setUnitNumber] = useState("");
   const [unitType, setUnitType] = useState("other");
   const [monthlyRent, setMonthlyRent] = useState("");
+  const [securityDeposit, setSecurityDeposit] = useState("");
+  const [serviceCharge, setServiceCharge] = useState("");
+  const [extraCosts, setExtraCosts] = useState("");
+  const [paymentFrequency, setPaymentFrequency] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +47,10 @@ export default function NewUnitPage() {
         unit_number: unitNumber,
         unit_type: unitType,
         monthly_rent: monthlyRent || "0",
+        security_deposit: securityDeposit || "0",
+        service_charge: serviceCharge || "0",
+        extra_costs: extraCosts || undefined,
+        payment_frequency: paymentFrequency,
       });
       router.push(`/units?property=${propertyId}`);
     } catch (err: unknown) {
@@ -93,18 +101,55 @@ export default function NewUnitPage() {
         <div>
           <label className="block text-sm font-medium text-surface-700 mb-1">Unit type</label>
           <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900">
-            <option value="bedsitter">Bedsitter</option>
+            <option value="apartment">Apartment</option>
             <option value="studio">Studio</option>
+            <option value="bedsitter">Bedsitter</option>
             <option value="one_bedroom">One Bedroom</option>
             <option value="two_bedroom">Two Bedroom</option>
             <option value="three_bedroom">Three Bedroom</option>
             <option value="penthouse">Penthouse</option>
+            <option value="duplex">Duplex</option>
+            <option value="shop">Shop</option>
+            <option value="office">Office</option>
+            <option value="warehouse">Warehouse</option>
+            <option value="retail_space">Retail Space</option>
+            <option value="kiosk">Kiosk</option>
+            <option value="parking_space">Parking Space</option>
+            <option value="storage_unit">Storage Unit</option>
+            <option value="commercial_space">Commercial Space</option>
+            <option value="serviced_apartment">Serviced Apartment</option>
+            <option value="hostel_room">Hostel Room</option>
+            <option value="airbnb_unit">Airbnb Unit</option>
             <option value="other">Other</option>
           </select>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Rent</label>
+            <input type="number" step="0.01" min="0" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Payment frequency</label>
+            <select value={paymentFrequency} onChange={(e) => setPaymentFrequency(e.target.value as "weekly" | "monthly" | "yearly")} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900">
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Security deposit</label>
+            <input type="number" step="0.01" min="0" value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Service charge</label>
+            <input type="number" step="0.01" min="0" value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+          </div>
+        </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent</label>
-          <input type="number" step="0.01" min="0" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+          <label className="block text-sm font-medium text-surface-700 mb-1">Extra costs (optional)</label>
+          <input type="text" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="e.g. Water, parking" />
         </div>
         <div className="flex gap-3">
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">

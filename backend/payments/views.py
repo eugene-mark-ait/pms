@@ -109,4 +109,6 @@ class PaymentListView(generics.ListAPIView):
             return qs.filter(lease__unit__property__landlord=user)
         if user.has_role("manager"):
             return qs.filter(lease__unit__property__manager_assignments__manager=user).distinct()
+        if user.has_role("caretaker"):
+            return qs.filter(lease__unit__property__caretaker_assignments__caretaker=user).distinct()
         return qs.none()

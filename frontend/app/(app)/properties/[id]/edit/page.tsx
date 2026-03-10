@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+
+const ACCEPT = "image/jpeg,image/png,image/webp";
+
+interface PropertyImageType {
+  id: string;
+  image: string;
+  caption?: string;
+}
 
 export default function EditPropertyPage() {
   const params = useParams();
@@ -12,17 +20,31 @@ export default function EditPropertyPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState("");
+  const [images, setImages] = useState<PropertyImageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  function getImageUrl(img: PropertyImageType) {
+    if (img.image.startsWith("http")) return img.image;
+    const base = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "");
+    return base + img.image;
+  }
+
+  function refresh() {
     if (!id) return;
-    api.get<{ name: string; address: string; location?: string }>(`/properties/${id}/`).then((res) => {
+    api.get<{ name: string; address: string; location?: string; images?: PropertyImageType[] }>(`/properties/${id}/`).then((res) => {
       setName(res.data.name);
       setAddress(res.data.address);
       setLocation(res.data.location ?? "");
+      setImages(res.data.images ?? []);
     }).catch(() => setError("Property not found.")).finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    refresh();
   }, [id]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,6 +61,38 @@ export default function EditPropertyPage() {
       setError(typeof msg === "string" ? msg : "Failed to update property.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    setError("");
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!ACCEPT.split(",").some((t) => file.type === t.trim())) continue;
+      const form = new FormData();
+      form.append("image", file);
+      try {
+        await api.post(`/properties/${id}/images/`, form);
+        refresh();
+      } catch (err) {
+        const msg = err && typeof err === "object" && "response" in err ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail : "Upload failed.";
+        setError(typeof msg === "string" ? msg : "Upload failed.");
+      }
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleDeleteImage(imageId: string) {
+    if (!confirm("Remove this image?")) return;
+    try {
+      await api.delete(`/properties/${id}/images/${imageId}/`);
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch {
+      setError("Failed to remove image.");
     }
   }
 
@@ -89,6 +143,35 @@ export default function EditPropertyPage() {
           </Link>
         </div>
       </form>
+
+      <section>
+        <h2 className="text-lg font-semibold text-surface-900 mb-2">Images</h2>
+        <p className="text-sm text-surface-500 mb-2">JPG, PNG, or WebP. Multiple allowed.</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT}
+          multiple
+          onChange={handleImageUpload}
+          disabled={uploading}
+          className="block w-full text-sm text-surface-600 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-primary-700"
+        />
+        {uploading && <p className="text-surface-500 text-sm mt-1">Uploading…</p>}
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {images.map((img) => (
+            <div key={img.id} className="relative rounded-lg border border-surface-200 overflow-hidden bg-surface-50 aspect-[4/3]">
+              <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => handleDeleteImage(img.id)}
+                className="absolute top-2 right-2 rounded bg-red-600 text-white text-xs px-2 py-1 hover:bg-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -28,6 +28,17 @@ class IsLandlordOrManager(permissions.BasePermission):
         return request.user.has_role("landlord") or request.user.has_role("manager")
 
 
+class IsLandlordOrManagerOrCaretaker(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return (
+            request.user.has_role("landlord")
+            or request.user.has_role("manager")
+            or request.user.has_role("caretaker")
+        )
+
+
 class IsTenantOrManagerOrLandlord(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:

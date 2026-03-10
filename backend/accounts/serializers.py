@@ -52,7 +52,11 @@ class UserUpdateRolesSerializer(serializers.Serializer):
 class UserCreateSerializer(serializers.ModelSerializer):
     """Signup: email, password, full name, phone, role (tenant or landlord). Default role: tenant."""
     password = serializers.CharField(write_only=True, min_length=8)
-    role = serializers.ChoiceField(choices=["tenant", "landlord"], default="tenant", write_only=True)
+    role = serializers.ChoiceField(
+        choices=["tenant", "landlord", "manager", "caretaker"],
+        default="tenant",
+        write_only=True,
+    )
 
     class Meta:
         model = User
@@ -71,7 +75,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         from .models import Role
         role_name = validated_data.pop("role", "tenant")
-        if role_name not in ("tenant", "landlord"):
+        if role_name not in ("tenant", "landlord", "manager", "caretaker"):
             role_name = "tenant"
         password = validated_data.pop("password")
         user = User.objects.create_user(**validated_data)

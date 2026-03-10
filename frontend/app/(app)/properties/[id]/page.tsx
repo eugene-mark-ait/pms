@@ -142,8 +142,21 @@ export default function PropertyDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
-  if (!property) return <p className="text-surface-600">Property not found.</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-surface-500">Loading property…</div>
+      </div>
+    );
+  }
+  if (!property) {
+    return (
+      <div className="space-y-4">
+        <Link href="/properties" className="text-primary-600 hover:underline">← Back to properties</Link>
+        <p className="text-surface-600">Property not found. It may have been removed or you don’t have access.</p>
+      </div>
+    );
+  }
 
   const managers = property.manager_assignments ?? [];
   const caretakers = property.caretaker_assignments ?? [];

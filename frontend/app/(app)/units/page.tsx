@@ -9,6 +9,27 @@ interface Unit {
   id: string;
   unit_number: string;
   property: string;
+  is_vacant?: boolean;
+  unit_type?: string;
+}
+
+interface PropertyOption {
+  id: string;
+  name: string;
+}
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(",").map((v) => v.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, j) => { row[h] = values[j] ?? ""; });
+    rows.push(row);
+  }
+  return rows;
 }
 
 export default function UnitsPage() {
@@ -16,8 +37,15 @@ export default function UnitsPage() {
   const propertyId = searchParams.get("property");
   const [user, setUser] = useState<User | null>(null);
   const [list, setList] = useState<Unit[]>([]);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkPropertyId, setBulkPropertyId] = useState(propertyId ?? "");
+  const [bulkFile, setBulkFile] = useState<string>("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
 
+  const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
 
   useEffect(() => {
@@ -33,8 +61,53 @@ export default function UnitsPage() {
   }
 
   useEffect(() => {
-    refresh();
-  }, [propertyId]);
+    if (!user) return;
+    if (canView) refresh();
+    else setLoading(false);
+  }, [propertyId, canView, user]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    api.get<PropertyOption[] | { results: PropertyOption[] }>("/properties/").then((res) => {
+      const data = res.data;
+      setProperties(Array.isArray(data) ? data : (data as { results?: PropertyOption[] })?.results ?? []);
+    }).catch(() => setProperties([]));
+  }, [canManage]);
+
+  async function handleBulkSubmit() {
+    if (!bulkPropertyId || !bulkFile.trim()) {
+      setBulkResult("Select a property and paste CSV or upload a file.");
+      return;
+    }
+    const rows = parseCSV(bulkFile);
+    if (rows.length === 0) {
+      setBulkResult("No rows in CSV. Use template: Unit Name, Type, Rent, Deposit, Status");
+      return;
+    }
+    const units = rows.map((r) => ({
+      unit_number: r.unit_name ?? r["unit name"] ?? "",
+      unit_type: (r.type ?? "other").toLowerCase().replace(/\s+/g, "_"),
+      monthly_rent: r.rent ?? "0",
+      security_deposit: r.deposit ?? "0",
+    })).filter((u) => u.unit_number);
+    if (units.length === 0) {
+      setBulkResult("No valid rows (Unit Name required).");
+      return;
+    }
+    setBulkSubmitting(true);
+    setBulkResult(null);
+    try {
+      const { data } = await api.post<{ created: number; errors: unknown[] }>("/units/bulk/", { property: bulkPropertyId, units });
+      setBulkResult(`Created ${data.created} unit(s).${(data.errors?.length ?? 0) > 0 ? ` ${data.errors.length} row(s) had errors.` : ""}`);
+      refresh();
+      setBulkFile("");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "response" in err ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail : "Bulk create failed.";
+      setBulkResult(typeof msg === "string" ? msg : "Bulk create failed.");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
 
   async function handleDelete(u: Unit) {
     if (!confirm(`Delete unit ${u.unit_number}?`)) return;
@@ -46,26 +119,35 @@ export default function UnitsPage() {
     }
   }
 
-  if (user && !canManage) {
+  if (user && !canView) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-surface-900">Units</h1>
-        <p className="text-surface-600">You don’t have access to manage units.</p>
+        <p className="text-surface-600">You don’t have access to view units.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900">Units</h1>
         {canManage && (
-          <Link
-            href={propertyId ? `/units/new?property=${propertyId}` : "/units/new"}
-            className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium"
-          >
-            Add Unit
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={propertyId ? `/units/new?property=${propertyId}` : "/units/new"}
+              className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium"
+            >
+              Add Unit
+            </Link>
+            <button
+              type="button"
+              onClick={() => { setBulkOpen(true); setBulkPropertyId(propertyId ?? ""); setBulkResult(null); }}
+              className="rounded-lg border border-surface-300 bg-white px-4 py-2 text-surface-700 hover:bg-surface-50 text-sm font-medium"
+            >
+              Bulk upload
+            </button>
+          </div>
         )}
       </div>
       {loading ? (
@@ -77,17 +159,27 @@ export default function UnitsPage() {
           <table className="w-full">
             <thead className="bg-surface-50 border-b border-surface-200">
               <tr>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Unit number</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property ID</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Unit</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
                 <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-200">
               {list.map((u) => (
                 <tr key={u.id} className="hover:bg-surface-50">
-                  <td className="px-6 py-4 font-medium">{u.unit_number}</td>
+                  <td className="px-6 py-4 font-medium">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</td>
                   <td className="px-6 py-4 text-surface-600">
                     <Link href={`/properties/${u.property}`} className="text-primary-600 hover:underline">{u.property}</Link>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {u.is_vacant ? (
+                        <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20">Vacant</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Occupied</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
                     {canManage && (
@@ -101,6 +193,44 @@ export default function UnitsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {canManage && bulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !bulkSubmitting && setBulkOpen(false)}>
+          <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-surface-900">Bulk upload units</h2>
+            <p className="text-sm text-surface-600">Upload a CSV with columns: Unit Name, Type, Rent, Deposit, Status.</p>
+            <a href="/unit-bulk-template.csv" download className="inline-block text-sm text-primary-600 hover:underline">Download template</a>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 mb-1">Property</label>
+              <select
+                value={bulkPropertyId}
+                onChange={(e) => setBulkPropertyId(e.target.value)}
+                className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              >
+                <option value="">Select property</option>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 mb-1">CSV content (paste or upload then paste)</label>
+              <textarea
+                value={bulkFile}
+                onChange={(e) => setBulkFile(e.target.value)}
+                placeholder="Unit Name,Type,Rent,Deposit,Status&#10;101,one_bedroom,1200,2400,vacant"
+                className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900 font-mono text-sm min-h-[120px]"
+                rows={6}
+              />
+            </div>
+            {bulkResult && <p className={`text-sm ${bulkResult.startsWith("Created") ? "text-emerald-600" : "text-red-600"}`}>{bulkResult}</p>}
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setBulkOpen(false)} disabled={bulkSubmitting} className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50 disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={handleBulkSubmit} disabled={bulkSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">{bulkSubmitting ? "Creating…" : "Create units"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -5,10 +5,11 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from .models import Property, Unit, PropertyRule, ManagerAssignment, CaretakerAssignment
+from .models import Property, Unit, PropertyRule, ManagerAssignment, CaretakerAssignment, PropertyImage
 from .serializers import (
     PropertyListSerializer,
     PropertyDetailSerializer,
+    PropertyImageSerializer,
     UnitSerializer,
     PropertyRuleSerializer,
     ManagerAssignmentSerializer,
@@ -16,7 +17,7 @@ from .serializers import (
     AssignManagerSerializer,
     AssignCaretakerSerializer,
 )
-from accounts.permissions import IsLandlord, IsLandlordOrManager
+from accounts.permissions import IsLandlord, IsLandlordOrManager, IsLandlordOrManagerOrCaretaker
 
 User = get_user_model()
 
@@ -32,6 +33,8 @@ class PropertyListCreateView(generics.ListCreateAPIView):
             return Property.objects.filter(landlord=user).order_by("-created_at")
         if user.has_role("manager"):
             return Property.objects.filter(manager_assignments__manager=user).distinct().order_by("-created_at")
+        if user.has_role("caretaker"):
+            return Property.objects.filter(caretaker_assignments__caretaker=user).distinct().order_by("-created_at")
         return Property.objects.none()
 
     def get_serializer_class(self):
@@ -45,8 +48,8 @@ class PropertyListCreateView(generics.ListCreateAPIView):
 
 
 class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PUT/PATCH/DELETE /api/properties/<id>/"""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """GET/PUT/PATCH/DELETE /api/properties/<id>/ - caretaker can view only."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = PropertyDetailSerializer
 
     def get_queryset(self):
@@ -55,12 +58,26 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Property.objects.filter(landlord=user)
         if user.has_role("manager"):
             return Property.objects.filter(manager_assignments__manager=user)
+        if user.has_role("caretaker"):
+            return Property.objects.filter(caretaker_assignments__caretaker=user).distinct()
         return Property.objects.none()
+
+    def update(self, request, *args, **kwargs):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot edit property details.")
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot delete properties.")
+        return super().destroy(request, *args, **kwargs)
 
 
 class UnitListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/units/ - list or create units (query: ?property=<id>)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = UnitSerializer
 
     def get_queryset(self):
@@ -70,6 +87,8 @@ class UnitListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(property__landlord=user)
         elif user.has_role("manager"):
             qs = qs.filter(property__manager_assignments__manager=user)
+        elif user.has_role("caretaker"):
+            qs = qs.filter(property__caretaker_assignments__caretaker=user)
         else:
             qs = qs.none()
         property_id = self.request.query_params.get("property")
@@ -83,7 +102,7 @@ class UnitListCreateView(generics.ListCreateAPIView):
 
 class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PUT/PATCH/DELETE /api/units/<id>/"""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = UnitSerializer
 
     def get_queryset(self):
@@ -92,6 +111,8 @@ class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Unit.objects.filter(property__landlord=user)
         if user.has_role("manager"):
             return Unit.objects.filter(property__manager_assignments__manager=user)
+        if user.has_role("caretaker"):
+            return Unit.objects.filter(property__caretaker_assignments__caretaker=user).distinct()
         return Unit.objects.none()
 
 
@@ -176,3 +197,99 @@ class PropertyCaretakerRemoveView(APIView):
         if not deleted:
             return Response({"detail": "Caretaker assignment not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _property_for_user(request, pk):
+    """Return property if user is landlord, manager, or caretaker of it."""
+    user = request.user
+    qs = Property.objects.filter(pk=pk)
+    if user.has_role("landlord"):
+        qs = qs.filter(landlord=user)
+    elif user.has_role("manager"):
+        qs = qs.filter(manager_assignments__manager=user)
+    elif user.has_role("caretaker"):
+        qs = qs.filter(caretaker_assignments__caretaker=user)
+    else:
+        qs = qs.none()
+    return get_object_or_404(qs.distinct())
+
+
+class PropertyImageUploadView(APIView):
+    """POST /api/properties/<id>/images/ - upload image (multipart). Landlord/manager only."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+
+    def post(self, request, pk):
+        property_obj = _property_for_user(request, pk)
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot add property images.")
+        image_file = request.FILES.get("image")
+        if not image_file:
+            return Response({"detail": "No image file provided."}, status=status.HTTP_400_BAD_REQUEST)
+        allowed = ["image/jpeg", "image/png", "image/webp"]
+        if image_file.content_type not in allowed:
+            return Response({"detail": "Only jpg, png, webp allowed."}, status=status.HTTP_400_BAD_REQUEST)
+        sort_order = property_obj.images.count()
+        obj = PropertyImage.objects.create(
+            property=property_obj,
+            image=image_file,
+            caption=request.data.get("caption", ""),
+            sort_order=sort_order,
+        )
+        request_ctx = self.request
+        url = obj.image.url
+        if request_ctx:
+            url = request_ctx.build_absolute_uri(url)
+        return Response(PropertyImageSerializer(obj).data, status=status.HTTP_201_CREATED)
+
+
+class PropertyImageDeleteView(APIView):
+    """DELETE /api/properties/<id>/images/<image_id>/"""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+
+    def delete(self, request, pk, image_id):
+        property_obj = _property_for_user(request, pk)
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot delete property images.")
+        img = get_object_or_404(PropertyImage, pk=image_id, property=property_obj)
+        img.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UnitBulkCreateView(APIView):
+    """POST /api/units/bulk/ - create multiple units. Body: { property: "<uuid>", units: [{ unit_number, unit_type, monthly_rent, ... }] }."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+
+    def post(self, request):
+        property_id = request.data.get("property")
+        units_data = request.data.get("units", [])
+        if not property_id or not isinstance(units_data, list):
+            return Response(
+                {"detail": "Provide 'property' (uuid) and 'units' (array of { unit_number, unit_type, monthly_rent, ... })."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        property_obj = _property_for_user(request, property_id)
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot create units in bulk.")
+        created = []
+        errors = []
+        for i, u in enumerate(units_data):
+            data = {
+                "property": str(property_obj.id),
+                "unit_number": u.get("unit_number") or u.get("Unit Name") or "",
+                "unit_type": u.get("unit_type") or u.get("Type") or "other",
+                "monthly_rent": u.get("monthly_rent") or u.get("Rent") or u.get("rent") or "0",
+                "security_deposit": u.get("security_deposit") or u.get("Deposit") or "0",
+                "service_charge": u.get("service_charge") or "0",
+                "extra_costs": u.get("extra_costs") or "",
+                "payment_frequency": u.get("payment_frequency") or "monthly",
+            }
+            serializer = UnitSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                created.append(serializer.data)
+            else:
+                errors.append({i: serializer.errors})
+        return Response({"created": len(created), "units": created, "errors": errors}, status=status.HTTP_201_CREATED)

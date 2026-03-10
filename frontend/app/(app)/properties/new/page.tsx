@@ -19,7 +19,12 @@ export default function NewPropertyPage() {
     setSubmitting(true);
     try {
       const { data } = await api.post<{ id: string }>("/properties/", { name, address, location: location.trim() || undefined });
-      router.push(`/properties/${data.id}`);
+      const id = data?.id;
+      if (id) {
+        router.push(`/properties/${id}`);
+      } else {
+        router.push("/properties");
+      }
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "response" in err
         ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail

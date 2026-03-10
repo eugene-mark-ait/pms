@@ -17,7 +17,7 @@ from .services import (
     get_payment_status,
     get_last_payment_end,
 )
-from accounts.permissions import IsLandlordOrManager, IsTenant
+from accounts.permissions import IsLandlordOrManager, IsLandlordOrManagerOrCaretaker, IsTenant
 from notifications.models import Notification
 
 
@@ -28,8 +28,8 @@ def tenant_leases_queryset(user):
 
 
 class LeaseListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/leases/ - list or create leases (landlord/manager)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """GET/POST /api/leases/ - list or create leases (landlord/manager/caretaker)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
 
     def get_queryset(self):
         user = self.request.user
@@ -37,6 +37,8 @@ class LeaseListCreateView(generics.ListCreateAPIView):
             return Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
         if user.has_role("manager"):
             return Lease.objects.filter(unit__property__manager_assignments__manager=user).select_related("unit", "unit__property", "tenant").distinct()
+        if user.has_role("caretaker"):
+            return Lease.objects.filter(unit__property__caretaker_assignments__caretaker=user).select_related("unit", "unit__property", "tenant").distinct()
         return Lease.objects.none()
 
     def get_serializer_class(self):
@@ -56,8 +58,8 @@ class LeaseListCreateView(generics.ListCreateAPIView):
 
 
 class LeaseDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PUT/PATCH/DELETE /api/leases/<id>/"""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """GET/PUT/PATCH/DELETE /api/leases/<id>/ - caretaker can view and update, not delete."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = LeaseSerializer
 
     def get_queryset(self):
@@ -66,7 +68,15 @@ class LeaseDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Lease.objects.filter(unit__property__landlord=user)
         if user.has_role("manager"):
             return Lease.objects.filter(unit__property__manager_assignments__manager=user)
+        if user.has_role("caretaker"):
+            return Lease.objects.filter(unit__property__caretaker_assignments__caretaker=user).distinct()
         return Lease.objects.none()
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot delete leases.")
+        return super().destroy(request, *args, **kwargs)
 
 
 class TenantMyUnitsView(generics.ListAPIView):

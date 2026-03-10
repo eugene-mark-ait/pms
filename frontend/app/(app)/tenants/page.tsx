@@ -8,6 +8,8 @@ interface Lease {
   id: string;
   tenant: { email: string; first_name: string; last_name: string };
   unit: { unit_number: string; property: { name: string } };
+  payment_status?: string;
+  is_active?: boolean;
 }
 
 export default function TenantsPage() {
@@ -15,6 +17,7 @@ export default function TenantsPage() {
   const [list, setList] = useState<Lease[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
 
   useEffect(() => {
@@ -22,17 +25,18 @@ export default function TenantsPage() {
   }, []);
 
   useEffect(() => {
+    if (!canView) return;
     api.get<Lease[] | { results: Lease[] }>("/leases/").then((res) => {
       const data = res.data;
       setList(Array.isArray(data) ? data : data.results ?? []);
     }).catch(() => setList([])).finally(() => setLoading(false));
-  }, []);
+  }, [canView]);
 
-  if (user && !canManage) {
+  if (user && !canView) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-surface-900">Tenants</h1>
-        <p className="text-surface-600">You don’t have access to view or manage tenants and leases.</p>
+        <p className="text-surface-600">You don’t have access to view tenants and leases.</p>
       </div>
     );
   }
@@ -58,6 +62,7 @@ export default function TenantsPage() {
               <tr>
                 <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Tenant</th>
                 <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property / Unit</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
                 <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
               </tr>
             </thead>
@@ -71,6 +76,21 @@ export default function TenantsPage() {
                     {typeof l.unit?.property === "object" && l.unit?.property?.name
                       ? `${l.unit.property.name} – ${l.unit.unit_number}`
                       : `${l.unit?.unit_number}`}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {l.is_active !== false && (
+                        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Active lease</span>
+                      )}
+                      {l.payment_status === "overdue" && (
+                        <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-600/20">Overdue</span>
+                      )}
+                      {l.payment_status === "paid" || l.payment_status === "current" ? (
+                        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Paid</span>
+                      ) : l.payment_status !== "overdue" && l.payment_status && (
+                        <span className="inline-flex items-center rounded-md bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600">{l.payment_status}</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     {canManage && (

@@ -30,6 +30,7 @@ class UnitSerializer(serializers.ModelSerializer):
         model = Unit
         fields = [
             "id", "property", "unit_number", "unit_type", "monthly_rent",
+            "security_deposit", "service_charge", "extra_costs", "payment_frequency",
             "is_vacant", "images", "created_at", "updated_at",
         ]
 
@@ -87,10 +88,11 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create/update: name, address, location (landlord set in view)."""
+    """Create/update: name, address, location (landlord set in view). Returns id on create."""
     class Meta:
         model = Property
-        fields = ["name", "address", "location"]
+        fields = ["id", "name", "address", "location"]
+        read_only_fields = ["id"]
 
 
 class PropertyDetailSerializer(serializers.ModelSerializer):

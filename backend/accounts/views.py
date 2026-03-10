@@ -64,19 +64,49 @@ class UserSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not (request.user.is_staff or request.user.has_role("landlord")):
-            return Response({"detail": "Only landlords or staff can search users."}, status=status.HTTP_403_FORBIDDEN)
+        if not (
+            request.user.is_staff
+            or request.user.has_role("landlord")
+            or request.user.has_role("manager")
+            or request.user.has_role("caretaker")
+        ):
+            return Response(
+                {"detail": "Only landlords, managers, caretakers or staff can search users."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         email = request.query_params.get("email", "").strip()
         search = request.query_params.get("search", "").strip()
-        if not email and not search:
-            return Response({"detail": "Provide email= or search= query parameter."}, status=status.HTTP_400_BAD_REQUEST)
+        phone = request.query_params.get("phone", "").strip()
+        if not email and not search and not phone:
+            return Response(
+                {"detail": "Provide email=, search=, or phone= query parameter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         qs = User.objects.all().order_by("email")
-        if email:
+        if phone:
+            # Normalize: digits only for lookup so 0712345678 matches +254712345678
+            digits = "".join(c for c in phone if c.isdigit())
+            if digits:
+                from django.db.models import Q
+                qs = qs.filter(
+                    Q(phone__icontains=digits[-9:])  # last 9 digits (local number)
+                    | Q(phone__icontains=digits)
+                )[:20]
+            else:
+                qs = qs.none()
+        elif email:
             qs = qs.filter(email__iexact=email)
-        if search:
+        elif search:
             qs = qs.filter(email__icontains=search)[:20]
         data = [
-            {"id": str(u.id), "email": u.email, "role_names": list(u.roles.values_list("name", flat=True))}
+            {
+                "id": str(u.id),
+                "email": u.email,
+                "first_name": getattr(u, "first_name", "") or "",
+                "last_name": getattr(u, "last_name", "") or "",
+                "phone": getattr(u, "phone", "") or "",
+                "role_names": list(u.roles.values_list("name", flat=True)),
+            }
             for u in qs
         ]
         return Response(data)
