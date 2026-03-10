@@ -9,6 +9,7 @@ export default function NewPropertyPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,7 +18,7 @@ export default function NewPropertyPage() {
     setError("");
     setSubmitting(true);
     try {
-      const { data } = await api.post<{ id: string }>("/properties/", { name, address });
+      const { data } = await api.post<{ id: string }>("/properties/", { name, address, location: location.trim() || undefined });
       router.push(`/properties/${data.id}`);
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "response" in err
@@ -45,6 +46,16 @@ export default function NewPropertyPage() {
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
             required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-surface-700 mb-1">Location (short label for search)</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g. Downtown, North Side"
+            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
           />
         </div>
         <div>

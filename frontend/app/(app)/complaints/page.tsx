@@ -8,6 +8,8 @@ interface Complaint {
   title: string;
   description: string;
   status: string;
+  priority?: string;
+  assigned_to?: { id: string; email: string; first_name?: string; last_name?: string } | null;
   created_at: string;
 }
 
@@ -36,6 +38,8 @@ export default function ComplaintsPage() {
               <tr>
                 <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Title</th>
                 <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Priority</th>
+                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Assigned to</th>
                 <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Created</th>
               </tr>
             </thead>
@@ -44,6 +48,10 @@ export default function ComplaintsPage() {
                 <tr key={c.id} className="hover:bg-surface-50">
                   <td className="px-6 py-4 font-medium">{c.title}</td>
                   <td className="px-6 py-4 capitalize">{c.status?.replace("_", " ")}</td>
+                  <td className="px-6 py-4 capitalize">{c.priority ?? "—"}</td>
+                  <td className="px-6 py-4 text-surface-600">
+                    {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "—"}
+                  </td>
                   <td className="px-6 py-4 text-surface-600">{new Date(c.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}

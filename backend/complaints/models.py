@@ -5,12 +5,18 @@ from properties.models import Property, Unit
 
 
 class Complaint(models.Model):
-    """Complaint from tenant to property manager or landlord."""
+    """Ticket-style complaint: tenant submits to caretaker, manager, or landlord."""
     class Status(models.TextChoices):
         OPEN = "open", "Open"
         IN_PROGRESS = "in_progress", "In Progress"
         RESOLVED = "resolved", "Resolved"
         CLOSED = "closed", "Closed"
+
+    class Priority(models.TextChoices):
+        LOW = "low", "Low"
+        MEDIUM = "medium", "Medium"
+        HIGH = "high", "High"
+        URGENT = "urgent", "Urgent"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
@@ -30,12 +36,25 @@ class Complaint(models.Model):
         on_delete=models.CASCADE,
         related_name="complaints",
     )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_complaints",
+        help_text="Caretaker, manager, or landlord who handles this complaint.",
+    )
     title = models.CharField(max_length=255)
     description = models.TextField()
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.OPEN,
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

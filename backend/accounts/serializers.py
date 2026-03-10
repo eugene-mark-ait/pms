@@ -50,15 +50,33 @@ class UserUpdateRolesSerializer(serializers.Serializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    """Signup: email, password, full name, phone, role (tenant or landlord). Default role: tenant."""
     password = serializers.CharField(write_only=True, min_length=8)
+    role = serializers.ChoiceField(choices=["tenant", "landlord"], default="tenant", write_only=True)
 
     class Meta:
         model = User
-        fields = ["email", "password", "first_name", "last_name", "phone"]
+        fields = ["email", "password", "first_name", "last_name", "phone", "role"]
+
+    def validate_first_name(self, value):
+        if not (value or "").strip():
+            raise serializers.ValidationError("Full name (first name) is required.")
+        return (value or "").strip()
+
+    def validate_phone(self, value):
+        if not (value or "").strip():
+            raise serializers.ValidationError("Phone number is required.")
+        return (value or "").strip()
 
     def create(self, validated_data):
+        from .models import Role
+        role_name = validated_data.pop("role", "tenant")
+        if role_name not in ("tenant", "landlord"):
+            role_name = "tenant"
         password = validated_data.pop("password")
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
         user.save()
+        role, _ = Role.objects.get_or_create(name=role_name)
+        user.roles.add(role)
         return user

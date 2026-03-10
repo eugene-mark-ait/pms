@@ -8,7 +8,9 @@ interface Property {
   id: string;
   name: string;
   address: string;
+  location?: string;
   unit_count: number;
+  first_image?: string | null;
 }
 
 export default function PropertiesPage() {
@@ -73,37 +75,34 @@ export default function PropertiesPage() {
       ) : list.length === 0 ? (
         <p className="text-surface-600">No properties.{isLandlord && <> <Link href="/properties/new" className="text-primary-600 hover:underline">Add one</Link>.</>}</p>
       ) : (
-        <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-surface-50 border-b border-surface-200">
-              <tr>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Name</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Address</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Units</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-200">
-              {list.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-50">
-                  <td className="px-6 py-4 font-medium">{p.name}</td>
-                  <td className="px-6 py-4 text-surface-600">{p.address}</td>
-                  <td className="px-6 py-4">{p.unit_count ?? 0}</td>
-                  <td className="px-6 py-4 text-right space-x-3">
-                    <Link href={`/properties/${p.id}`} className="text-primary-600 hover:underline text-sm">View</Link>
-                    {canEditDelete && (
-                      <>
-                        <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm">Edit</Link>
-                        {isLandlord && (
-                          <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 hover:underline text-sm">Delete</button>
-                        )}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map((p) => (
+            <div key={p.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm hover:shadow-md transition">
+              <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 relative">
+                {p.first_image ? (
+                  <img src={p.first_image} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-surface-400 text-sm">No image</div>
+                )}
+              </Link>
+              <div className="p-4">
+                <h2 className="font-semibold text-surface-900">{p.name}</h2>
+                <p className="text-sm text-surface-600 mt-1">{p.location || p.address}</p>
+                <p className="text-xs text-surface-500 mt-1">{p.unit_count ?? 0} unit(s)</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/properties/${p.id}`} className="text-primary-600 hover:underline text-sm font-medium">View</Link>
+                  {canEditDelete && (
+                    <>
+                      <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm">Edit</Link>
+                      {isLandlord && (
+                        <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 hover:underline text-sm">Delete</button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -46,12 +46,12 @@ class LeaseListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         lease = serializer.save()
+        lease.unit.is_vacant = False
+        lease.unit.save(update_fields=["is_vacant", "updated_at"])
         tenant_user = lease.tenant
-        # Ensure tenant has "tenant" role
         tenant_role, _ = Role.objects.get_or_create(name="tenant")
         if not tenant_user.roles.filter(pk=tenant_role.pk).exists():
             tenant_user.roles.add(tenant_role)
-        # Ensure TenantProfile exists for tenant
         TenantProfile.objects.get_or_create(user=tenant_user)
 
 

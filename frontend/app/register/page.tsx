@@ -13,6 +13,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<"tenant" | "landlord">("tenant");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -24,8 +26,10 @@ export default function RegisterPage() {
       await api.post("/auth/register/", {
         email,
         password,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        role,
       });
       const { data } = await api.post<LoginResponse>("/auth/login/", { email, password });
       setTokens(data.access, data.refresh);
@@ -91,8 +95,8 @@ export default function RegisterPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">First name</label>
-                <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
+                <label htmlFor="firstName" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">First name *</label>
+                <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Last name</label>
@@ -100,7 +104,25 @@ export default function RegisterPage() {
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Password</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Phone number *</label>
+              <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" placeholder="e.g. +1234567890" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">I am a *</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="role" value="tenant" checked={role === "tenant"} onChange={() => setRole("tenant")} className="rounded-full border-surface-300 text-primary-600" />
+                  <span>Tenant</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="role" value="landlord" checked={role === "landlord"} onChange={() => setRole("landlord")} className="rounded-full border-surface-300 text-primary-600" />
+                  <span>Landlord</span>
+                </label>
+              </div>
+              <p className="text-xs text-surface-500 mt-1">Default: Tenant. Choose Landlord if you own properties.</p>
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Password * (min 8 characters)</label>
               <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
             </div>
             <button type="submit" disabled={loading} className="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium rounded-lg transition">

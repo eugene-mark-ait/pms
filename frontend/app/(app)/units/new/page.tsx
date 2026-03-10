@@ -17,6 +17,8 @@ export default function NewUnitPage() {
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [propertyId, setPropertyId] = useState(propertyIdFromQuery ?? "");
   const [unitNumber, setUnitNumber] = useState("");
+  const [unitType, setUnitType] = useState("other");
+  const [monthlyRent, setMonthlyRent] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +38,12 @@ export default function NewUnitPage() {
     setError("");
     setSubmitting(true);
     try {
-      await api.post("/units/", { property: propertyId, unit_number: unitNumber });
+      await api.post("/units/", {
+        property: propertyId,
+        unit_number: unitNumber,
+        unit_type: unitType,
+        monthly_rent: monthlyRent || "0",
+      });
       router.push(`/units?property=${propertyId}`);
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "response" in err
@@ -82,6 +89,22 @@ export default function NewUnitPage() {
             placeholder="e.g. 101"
             required
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-surface-700 mb-1">Unit type</label>
+          <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900">
+            <option value="bedsitter">Bedsitter</option>
+            <option value="studio">Studio</option>
+            <option value="one_bedroom">One Bedroom</option>
+            <option value="two_bedroom">Two Bedroom</option>
+            <option value="three_bedroom">Three Bedroom</option>
+            <option value="penthouse">Penthouse</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent</label>
+          <input type="number" step="0.01" min="0" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
         </div>
         <div className="flex gap-3">
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">

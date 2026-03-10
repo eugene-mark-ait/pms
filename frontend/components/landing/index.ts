@@ -1,0 +1,11 @@
+export { default as Navbar } from "./Navbar";
+export { default as Hero } from "./Hero";
+export { default as Problem } from "./Problem";
+export { default as Solution } from "./Solution";
+export { default as FeaturesByUser } from "./FeaturesByUser";
+export { default as Benefits } from "./Benefits";
+export { default as HowItWorks } from "./HowItWorks";
+export { default as DashboardPreview } from "./DashboardPreview";
+export { default as Testimonials } from "./Testimonials";
+export { default as CTA } from "./CTA";
+export { default as Footer } from "./Footer";

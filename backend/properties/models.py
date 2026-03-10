@@ -4,10 +4,11 @@ from django.conf import settings
 
 
 class Property(models.Model):
-    """Property owned by a landlord; has units, managers, rules."""
+    """Property owned by a landlord; has units, managers, rules, images."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     address = models.TextField()
+    location = models.CharField(max_length=255, blank=True, help_text="Short location label for search/display")
     landlord = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -24,8 +25,38 @@ class Property(models.Model):
         return self.name
 
 
+class PropertyImage(models.Model):
+    """Image for a property (multiple allowed)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to="properties/%Y/%m/")
+    caption = models.CharField(max_length=255, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "property_images"
+        ordering = ["sort_order", "created_at"]
+
+    def __str__(self):
+        return f"{self.property.name} image"
+
+
 class Unit(models.Model):
-    """Unit belonging to a property."""
+    """Unit belonging to a property; has type, rent, vacancy, images."""
+    class UnitType(models.TextChoices):
+        BEDSITTER = "bedsitter", "Bedsitter"
+        STUDIO = "studio", "Studio"
+        ONE_BEDROOM = "one_bedroom", "One Bedroom"
+        TWO_BEDROOM = "two_bedroom", "Two Bedroom"
+        THREE_BEDROOM = "three_bedroom", "Three Bedroom"
+        PENTHOUSE = "penthouse", "Penthouse"
+        OTHER = "other", "Other"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
         Property,
@@ -33,6 +64,18 @@ class Unit(models.Model):
         related_name="units",
     )
     unit_number = models.CharField(max_length=50)
+    unit_type = models.CharField(
+        max_length=20,
+        choices=UnitType.choices,
+        default=UnitType.OTHER,
+    )
+    monthly_rent = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Base rent for listing; lease can override.",
+    )
+    is_vacant = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -42,6 +85,27 @@ class Unit(models.Model):
 
     def __str__(self):
         return f"{self.property.name} - {self.unit_number}"
+
+
+class UnitImage(models.Model):
+    """Image for a unit (multiple allowed)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to="units/%Y/%m/")
+    caption = models.CharField(max_length=255, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "unit_images"
+        ordering = ["sort_order", "created_at"]
+
+    def __str__(self):
+        return f"{self.unit} image"
 
 
 class PropertyRule(models.Model):
@@ -65,7 +129,7 @@ class PropertyRule(models.Model):
 
 
 class ManagerAssignment(models.Model):
-    """Assignment of a manager to a property."""
+    """Assignment of a manager to a property; optional contact phone."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
         Property,
@@ -77,6 +141,7 @@ class ManagerAssignment(models.Model):
         on_delete=models.CASCADE,
         related_name="managed_properties",
     )
+    contact_phone = models.CharField(max_length=20, blank=True)
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -88,7 +153,7 @@ class ManagerAssignment(models.Model):
 
 
 class CaretakerAssignment(models.Model):
-    """Assignment of a caretaker to a property (by landlord)."""
+    """Assignment of a caretaker to a property (by landlord); optional contact phone."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
         Property,
@@ -100,6 +165,7 @@ class CaretakerAssignment(models.Model):
         on_delete=models.CASCADE,
         related_name="caretaker_properties",
     )
+    contact_phone = models.CharField(max_length=20, blank=True)
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

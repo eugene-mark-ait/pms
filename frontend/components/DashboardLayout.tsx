@@ -10,6 +10,7 @@ import { clsx } from "clsx";
 const navItems: { href: string; label: string; roles: string[] }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["landlord", "manager", "tenant", "caretaker"] },
   { href: "/dashboard/my-units", label: "My Units", roles: ["tenant"] },
+  { href: "/find-units", label: "Find units", roles: ["tenant"] },
   { href: "/properties", label: "Properties", roles: ["landlord", "manager"] },
   { href: "/units", label: "Units", roles: ["landlord", "manager"] },
   { href: "/tenants", label: "Tenants", roles: ["landlord", "manager"] },

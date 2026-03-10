@@ -5,6 +5,31 @@ from properties.models import Property, Unit
 from leases.models import Lease
 
 
+class TenantVacancyPreference(models.Model):
+    """Tenant's search preferences for finding a unit (unit type, location)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="vacancy_preference",
+    )
+    is_looking = models.BooleanField(default=False)
+    preferred_unit_type = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=Unit.UnitType.choices,
+    )
+    preferred_location = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenant_vacancy_preferences"
+
+    def __str__(self):
+        return f"{self.user.email} preference"
+
+
 class VacateNotice(models.Model):
     """Notice submitted by tenant; triggers vacancy listing."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
