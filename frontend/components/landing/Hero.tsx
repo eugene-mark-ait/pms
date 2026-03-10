@@ -4,24 +4,24 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-50 via-white to-surface-50 pt-28 pb-20 sm:pt-36 sm:pb-28">
+    <section className="relative flex min-h-screen min-h-[100dvh] flex-col justify-center overflow-hidden bg-gradient-to-b from-surface-50 via-white to-surface-50 pt-20 pb-16 sm:pt-24 sm:pb-20">
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary-100/40 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-primary-50/60 blur-3xl" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 lg:items-center">
-          <div>
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
+          <div className="text-center lg:text-left">
             <h1 className="text-4xl font-bold tracking-tight text-surface-900 sm:text-5xl lg:text-6xl">
               Smarter Renting &{" "}
               <span className="text-primary-600">Property Management</span>{" "}
               in One Platform
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-surface-600 leading-relaxed">
+            <p className="mx-auto mt-6 max-w-xl text-lg text-surface-600 leading-relaxed lg:mx-0">
               Simplify renting, property management, and financial tracking. Verified listings for tenants. Powerful tools for landlords and property managers.
             </p>
-            <div className="mt-10 flex flex-wrap gap-4">
+            <div className="mt-10 flex flex-wrap justify-center gap-4 lg:justify-start">
               <Link
                 href="/find-units"
                 className="inline-flex items-center justify-center rounded-xl bg-primary-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/25 hover:bg-primary-700 transition"
@@ -37,8 +37,8 @@ export default function Hero() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="relative rounded-2xl border border-surface-200/80 bg-white p-2 shadow-2xl shadow-surface-900/5 ring-1 ring-surface-900/5">
+          <div className="relative flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-lg rounded-2xl border border-surface-200/80 bg-white p-2 shadow-2xl shadow-surface-900/5 ring-1 ring-surface-900/5">
               <div className="rounded-xl bg-surface-50 overflow-hidden">
                 <div className="flex items-center gap-2 border-b border-surface-200 bg-white px-4 py-3">
                   <div className="flex gap-1.5">

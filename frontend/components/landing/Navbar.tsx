@@ -4,11 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 
 const navLinks = [
-  { href: "#problem", label: "The Problem" },
-  { href: "#solution", label: "Solution" },
+  { href: "/", label: "Home" },
   { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How It Works" },
-  { href: "#testimonials", label: "Testimonials" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 export default function Navbar() {
@@ -25,35 +23,39 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden md:flex md:items-center md:gap-8">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("#") ? (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
           <Link
-            href="/find-units"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 transition"
+            href="/login"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
           >
-            Find a Home
+            Login
           </Link>
           <Link
             href="/register"
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition shadow-sm"
           >
             Get Started
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-          >
-            Sign in
           </Link>
         </div>
 
@@ -75,25 +77,33 @@ export default function Navbar() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-surface-200 bg-white px-4 py-4 space-y-2">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="block py-2 text-sm font-medium text-surface-700"
-              onClick={() => setMobileOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.href.startsWith("#") ? (
+              <a
+                key={link.href}
+                href={link.href}
+                className="block py-2 text-sm font-medium text-surface-700"
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block py-2 text-sm font-medium text-surface-700"
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </Link>
+            )
+          )}
           <div className="pt-4 space-y-2 border-t border-surface-100">
-            <Link href="/find-units" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
-              Find a Home
+            <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
+              Login
             </Link>
             <Link href="/register" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>
               Get Started
-            </Link>
-            <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-600" onClick={() => setMobileOpen(false)}>
-              Sign in
             </Link>
           </div>
         </div>

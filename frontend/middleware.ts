@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/register"];
-
 export function middleware(request: NextRequest) {
   const session = request.cookies.get("pms_session")?.value;
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+  const isLanding = path === "/";
+  const isPricing = path === "/pricing";
+  const isLogin = path === "/login" || path.startsWith("/login/");
+  const isRegister = path === "/register" || path.startsWith("/register/");
+  const isPublic = isLanding || isPricing || isLogin || isRegister;
 
   if (isPublic) {
     if (session && (path === "/login" || path === "/register")) {
