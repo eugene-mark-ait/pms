@@ -115,12 +115,17 @@ class UserSearchView(APIView):
 class AssignRolesView(APIView):
     """
     POST /api/auth/assign-roles/ - assign roles to a user.
-    Body: { "user_id": "<uuid>", "role_names": ["manager", "caretaker"] }.
-    Landlords can assign manager/caretaker/tenant; staff can assign any role.
+    Body: { "user_id": "<uuid>", "role_names": ["manager", "caretaker", ...] }.
+    Only staff can assign roles; landlords cannot assign roles.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not request.user.is_staff:
+            return Response(
+                {"detail": "Only staff can assign roles to users."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         user_id = request.data.get("user_id")
         if not user_id:
             return Response(
@@ -130,25 +135,7 @@ class AssignRolesView(APIView):
         serializer = UserUpdateRolesSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         role_names = serializer.validated_data["role_names"]
-
         target = get_object_or_404(User, pk=user_id)
-        if request.user.is_staff:
-            # Staff can set any roles
-            pass
-        elif request.user.has_role("landlord"):
-            # Landlord can only assign manager, caretaker, tenant (not landlord)
-            allowed = {"manager", "caretaker", "tenant"}
-            if not set(role_names).issubset(allowed):
-                return Response(
-                    {"detail": "Landlords can only assign manager, caretaker, or tenant roles."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-        else:
-            return Response(
-                {"detail": "Only landlords or staff can assign roles."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         roles = list(Role.objects.filter(name__in=role_names))
         target.roles.set(roles)
         return Response(UserSerializer(target).data)

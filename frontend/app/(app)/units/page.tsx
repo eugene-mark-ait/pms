@@ -10,8 +10,10 @@ interface Unit {
   id: string;
   unit_number: string;
   property: string;
+  property_name?: string;
   is_vacant?: boolean;
   unit_type?: string;
+  has_active_notice?: boolean;
 }
 
 interface PropertyOption {
@@ -164,15 +166,22 @@ export default function UnitsPage() {
                 {list.map((u) => (
                   <tr key={u.id} className="hover:bg-surface-50">
                     <td className="px-6 py-4 font-medium">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</td>
-                    <td className="px-6 py-4 text-surface-600">
-                      <Link href={`/properties/${u.property}`} className="text-primary-600 hover:underline">{u.property}</Link>
+                    <td className="px-6 py-4 text-surface-600 max-w-[180px]" title={u.property_name ?? u.property}>
+                      <Link href={`/properties/${u.property}`} className="text-primary-600 hover:underline truncate block">
+                        {u.property_name ? (u.property_name.length > 35 ? `${u.property_name.slice(0, 35)}…` : u.property_name) : u.property}
+                      </Link>
                     </td>
                     <td className="px-6 py-4">
-                      {u.is_vacant ? (
-                        <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20">Vacant</span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Occupied</span>
-                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {u.has_active_notice && (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-600/30">Notice Given</span>
+                        )}
+                        {u.is_vacant ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20">Vacant</span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Occupied</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right space-x-3">
                       {canManage && (
@@ -191,8 +200,13 @@ export default function UnitsPage() {
             {list.map((u) => (
               <div key={u.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
                 <p className="font-medium text-surface-900">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</p>
-                <Link href={`/properties/${u.property}`} className="text-sm text-primary-600 hover:underline mt-1 block">{u.property}</Link>
-                <div className="mt-2">
+                <Link href={`/properties/${u.property}`} className="text-sm text-primary-600 hover:underline mt-1 block truncate max-w-full" title={u.property_name ?? u.property}>
+                  {u.property_name ? (u.property_name.length > 30 ? `${u.property_name.slice(0, 30)}…` : u.property_name) : u.property}
+                </Link>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {u.has_active_notice && (
+                    <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Notice Given</span>
+                  )}
                   {u.is_vacant ? (
                     <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Vacant</span>
                   ) : (

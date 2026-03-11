@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, getDisplayName } from "@/lib/api";
 
 interface LeaseDetail {
   id: string;
   unit: { id: string; unit_number: string; property: { id: string; name: string } };
-  tenant: { id: string; email: string };
+  tenant: { id: string; email: string; first_name?: string; last_name?: string; phone?: string };
   monthly_rent: string;
   deposit_amount: string;
   deposit_paid: boolean;
@@ -77,9 +77,12 @@ export default function EditLeasePage() {
     <div className="space-y-6">
       <Link href="/tenants" className="text-surface-500 hover:text-surface-700">← Tenants</Link>
       <h1 className="text-2xl font-bold text-surface-900">Edit Lease</h1>
-      <p className="text-surface-600">
-        Unit: {lease.unit?.unit_number} – {lease.unit?.property?.name}; Tenant: {lease.tenant?.email}
-      </p>
+      <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm">
+        <p className="text-surface-900"><span className="font-medium">Unit:</span> {lease.unit?.unit_number} – {lease.unit?.property?.name}</p>
+        <p className="mt-1 text-surface-700"><span className="font-medium">Tenant:</span> {getDisplayName(lease.tenant)}</p>
+        {lease.tenant?.email && <p className="text-surface-600">{lease.tenant.email}</p>}
+        {lease.tenant?.phone && <p className="text-surface-600">Phone: {lease.tenant.phone}</p>}
+      </div>
       <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <div className="grid grid-cols-2 gap-4">

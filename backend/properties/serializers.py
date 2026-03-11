@@ -26,14 +26,27 @@ class UnitImageSerializer(serializers.ModelSerializer):
 class UnitSerializer(serializers.ModelSerializer):
     images = UnitImageSerializer(many=True, read_only=True)
     current_tenant_name = serializers.SerializerMethodField()
+    property_name = serializers.SerializerMethodField()
+    has_active_notice = serializers.SerializerMethodField()
 
     class Meta:
         model = Unit
         fields = [
-            "id", "property", "unit_number", "unit_type", "monthly_rent",
+            "id", "property", "property_name", "unit_number", "unit_type", "monthly_rent",
             "security_deposit", "service_charge", "extra_costs", "payment_frequency",
-            "is_vacant", "current_tenant_name", "images", "created_at", "updated_at",
+            "is_vacant", "current_tenant_name", "has_active_notice", "images", "created_at", "updated_at",
         ]
+
+    def get_property_name(self, obj):
+        return obj.property.name if obj.property_id else None
+
+    def get_has_active_notice(self, obj):
+        from vacancies.models import VacateNotice
+        return VacateNotice.objects.filter(
+            lease__unit=obj,
+            lease__is_active=True,
+            notice_cancelled=False,
+        ).exists()
 
     def get_current_tenant_name(self, obj):
         if obj.is_vacant:

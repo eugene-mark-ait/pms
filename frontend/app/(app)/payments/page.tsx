@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, Payment, User, formatKSH } from "@/lib/api";
+import { api, Payment, User, formatKSH, getDisplayName } from "@/lib/api";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -113,7 +113,8 @@ export default function PaymentsPage() {
                     {!isTenant && p.lease && (
                       <>
                         <td className="px-6 py-4 text-surface-700">
-                          {p.lease.tenant?.first_name} {p.lease.tenant?.last_name} ({p.lease.tenant?.email})
+                          <span className="font-medium">{getDisplayName(p.lease.tenant)}</span>
+                          {p.lease.tenant?.phone && <span className="text-surface-500 text-sm block">{p.lease.tenant.phone}</span>}
                         </td>
                         <td className="px-6 py-4 text-surface-600">
                           {p.lease.unit?.unit_number} {p.lease.unit?.property?.name ? `– ${p.lease.unit.property.name}` : ""}
@@ -138,7 +139,8 @@ export default function PaymentsPage() {
                 <p className="text-sm text-surface-600 mt-1">{format(new Date(p.payment_date), "MMM d, yyyy")} · {p.months_paid_for ?? 1} month(s)</p>
                 {!isTenant && p.lease && (
                   <p className="text-sm text-surface-500 mt-2">
-                    {p.lease.tenant?.first_name} {p.lease.tenant?.last_name} · {p.lease.unit?.unit_number} {p.lease.unit?.property?.name ? `– ${p.lease.unit.property.name}` : ""}
+                    {getDisplayName(p.lease.tenant)}
+                    {p.lease.tenant?.phone ? ` · ${p.lease.tenant.phone}` : ""} · {p.lease.unit?.unit_number} {p.lease.unit?.property?.name ? `– ${p.lease.unit.property.name}` : ""}
                   </p>
                 )}
               </div>
@@ -150,7 +152,6 @@ export default function PaymentsPage() {
           {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more payments</p>}
         </>
       )}
-      {isTenant && <Link href="/dashboard/my-units" className="inline-block text-primary-600 hover:underline">← My units</Link>}
     </div>
   );
 }

@@ -28,13 +28,25 @@ export default function NewUnitPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get<PropertyOption[] | { results: PropertyOption[] }>("/properties/").then((res) => {
-      const data = res.data;
-      const list = Array.isArray(data) ? data : data.results ?? [];
-      setProperties(list);
-      if (propertyIdFromQuery && !propertyId) setPropertyId(propertyIdFromQuery);
-      else if (list.length === 1 && !propertyId) setPropertyId(list[0].id);
-    }).catch(() => setProperties([])).finally(() => setLoading(false));
+    async function fetchAllProperties() {
+      const all: PropertyOption[] = [];
+      let page = 1;
+      const pageSize = 500;
+      while (true) {
+        const res = await api.get<{ results?: PropertyOption[]; next?: string | null }>("/properties/", {
+          params: { page, page_size: pageSize },
+        });
+        const data = res.data;
+        const results = data.results ?? [];
+        all.push(...results);
+        if (!data.next || results.length < pageSize) break;
+        page += 1;
+      }
+      setProperties(all);
+      if (propertyIdFromQuery) setPropertyId(propertyIdFromQuery);
+      else if (all.length === 1) setPropertyId(all[0].id);
+    }
+    fetchAllProperties().catch(() => setProperties([])).finally(() => setLoading(false));
   }, [propertyIdFromQuery]);
 
   async function handleSubmit(e: React.FormEvent) {

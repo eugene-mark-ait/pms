@@ -23,8 +23,8 @@ User = get_user_model()
 
 
 class PropertyListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/properties/ - list (filtered by role) or create properties."""
-    permission_classes = [IsAuthenticated, IsLandlord]
+    """GET/POST /api/properties/ - list (filtered by role) or create properties. Managers/caretakers can list assigned properties; only landlords can create."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = PropertyListSerializer
 
     def get_queryset(self):
@@ -44,6 +44,9 @@ class PropertyListCreateView(generics.ListCreateAPIView):
         return PropertyListSerializer
 
     def perform_create(self, serializer):
+        if not self.request.user.has_role("landlord"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only property owners can create properties.")
         serializer.save(landlord=self.request.user)
 
 

@@ -111,21 +111,25 @@ export default function DashboardPage() {
     );
   }
 
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "there";
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-1">
+    <div className="space-y-10">
+      <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Dashboard</h1>
-        <p className="text-surface-600 text-sm">
-          Welcome back, {user?.first_name || user?.email}
-          {user?.role_names?.length ? ` · ${user.role_names.map((r) => r === "landlord" ? "Property Owner" : r).join(", ")}` : ""}
+        <p className="text-surface-600 text-base">
+          Welcome back, {displayName}
+          {user?.role_names?.length ? (
+            <span className="ml-1 text-surface-500">· {user.role_names.map((r) => r === "landlord" ? "Property Owner" : r).join(", ")}</span>
+          ) : null}
         </p>
       </div>
 
       {canSeeOverview && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold text-surface-700 uppercase tracking-wider">Overview</h2>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            <h2 className="text-base font-semibold text-surface-800">Overview</h2>
+            <div className="flex flex-wrap gap-3">
               {canAddProperty && (
                 <Link href="/properties/new" className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -151,47 +155,47 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Total Properties</p>
-              <p className="mt-1 text-2xl font-bold text-surface-900">{stats.propertiesCount ?? 0}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-surface-500">Total Properties</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">{stats.propertiesCount ?? 0}</p>
             </div>
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Units</p>
-              <p className="mt-1 text-2xl font-bold text-surface-900">{stats.unitsCount ?? 0}</p>
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-surface-500">Units</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">{stats.unitsCount ?? 0}</p>
             </div>
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Occupied</p>
-              <p className="mt-1 text-2xl font-bold text-surface-900">{stats.occupiedCount ?? 0}</p>
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-surface-500">Occupied</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">{stats.occupiedCount ?? 0}</p>
             </div>
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Monthly Revenue</p>
-              <p className="mt-1 text-2xl font-bold text-surface-900">${stats.revenue ?? "0"}</p>
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-surface-500">Monthly Revenue</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">KSh {(stats.revenue ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
             </div>
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Overdue</p>
-              <p className="mt-1 text-2xl font-bold text-red-600">{stats.overdueCount ?? 0}</p>
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-surface-500">Overdue</p>
+              <p className="mt-2 text-2xl font-bold text-red-600">{stats.overdueCount ?? 0}</p>
             </div>
           </div>
 
           {stats.complaintsCount !== undefined && (
-            <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm inline-block">
-              <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Open Complaints</p>
-              <p className="mt-1 text-2xl font-bold text-surface-900">{stats.complaintsCount}</p>
+            <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm inline-block">
+              <p className="text-sm font-medium text-surface-500">Open Complaints</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">{stats.complaintsCount}</p>
             </div>
           )}
         </>
       )}
 
       {isTenant && !canSeeOverview && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Outstanding Balance</p>
-            <p className="mt-1 text-2xl font-bold text-surface-900">${stats.balance ?? "0"}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-surface-500">Outstanding Balance</p>
+            <p className="mt-2 text-2xl font-bold text-surface-900">KSh {(stats.balance ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
           </div>
-          <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wider text-surface-500">My Units</p>
-            <p className="mt-1 text-2xl font-bold text-surface-900">{stats.myUnitsCount ?? 0}</p>
+          <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-surface-500">My Units</p>
+            <p className="mt-2 text-2xl font-bold text-surface-900">{stats.myUnitsCount ?? 0}</p>
           </div>
         </div>
       )}
@@ -227,11 +231,13 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-surface-600">{format(new Date(p.payment_date), "MMM d, yyyy")}</td>
                     {canSeeOverview && (
                       <td className="px-4 py-3 text-surface-700">
-                        {p.lease?.tenant ? `${p.lease.tenant.first_name || ""} ${p.lease.tenant.last_name || ""}`.trim() || "—" : "—"}
-                        {p.lease?.unit?.unit_number ? ` · ${p.lease.unit.unit_number}` : ""}
+                        {p.lease?.tenant ? (() => {
+                          const name = [p.lease.tenant.first_name, p.lease.tenant.last_name].filter(Boolean).join(" ").trim() || p.lease.tenant.email || "—";
+                          return name + (p.lease?.unit?.unit_number ? ` · ${p.lease.unit.unit_number}` : "");
+                        })() : "—"}
                       </td>
                     )}
-                    <td className="px-4 py-3 font-medium text-surface-900">${p.amount}</td>
+                    <td className="px-4 py-3 font-medium text-surface-900">KSh {Number(p.amount).toLocaleString("en-KE")}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
                         p.payment_status === "completed" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20" : "bg-surface-100 text-surface-600"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, User } from "@/lib/api";
+import { api, User, getDisplayName } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface Lease {
@@ -69,7 +69,9 @@ export default function TenantsPage() {
                 {list.map((l) => (
                   <tr key={l.id} className="hover:bg-surface-50">
                     <td className="px-6 py-4">
-                      {l.tenant?.first_name} {l.tenant?.last_name} ({l.tenant?.email})
+                      <span className="font-medium text-surface-900">{getDisplayName(l.tenant)}</span>
+                      <span className="text-surface-500 text-sm block">{l.tenant?.email}</span>
+                      {l.tenant?.phone && <span className="text-surface-500 text-sm block">{l.tenant.phone}</span>}
                     </td>
                     <td className="px-6 py-4 text-surface-600">
                       {typeof l.unit?.property === "object" && l.unit?.property?.name
@@ -104,10 +106,9 @@ export default function TenantsPage() {
           <div className="md:hidden space-y-3">
             {list.map((l) => (
               <div key={l.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
-                <p className="font-medium text-surface-900">
-                  {l.tenant?.first_name} {l.tenant?.last_name}
-                </p>
+                <p className="font-medium text-surface-900">{getDisplayName(l.tenant)}</p>
                 <p className="text-sm text-surface-600 mt-0.5">{l.tenant?.email}</p>
+                {l.tenant?.phone && <p className="text-sm text-surface-500">{l.tenant.phone}</p>}
                 <p className="text-sm text-surface-500 mt-2">
                   {typeof l.unit?.property === "object" && l.unit?.property?.name
                     ? `${l.unit.property.name} – ${l.unit.unit_number}`

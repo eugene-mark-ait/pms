@@ -60,7 +60,7 @@ export default function SettingsPage() {
   if (loading) return <p className="text-surface-500">Loading…</p>;
   if (!user) return <p className="text-surface-600">Not logged in.</p>;
 
-  const canAssignRoles = user.role_names?.includes("landlord") || user.role_names?.includes("staff");
+  const canAssignRoles = user?.is_staff === true;
 
   return (
     <div className="space-y-6 max-w-xl">
@@ -79,6 +79,10 @@ export default function SettingsPage() {
           <p className="text-surface-900">{user.last_name || "—"}</p>
         </div>
         <div>
+          <label className="block text-sm font-medium text-surface-500">Phone</label>
+          <p className="text-surface-900">{user.phone || "—"}</p>
+        </div>
+        <div>
           <label className="block text-sm font-medium text-surface-500">Roles</label>
           <p className="text-surface-900">{user.role_names?.map((r) => r === "landlord" ? "Property Owner" : r).join(", ") || "—"}</p>
         </div>
@@ -87,7 +91,7 @@ export default function SettingsPage() {
       {canAssignRoles && (
         <div className="bg-white rounded-xl border border-surface-200 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-surface-900">Assign roles to user</h2>
-          <p className="text-sm text-surface-600">Search by email and set roles (e.g. manager, caretaker, tenant). Property owners can only assign manager, caretaker, tenant.</p>
+          <p className="text-sm text-surface-600">Staff only. Search by email and set roles (e.g. manager, caretaker, tenant, property owner).</p>
           <div className="flex gap-2">
             <input
               type="text"

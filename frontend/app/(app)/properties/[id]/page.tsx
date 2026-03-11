@@ -237,10 +237,10 @@ export default function PropertyDetailPage() {
           <img
             src={property.images[0].image.startsWith("http") ? property.images[0].image : ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + property.images[0].image)}
             alt={property.name}
-            className="w-full max-h-64 object-cover"
+            className="w-full h-[320px] sm:h-[400px] object-cover"
           />
         ) : (
-          <div className="w-full max-h-64 flex items-center justify-center bg-surface-100 text-surface-400 text-sm">
+          <div className="w-full h-[320px] sm:h-[400px] flex items-center justify-center bg-surface-100 text-surface-400 text-sm">
             No property image
           </div>
         )}

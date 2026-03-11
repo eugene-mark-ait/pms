@@ -81,6 +81,7 @@ export interface User {
   first_name: string;
   last_name: string;
   phone: string;
+  is_staff?: boolean;
   role_names: string[];
   created_at: string;
 }
@@ -106,6 +107,8 @@ export interface Lease {
   payment_status: string;
   last_payment_date: string | null;
   can_pay_rent?: boolean;
+  has_active_notice?: boolean;
+  active_notice_move_out_date?: string | null;
   created_at: string;
 }
 
@@ -114,6 +117,13 @@ export function formatKSH(amount: string | number): string {
   const n = typeof amount === "string" ? parseFloat(amount) : amount;
   if (Number.isNaN(n)) return "KSh 0";
   return "KSh " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+/** Display name for a user: "First Last" or email if no name. */
+export function getDisplayName(user: { first_name?: string; last_name?: string; email?: string } | null | undefined): string {
+  if (!user) return "—";
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  return name || user.email || "—";
 }
 
 /** DRF PageNumberPagination response shape. */

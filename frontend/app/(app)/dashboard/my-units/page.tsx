@@ -45,10 +45,15 @@ export default function MyUnitsPage() {
               <div className="text-sm text-surface-500 mt-0.5">
                 Unit {lease.unit?.unit_number ?? "—"}
               </div>
+              {lease.has_active_notice && (
+                <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                  Notice given · Moving out {lease.active_notice_move_out_date ? format(new Date(lease.active_notice_move_out_date), "MMM d, yyyy") : ""}
+                </div>
+              )}
               <dl className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-surface-500">Monthly rent</dt>
-                  <dd className="font-medium">${lease.monthly_rent}</dd>
+                  <dd className="font-medium">KSh {Number(lease.monthly_rent).toLocaleString("en-KE")}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-surface-500">Deposit</dt>
@@ -68,7 +73,7 @@ export default function MyUnitsPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-surface-500">Current balance</dt>
-                  <dd className="font-medium">${lease.outstanding_balance ?? "0"}</dd>
+                  <dd className="font-medium">KSh {Number(lease.outstanding_balance ?? "0").toLocaleString("en-KE")}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-surface-500">Status</dt>
@@ -82,7 +87,8 @@ export default function MyUnitsPage() {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={() => setPayModalLease(lease)}
-                  className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition"
+                  disabled={lease.can_pay_rent === false || lease.payment_status === "paid"}
+                  className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
                 >
                   Pay Rent
                 </button>
