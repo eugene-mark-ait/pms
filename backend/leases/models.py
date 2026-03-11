@@ -50,3 +50,31 @@ class Lease(models.Model):
 
     def __str__(self):
         return f"{self.unit} - {self.tenant.email}"
+
+
+class LeaseHistory(models.Model):
+    """Historical record when a tenant's lease ends (e.g. after notice period). Preserves occupancy data."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="lease_history",
+    )
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="lease_history",
+    )
+    lease_start_date = models.DateField()
+    lease_end_date = models.DateField()
+    notice_date = models.DateField(null=True, blank=True, help_text="When vacate notice was given (created_at of notice).")
+    move_out_date = models.DateField(help_text="When tenant moved out / notice period ended.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "lease_history"
+        ordering = ["-move_out_date"]
+        verbose_name_plural = "Lease history"
+
+    def __str__(self):
+        return f"{self.unit} (tenant {self.tenant.email}) ended {self.move_out_date}"

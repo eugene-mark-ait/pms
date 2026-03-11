@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
-from .serializers import UserSerializer, UserCreateSerializer, UserUpdateRolesSerializer
+from .serializers import UserSerializer, UserCreateSerializer, UserUpdateRolesSerializer, ChooseRoleSerializer
 from .social_auth import exchange_social_token_and_issue_jwt, PROVIDER_GOOGLE
 from .models import Role
 
@@ -41,7 +41,7 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
 
 
 class RegisterView(generics.CreateAPIView):
-    """POST /api/auth/register/ - register new user."""
+    """POST /api/auth/register/ - register new user (step 1; role chosen in step 2)."""
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
     permission_classes = [AllowAny]
@@ -54,6 +54,20 @@ class RegisterView(generics.CreateAPIView):
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ChooseRoleView(APIView):
+    """POST /api/auth/choose-role/ - set role for current user (step 2 after register or OAuth). User must be authenticated and have no role yet (or replace)."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChooseRoleSerializer
+
+    def post(self, request):
+        serializer = ChooseRoleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role_name = serializer.validated_data["role"]
+        role, _ = Role.objects.get_or_create(name=role_name)
+        request.user.roles.set([role])
+        return Response(UserSerializer(request.user).data)
 
 
 class UserSearchView(APIView):

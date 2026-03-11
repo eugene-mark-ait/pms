@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems: { href: string; label: string; roles: string[]; icon: React.ReactNode }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <DashboardIcon /> },
+  { href: "/choose-role", label: "Choose role", roles: [], icon: <SettingsIcon /> },
   { href: "/dashboard/my-units", label: "My Units", roles: ["tenant"], icon: <HomeIcon /> },
   { href: "/find-units", label: "Find units", roles: ["tenant"], icon: <SearchIcon /> },
   { href: "/properties", label: "Properties", roles: ["landlord", "manager", "caretaker"], icon: <BuildingIcon /> },
@@ -35,7 +36,7 @@ function SettingsIcon() { return <svg className="w-5 h-5 shrink-0" fill="none" v
 
 function navForUser(user: User | null): typeof navItems {
   if (!user) return [navItems[0], navItems[navItems.length - 1]];
-  if (!user.role_names?.length) return navItems.filter((item) => item.href === "/dashboard" || item.href === "/settings");
+  if (!user.role_names?.length) return navItems.filter((item) => ["/dashboard", "/choose-role", "/settings"].includes(item.href));
   return navItems.filter((item) => item.roles.some((role) => user.role_names?.includes(role)));
 }
 
@@ -48,10 +49,35 @@ export default function DashboardLayout({
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [navLoading, setNavLoading] = useState(true);
+  const [openComplaintsCount, setOpenComplaintsCount] = useState<number>(0);
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null)).finally(() => setNavLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user?.role_names?.length || pathname === "/choose-role") return;
+    if (!user.role_names.some((r) => ["landlord", "manager", "tenant", "caretaker"].includes(r))) return;
+    const fetchCount = () => {
+      api.get<{ count: number }>("/complaints/open_count/").then((res) => setOpenComplaintsCount(res.data.count)).catch(() => {});
+    };
+    fetchCount();
+    const t = setInterval(fetchCount, 45000);
+    const onComplaintsUpdated = () => fetchCount();
+    window.addEventListener("complaints-updated", onComplaintsUpdated);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("complaints-updated", onComplaintsUpdated);
+    };
+  }, [user?.role_names, pathname]);
+
+  useEffect(() => {
+    if (navLoading || !user) return;
+    const hasRole = user.role_names?.length;
+    if (!hasRole && pathname !== "/choose-role") {
+      router.replace("/choose-role");
+    }
+  }, [user, navLoading, pathname, router]);
 
   function logout() {
     clearTokens();
@@ -93,12 +119,13 @@ export default function DashboardLayout({
             <p className="px-3 py-2 text-sm text-surface-500">Loading…</p>
           ) : (
             nav.map((item) => {
+              const showBadge = item.href === "/complaints" && openComplaintsCount > 0;
               const link = (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 rounded-lg text-sm font-medium transition py-2.5",
+                    "flex items-center gap-3 rounded-lg text-sm font-medium transition py-2.5 relative",
                     sidebarCollapsed ? "justify-center px-2" : "px-3",
                     pathname === item.href
                       ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
@@ -108,6 +135,11 @@ export default function DashboardLayout({
                 >
                   {item.icon}
                   {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  {showBadge && (
+                    <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-xs font-medium">
+                      {openComplaintsCount > 99 ? "99+" : openComplaintsCount}
+                    </span>
+                  )}
                 </Link>
               );
               return sidebarCollapsed ? (

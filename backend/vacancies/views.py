@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
+from leases.models import LeaseHistory
 from .models import VacateNotice, VacancyListing, TenantVacancyPreference
 from .serializers import (
     VacancyListingSerializer,
@@ -16,19 +17,31 @@ from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
 
 
 def process_due_notices():
-    """For any vacate notice where move_out_date <= today and not cancelled, mark unit vacant, close lease, mark listing filled."""
+    """For any vacate notice where move_out_date <= today and not cancelled, create lease history, mark unit vacant, close lease, mark listing filled."""
     today = date_type.today()
     listings = VacancyListing.objects.filter(
         is_filled=False,
         vacate_notice__move_out_date__lte=today,
         vacate_notice__notice_cancelled=False,
-    ).select_related("vacate_notice", "vacate_notice__lease", "vacate_notice__lease__unit")
+    ).select_related("vacate_notice", "vacate_notice__lease", "vacate_notice__lease__unit", "vacate_notice__lease__tenant")
     for listing in listings:
         notice = listing.vacate_notice
         if not notice or notice.notice_cancelled:
             continue
         lease = notice.lease
         unit = lease.unit
+        move_out = notice.move_out_date
+        notice_date = notice.created_at.date() if notice.created_at else None
+        LeaseHistory.objects.get_or_create(
+            tenant=lease.tenant,
+            unit=unit,
+            move_out_date=move_out,
+            defaults={
+                "lease_start_date": lease.start_date,
+                "lease_end_date": lease.end_date,
+                "notice_date": notice_date,
+            },
+        )
         unit.is_vacant = True
         unit.save(update_fields=["is_vacant", "updated_at"])
         lease.is_active = False

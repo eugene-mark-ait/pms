@@ -51,17 +51,12 @@ class UserUpdateRolesSerializer(serializers.Serializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    """Signup: email, password, full name, phone, role (tenant or landlord). Default role: tenant."""
+    """Signup step 1: email, password, full name, phone. Role is chosen in step 2 (choose-role)."""
     password = serializers.CharField(write_only=True, min_length=8)
-    role = serializers.ChoiceField(
-        choices=["tenant", "landlord", "manager", "caretaker"],
-        default="tenant",
-        write_only=True,
-    )
 
     class Meta:
         model = User
-        fields = ["email", "password", "first_name", "last_name", "phone", "role"]
+        fields = ["email", "password", "first_name", "last_name", "phone"]
 
     def validate_first_name(self, value):
         if not (value or "").strip():
@@ -74,14 +69,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return (value or "").strip()
 
     def create(self, validated_data):
-        from .models import Role
-        role_name = validated_data.pop("role", "tenant")
-        if role_name not in ("tenant", "landlord", "manager", "caretaker"):
-            role_name = "tenant"
         password = validated_data.pop("password")
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
         user.save()
-        role, _ = Role.objects.get_or_create(name=role_name)
-        user.roles.add(role)
         return user
+
+
+class ChooseRoleSerializer(serializers.Serializer):
+    """Payload for POST /auth/choose-role/ - select role after signup or OAuth."""
+    role = serializers.ChoiceField(choices=["tenant", "landlord", "manager", "caretaker"])
+
+    def validate_role(self, value):
+        from .models import Role
+        if not Role.objects.filter(name=value).exists():
+            raise serializers.ValidationError(f"Invalid role: {value}")
+        return value

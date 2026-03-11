@@ -1,10 +1,32 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from django.db.models import Q
 
 from .models import Complaint
 from .serializers import ComplaintSerializer, ComplaintCreateSerializer
 from accounts.permissions import IsLandlordOrManager
+
+
+def _complaints_queryset(user):
+    """Same visibility as list: tenant sees own; landlord/manager/caretaker see property-related."""
+    if user.has_role("tenant"):
+        return Complaint.objects.filter(tenant=user)
+    return Complaint.objects.filter(
+        Q(property__landlord=user)
+        | Q(property__manager_assignments__manager=user)
+        | Q(property__caretaker_assignments__caretaker=user)
+    ).distinct()
+
+
+class ComplaintOpenCountView(APIView):
+    """GET /api/complaints/open_count/ - count of open complaints (status != closed) for sidebar badge."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = _complaints_queryset(request.user).exclude(status=Complaint.Status.CLOSED)
+        return Response({"count": qs.count()})
 
 
 class ComplaintListCreateView(generics.ListCreateAPIView):
@@ -17,14 +39,7 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
         return ComplaintSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        if user.has_role("tenant"):
-            return Complaint.objects.filter(tenant=user).select_related("property", "unit", "tenant", "assigned_to")
-        return Complaint.objects.filter(
-            Q(property__landlord=user)
-            | Q(property__manager_assignments__manager=user)
-            | Q(property__caretaker_assignments__caretaker=user)
-        ).distinct().select_related("property", "unit", "tenant", "assigned_to")
+        return _complaints_queryset(self.request.user).select_related("property", "unit", "tenant", "assigned_to")
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user)
@@ -36,11 +51,4 @@ class ComplaintDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = ComplaintSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        if user.has_role("tenant"):
-            return Complaint.objects.filter(tenant=user).select_related("property", "unit", "tenant", "assigned_to")
-        return Complaint.objects.filter(
-            Q(property__landlord=user)
-            | Q(property__manager_assignments__manager=user)
-            | Q(property__caretaker_assignments__caretaker=user)
-        ).distinct().select_related("property", "unit", "tenant", "assigned_to")
+        return _complaints_queryset(self.request.user).select_related("property", "unit", "tenant", "assigned_to")

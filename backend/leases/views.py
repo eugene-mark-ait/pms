@@ -4,7 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from accounts.models import Role
-from .models import Lease, TenantProfile
+from .models import Lease, LeaseHistory, TenantProfile
+from vacancies.views import process_due_notices
 from vacancies.models import VacateNotice, VacancyListing
 from .serializers import (
     LeaseSerializer,
@@ -32,6 +33,7 @@ class LeaseListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
 
     def get_queryset(self):
+        process_due_notices()
         user = self.request.user
         if user.has_role("landlord"):
             return Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
@@ -130,9 +132,20 @@ class GiveNoticeView(generics.GenericAPIView):
             available_from=move_out_date,
         )
 
-        # If notice end date is today or in the past, mark unit vacant and close lease
+        # If notice end date is today or in the past, create history, mark unit vacant and close lease
         from datetime import date as date_type
         if move_out_date <= date_type.today():
+            notice_date = notice.created_at.date() if notice.created_at else None
+            LeaseHistory.objects.get_or_create(
+                tenant=lease.tenant,
+                unit=lease.unit,
+                move_out_date=move_out_date,
+                defaults={
+                    "lease_start_date": lease.start_date,
+                    "lease_end_date": lease.end_date,
+                    "notice_date": notice_date,
+                },
+            )
             lease.unit.is_vacant = True
             lease.unit.save(update_fields=["is_vacant", "updated_at"])
             lease.is_active = False

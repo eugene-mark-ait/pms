@@ -95,7 +95,7 @@ export default function FileComplaintModal({
         onClick={(e) => e.stopPropagation()}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
       >
-        <div className="p-6">
+        <div className="p-6 pt-4">
         <h2 id="file-complaint-title" className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">File a complaint</h2>
         <p className="text-surface-600 dark:text-surface-400 text-sm mb-6">
           Choose the unit and who should receive this (Landlord, Caretaker, or Manager). The complaint will be linked to your unit.

@@ -25,7 +25,11 @@ export default function LoginPage() {
         password,
       });
       setTokens(data.access, data.refresh);
-      router.push(from);
+      if (!data.user?.role_names?.length) {
+        router.push("/choose-role");
+      } else {
+        router.push(from);
+      }
       router.refresh();
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } } };
@@ -36,8 +40,17 @@ export default function LoginPage() {
   }
 
   function handleGoogleSuccess() {
-    router.push(from);
-    router.refresh();
+    api.get<LoginResponse["user"]>("/auth/me/").then((userRes) => {
+      if (!userRes.data?.role_names?.length) {
+        router.push("/choose-role");
+      } else {
+        router.push(from);
+      }
+      router.refresh();
+    }).catch(() => {
+      router.push("/choose-role");
+      router.refresh();
+    });
   }
 
   return (

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, Lease } from "@/lib/api";
 import { format } from "date-fns";
 import PayRentModal from "@/components/PayRentModal";
-import GiveNoticeModal from "@/components/GiveNoticeModal";
+import GiveNoticeDrawer from "@/components/GiveNoticeDrawer";
 
 export default function MyUnitsPage() {
   const [units, setUnits] = useState<Lease[]>([]);
@@ -139,7 +139,7 @@ export default function MyUnitsPage() {
         />
       )}
       {noticeModalLease && (
-        <GiveNoticeModal
+        <GiveNoticeDrawer
           lease={noticeModalLease}
           onClose={() => setNoticeModalLease(null)}
           onSuccess={() => { setNoticeModalLease(null); load(); }}

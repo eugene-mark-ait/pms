@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import FileComplaintModal from "@/components/FileComplaintModal";
+import { clsx } from "clsx";
 
 interface Complaint {
   id: string;
@@ -35,13 +36,14 @@ export default function ComplaintsPage() {
     try {
       await api.patch(`/complaints/${id}/`, { status: "closed" });
       refresh();
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
     } catch {
       alert("Failed to close complaint.");
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Complaints</h1>
         {isTenant && (
@@ -75,9 +77,18 @@ export default function ComplaintsPage() {
               </thead>
               <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                 {list.map((c) => (
-                  <tr key={c.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/30">
-                    <td className="px-6 py-4 font-medium text-surface-900 dark:text-surface-100">{c.title}</td>
-                    <td className="px-6 py-4 capitalize text-surface-700 dark:text-surface-300">{c.status?.replace("_", " ")}</td>
+                  <tr key={c.id} className={clsx("hover:bg-surface-50 dark:hover:bg-surface-700/30", c.status === "closed" && "opacity-70 bg-surface-50/50 dark:bg-surface-800/50")}>
+                    <td className={clsx("px-6 py-4 font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</td>
+                    <td className="px-6 py-4">
+                      <span className={clsx(
+                        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium capitalize",
+                        c.status === "closed" && "bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400",
+                        c.status !== "closed" && (c.status === "open" || c.status === "in_progress") && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 ring-1 ring-red-600/20 dark:ring-red-500/30",
+                        c.status !== "closed" && c.status !== "open" && c.status !== "in_progress" && "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                      )}>
+                        {c.status?.replace("_", " ")}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 capitalize text-surface-600 dark:text-surface-400">{c.priority ?? "—"}</td>
                     <td className="px-6 py-4 text-surface-600 dark:text-surface-400">
                       {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "—"}
@@ -99,9 +110,19 @@ export default function ComplaintsPage() {
           </div>
           <div className="md:hidden space-y-3">
             {list.map((c) => (
-              <div key={c.id} className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm">
-                <p className="font-medium text-surface-900 dark:text-surface-100">{c.title}</p>
-                <p className="text-sm text-surface-600 dark:text-surface-400 mt-1 capitalize">{c.status?.replace("_", " ")} · {c.priority ?? "—"}</p>
+              <div key={c.id} className={clsx("bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm", c.status === "closed" && "opacity-75")}>
+                <p className={clsx("font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</p>
+                <p className="text-sm mt-1">
+                  <span className={clsx(
+                    "capitalize font-medium",
+                    c.status === "closed" && "text-surface-500 dark:text-surface-400",
+                    c.status !== "closed" && (c.status === "open" || c.status === "in_progress") && "text-red-700 dark:text-red-400",
+                    c.status !== "closed" && c.status !== "open" && c.status !== "in_progress" && "text-amber-700 dark:text-amber-400"
+                  )}>
+                    {c.status?.replace("_", " ")}
+                  </span>
+                  <span className="text-surface-600 dark:text-surface-400"> · {c.priority ?? "—"}</span>
+                </p>
                 <p className="text-sm text-surface-500 dark:text-surface-500 mt-2">
                   {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "Unassigned"} · {new Date(c.created_at).toLocaleDateString()}
                 </p>
@@ -123,7 +144,11 @@ export default function ComplaintsPage() {
       {fileModalOpen && (
         <FileComplaintModal
           onClose={() => setFileModalOpen(false)}
-          onSuccess={() => { setFileModalOpen(false); refresh(); }}
+          onSuccess={() => {
+            setFileModalOpen(false);
+            refresh();
+            if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
+          }}
         />
       )}
     </div>
