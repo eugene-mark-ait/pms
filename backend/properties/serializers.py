@@ -25,14 +25,25 @@ class UnitImageSerializer(serializers.ModelSerializer):
 
 class UnitSerializer(serializers.ModelSerializer):
     images = UnitImageSerializer(many=True, read_only=True)
+    current_tenant_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Unit
         fields = [
             "id", "property", "unit_number", "unit_type", "monthly_rent",
             "security_deposit", "service_charge", "extra_costs", "payment_frequency",
-            "is_vacant", "images", "created_at", "updated_at",
+            "is_vacant", "current_tenant_name", "images", "created_at", "updated_at",
         ]
+
+    def get_current_tenant_name(self, obj):
+        if obj.is_vacant:
+            return None
+        active = obj.leases.filter(is_active=True).select_related("tenant").first()
+        if not active or not active.tenant:
+            return None
+        t = active.tenant
+        name = f"{t.first_name or ''} {t.last_name or ''}".strip()
+        return name or t.email
 
 
 class PropertyRuleSerializer(serializers.ModelSerializer):
@@ -102,6 +113,10 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     manager_assignments = ManagerAssignmentSerializer(many=True, read_only=True)
     caretaker_assignments = CaretakerAssignmentSerializer(many=True, read_only=True)
     landlord = UserSerializer(read_only=True)
+    unit_count = serializers.SerializerMethodField()
+    occupied_count = serializers.SerializerMethodField()
+    vacant_count = serializers.SerializerMethodField()
+    total_rent_potential = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
@@ -113,9 +128,27 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "landlord",
             "images",
             "units",
+            "unit_count",
+            "occupied_count",
+            "vacant_count",
+            "total_rent_potential",
             "rules",
             "manager_assignments",
             "caretaker_assignments",
             "created_at",
             "updated_at",
         ]
+
+    def get_unit_count(self, obj):
+        return obj.units.count()
+
+    def get_occupied_count(self, obj):
+        return obj.units.filter(is_vacant=False).count()
+
+    def get_vacant_count(self, obj):
+        return obj.units.filter(is_vacant=True).count()
+
+    def get_total_rent_potential(self, obj):
+        from django.db.models import Sum
+        total = obj.units.aggregate(s=Sum("monthly_rent"))["s"]
+        return total if total is not None else 0

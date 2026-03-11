@@ -16,6 +16,7 @@ class Payment(models.Model):
         BANK_TRANSFER = "bank_transfer", "Bank Transfer"
         CASH = "cash", "Cash"
         CHECK = "check", "Check"
+        MPESA = "mpesa", "M-Pesa"
         OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -39,6 +40,7 @@ class Payment(models.Model):
         choices=PaymentStatus.choices,
         default=PaymentStatus.PENDING,
     )
+    transaction_reference = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

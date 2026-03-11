@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, User } from "@/lib/api";
+import { api, User, PaginatedResponse } from "@/lib/api";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface Unit {
   id: string;
@@ -45,6 +46,12 @@ export default function UnitsPage() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [count, setCount] = useState(0);
+  const [next, setNext] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<string | null>(null);
+
   const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
 
@@ -52,19 +59,23 @@ export default function UnitsPage() {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
-  function refresh() {
+  const refresh = useCallback(() => {
     const url = propertyId ? `/units/?property=${propertyId}` : "/units/";
-    api.get<Unit[] | { results: Unit[] }>(url).then((res) => {
-      const data = res.data;
-      setList(Array.isArray(data) ? data : (data.results ?? []));
-    }).catch(() => setList([])).finally(() => setLoading(false));
-  }
+    setLoading(true);
+    api.get<PaginatedResponse<Unit>>(url, { params: { page, page_size: pageSize } }).then((res) => {
+      const d = res.data;
+      setList(d.results ?? []);
+      setCount(d.count ?? 0);
+      setNext(d.next ?? null);
+      setPrevious(d.previous ?? null);
+    }).catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); }).finally(() => setLoading(false));
+  }, [propertyId, page, pageSize]);
 
   useEffect(() => {
     if (!user) return;
     if (canView) refresh();
     else setLoading(false);
-  }, [propertyId, canView, user]);
+  }, [propertyId, canView, user, refresh]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -155,45 +166,80 @@ export default function UnitsPage() {
       ) : list.length === 0 ? (
         <p className="text-surface-600">No units.{canManage && <> <Link href="/units/new" className="text-primary-600 hover:underline">Add one</Link>.</>}</p>
       ) : (
-        <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-surface-50 border-b border-surface-200">
-              <tr>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Unit</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-200">
-              {list.map((u) => (
-                <tr key={u.id} className="hover:bg-surface-50">
-                  <td className="px-6 py-4 font-medium">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</td>
-                  <td className="px-6 py-4 text-surface-600">
-                    <Link href={`/properties/${u.property}`} className="text-primary-600 hover:underline">{u.property}</Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1.5">
+        <>
+          <div className="hidden md:block bg-white rounded-xl border border-surface-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-surface-50 border-b border-surface-200">
+                <tr>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Unit</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
+                  <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-200">
+                {list.map((u) => (
+                  <tr key={u.id} className="hover:bg-surface-50">
+                    <td className="px-6 py-4 font-medium">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</td>
+                    <td className="px-6 py-4 text-surface-600">
+                      <Link href={`/properties/${u.property}`} className="text-primary-600 hover:underline">{u.property}</Link>
+                    </td>
+                    <td className="px-6 py-4">
                       {u.is_vacant ? (
                         <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20">Vacant</span>
                       ) : (
                         <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Occupied</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-3">
-                    {canManage && (
-                      <>
-                        <Link href={`/units/${u.id}/edit`} className="text-primary-600 hover:underline text-sm">Edit</Link>
-                        <button type="button" onClick={() => handleDelete(u)} className="text-red-600 hover:underline text-sm">Delete</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-3">
+                      {canManage && (
+                        <>
+                          <Link href={`/units/${u.id}/edit`} className="text-primary-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
+                          <button type="button" onClick={() => handleDelete(u)} className="text-red-600 hover:underline text-sm">Delete</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="md:hidden space-y-3">
+            {list.map((u) => (
+              <div key={u.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
+                <p className="font-medium text-surface-900">{u.unit_number} {u.unit_type && <span className="text-surface-500 font-normal text-sm">({u.unit_type.replace(/_/g, " ")})</span>}</p>
+                <Link href={`/properties/${u.property}`} className="text-sm text-primary-600 hover:underline mt-1 block">{u.property}</Link>
+                <div className="mt-2">
+                  {u.is_vacant ? (
+                    <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Vacant</span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Occupied</span>
+                  )}
+                </div>
+                {canManage && (
+                  <div className="flex gap-3 mt-3">
+                    <Link href={`/units/${u.id}/edit`} className="min-h-[44px] inline-flex items-center text-primary-600 hover:underline text-sm font-medium">Edit</Link>
+                    <button type="button" onClick={() => handleDelete(u)} className="min-h-[44px] text-red-600 hover:underline text-sm">Delete</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
+            <PaginationControls
+              count={count}
+              page={page}
+              next={next}
+              previous={previous}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 20, 50]}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              onNext={() => setPage((p) => p + 1)}
+              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+              loading={loading}
+            />
+          </div>
+        </>
       )}
 
       {canManage && bulkOpen && (

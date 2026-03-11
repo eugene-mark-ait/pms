@@ -80,14 +80,14 @@ export default function SettingsPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-surface-500">Roles</label>
-          <p className="text-surface-900">{user.role_names?.join(", ") || "—"}</p>
+          <p className="text-surface-900">{user.role_names?.map((r) => r === "landlord" ? "Property Owner" : r).join(", ") || "—"}</p>
         </div>
       </div>
 
       {canAssignRoles && (
         <div className="bg-white rounded-xl border border-surface-200 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-surface-900">Assign roles to user</h2>
-          <p className="text-sm text-surface-600">Search by email and set roles (e.g. manager, caretaker, tenant). Landlords can only assign manager, caretaker, tenant.</p>
+          <p className="text-sm text-surface-600">Search by email and set roles (e.g. manager, caretaker, tenant). Property owners can only assign manager, caretaker, tenant.</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -110,7 +110,7 @@ export default function SettingsPage() {
                     {ROLES.filter((r) => r !== "landlord" || user.role_names?.includes("staff")).map((role) => (
                       <label key={role} className="flex items-center gap-1 text-sm">
                         <input type="checkbox" checked={(selectedForUser[u.id] ?? []).includes(role)} onChange={() => toggleRole(u.id, role)} className="rounded" />
-                        {role}
+                        {role === "landlord" ? "Property Owner" : role}
                       </label>
                     ))}
                   </div>

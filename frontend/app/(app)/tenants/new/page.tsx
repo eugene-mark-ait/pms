@@ -9,6 +9,8 @@ interface UnitOption {
   id: string;
   unit_number: string;
   property: string;
+  monthly_rent?: string;
+  security_deposit?: string;
 }
 
 interface PropertyOption {
@@ -46,6 +48,15 @@ export default function NewLeasePage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!unitId) return;
+    const unit = units.find((u) => u.id === unitId);
+    if (unit) {
+      if (unit.monthly_rent != null && unit.monthly_rent !== "") setMonthlyRent(String(unit.monthly_rent));
+      if (unit.security_deposit != null && unit.security_deposit !== "") setDepositAmount(String(unit.security_deposit));
+    }
+  }, [unitId, units]);
+
   async function searchTenants() {
     const q = tenantSearch.trim();
     if (!q) return;
@@ -79,7 +90,7 @@ export default function NewLeasePage() {
       await api.post("/leases/", {
         unit: unitId,
         tenant: selectedTenantId,
-        monthly_rent: monthlyRent,
+        ...(monthlyRent ? { monthly_rent: monthlyRent } : {}),
         deposit_amount: depositAmount || "0",
         deposit_paid: depositPaid,
         start_date: startDate,
@@ -184,7 +195,7 @@ export default function NewLeasePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent</label>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent (from unit, editable)</label>
             <input
               type="number"
               step="0.01"
@@ -192,7 +203,6 @@ export default function NewLeasePage() {
               value={monthlyRent}
               onChange={(e) => setMonthlyRent(e.target.value)}
               className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
-              required
             />
           </div>
           <div>

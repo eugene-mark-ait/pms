@@ -26,6 +26,7 @@ class LeaseSerializer(serializers.ModelSerializer):
     outstanding_balance = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
     last_payment_date = serializers.SerializerMethodField()
+    can_pay_rent = serializers.SerializerMethodField()
 
     class Meta:
         model = Lease
@@ -43,8 +44,19 @@ class LeaseSerializer(serializers.ModelSerializer):
             "outstanding_balance",
             "payment_status",
             "last_payment_date",
+            "can_pay_rent",
             "created_at",
         ]
+
+    def get_can_pay_rent(self, obj):
+        """True if rent is due/overdue and current period not yet paid."""
+        from .services import get_payment_status, get_next_rent_due_date
+        from datetime import date
+        status = get_payment_status(obj)
+        if status == "paid":
+            return False
+        next_due = get_next_rent_due_date(obj)
+        return next_due <= date.today()
 
     def get_next_rent_due(self, obj):
         return get_next_rent_due_date(obj)
@@ -72,6 +84,9 @@ class LeaseSerializer(serializers.ModelSerializer):
 
 
 class LeaseCreateUpdateSerializer(serializers.ModelSerializer):
+    """Create lease: monthly_rent optional (defaults from unit)."""
+    monthly_rent = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
     class Meta:
         model = Lease
         fields = [
@@ -85,6 +100,12 @@ class LeaseCreateUpdateSerializer(serializers.ModelSerializer):
             "end_date",
             "is_active",
         ]
+
+    def validate(self, attrs):
+        unit = attrs.get("unit")
+        if unit and attrs.get("monthly_rent") is None:
+            attrs["monthly_rent"] = unit.monthly_rent
+        return attrs
 
 
 class GiveNoticeSerializer(serializers.Serializer):

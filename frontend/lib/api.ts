@@ -105,12 +105,28 @@ export interface Lease {
   outstanding_balance: string;
   payment_status: string;
   last_payment_date: string | null;
+  can_pay_rent?: boolean;
   created_at: string;
+}
+
+/** Format amount as Kenyan Shillings (e.g. KSh 12,000). */
+export function formatKSH(amount: string | number): string {
+  const n = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (Number.isNaN(n)) return "KSh 0";
+  return "KSh " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+/** DRF PageNumberPagination response shape. */
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 export interface Payment {
   id: string;
-  lease: Lease;
+  lease?: Lease & { tenant?: User; unit?: { unit_number: string; property?: { name: string } } };
   amount: string;
   months_paid_for: number;
   period_start: string | null;
@@ -118,6 +134,7 @@ export interface Payment {
   payment_date: string;
   payment_method: string;
   payment_status: string;
+  transaction_reference?: string;
   created_at: string;
 }
 

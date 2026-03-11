@@ -130,6 +130,14 @@ class GiveNoticeView(generics.GenericAPIView):
             available_from=move_out_date,
         )
 
+        # If notice end date is today or in the past, mark unit vacant and close lease
+        from datetime import date as date_type
+        if move_out_date <= date_type.today():
+            lease.unit.is_vacant = True
+            lease.unit.save(update_fields=["is_vacant", "updated_at"])
+            lease.is_active = False
+            lease.save(update_fields=["is_active", "updated_at"])
+
         # Notify landlord and managers
         for u in [lease.unit.property.landlord]:
             Notification.objects.create(

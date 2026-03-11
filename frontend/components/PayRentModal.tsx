@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, Lease } from "@/lib/api";
+import { api, Lease, formatKSH } from "@/lib/api";
 import { format } from "date-fns";
 
 export default function PayRentModal({
@@ -19,7 +19,11 @@ export default function PayRentModal({
   const [error, setError] = useState("");
 
   const monthlyRent = parseFloat(lease.monthly_rent || "0");
-  const total = monthlyRent * months;
+  const depositAmount = parseFloat(lease.deposit_amount || "0");
+  const isFirstPayment = lease.last_payment_date == null || lease.last_payment_date === "";
+  const depositToAdd = !lease.deposit_paid && depositAmount > 0 && isFirstPayment ? depositAmount : 0;
+  const total = monthlyRent * months + depositToAdd;
+  const canPay = lease.can_pay_rent !== false && lease.payment_status !== "paid";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,17 +54,31 @@ export default function PayRentModal({
         <dl className="space-y-1 text-sm mb-6">
           <div className="flex justify-between">
             <dt className="text-surface-500">Monthly rent</dt>
-            <dd>${lease.monthly_rent}</dd>
+            <dd>{formatKSH(lease.monthly_rent)}</dd>
           </div>
+          {depositToAdd > 0 && (
+            <div className="flex justify-between text-amber-700">
+              <dt className="text-surface-500">Deposit (included in first payment)</dt>
+              <dd>{formatKSH(depositToAdd)}</dd>
+            </div>
+          )}
           <div className="flex justify-between">
             <dt className="text-surface-500">Last payment</dt>
             <dd>{lease.last_payment_date ? format(new Date(lease.last_payment_date), "MMM d, yyyy") : "—"}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-surface-500">Outstanding balance</dt>
-            <dd>${lease.outstanding_balance ?? "0"}</dd>
+            <dd>{formatKSH(lease.outstanding_balance ?? "0")}</dd>
           </div>
         </dl>
+
+        {!canPay && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            {lease.payment_status === "paid"
+              ? "Current period is already paid."
+              : "Rent is not yet due. You can pay from the due date."}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -90,6 +108,7 @@ export default function PayRentModal({
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-4 py-2 rounded-lg border border-surface-300"
             >
+              <option value="mpesa">M-Pesa</option>
               <option value="card">Card</option>
               <option value="bank_transfer">Bank Transfer</option>
               <option value="cash">Cash</option>
@@ -97,12 +116,12 @@ export default function PayRentModal({
               <option value="other">Other</option>
             </select>
           </div>
-          <p className="text-lg font-semibold text-surface-900">Total: ${total.toFixed(2)}</p>
+          <p className="text-lg font-semibold text-surface-900">Total: {formatKSH(total)}</p>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 rounded-lg hover:bg-surface-50">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 rounded-lg hover:bg-surface-50 min-h-[44px]">
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+            <button type="submit" disabled={loading || !canPay} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 min-h-[44px]">
               {loading ? "Processing…" : "Confirm payment"}
             </button>
           </div>

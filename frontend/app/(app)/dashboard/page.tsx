@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Dashboard</h1>
         <p className="text-surface-600 text-sm">
           Welcome back, {user?.first_name || user?.email}
-          {user?.role_names?.length ? ` · ${user.role_names.join(", ")}` : ""}
+          {user?.role_names?.length ? ` · ${user.role_names.map((r) => r === "landlord" ? "Property Owner" : r).join(", ")}` : ""}
         </p>
       </div>
 

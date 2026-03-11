@@ -14,6 +14,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "property",
             "unit",
             "tenant",
+            "lease",
             "assigned_to",
             "title",
             "description",
@@ -27,12 +28,13 @@ class ComplaintSerializer(serializers.ModelSerializer):
 
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
-    """Create: tenant sets assigned_to (caretaker/manager/landlord for this property)."""
+    """Create: tenant sets assigned_to and optionally lease (caretaker/manager/landlord for this property)."""
     class Meta:
         model = Complaint
         fields = [
             "property",
             "unit",
+            "lease",
             "assigned_to",
             "title",
             "description",

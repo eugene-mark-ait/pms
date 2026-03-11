@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, User } from "@/lib/api";
+import { api, User, formatKSH } from "@/lib/api";
 
 interface UserRef {
   id: string;
@@ -24,11 +24,27 @@ interface CaretakerAssignment {
   assigned_at: string;
 }
 
+interface UnitDetail {
+  id: string;
+  unit_number: string;
+  unit_type?: string;
+  monthly_rent?: string;
+  is_vacant?: boolean;
+  current_tenant_name?: string | null;
+}
+
 interface PropertyDetail {
   id: string;
   name: string;
   address: string;
-  units: { id: string; unit_number: string }[];
+  location?: string;
+  landlord?: { id: string; email: string; first_name?: string; last_name?: string };
+  units: UnitDetail[];
+  unit_count?: number;
+  occupied_count?: number;
+  vacant_count?: number;
+  total_rent_potential?: number | string;
+  images?: { id: string; image: string; caption?: string }[];
   rules: { id: string; title: string }[];
   manager_assignments?: ManagerAssignment[];
   caretaker_assignments?: CaretakerAssignment[];
@@ -174,21 +190,77 @@ export default function PropertyDetailPage() {
           </div>
         )}
       </div>
-      <h1 className="text-2xl font-bold text-surface-900">{property.name}</h1>
-      <p className="text-surface-600">{property.address}</p>
+      {property.images && property.images.length > 0 && (
+        <section className="rounded-xl overflow-hidden border border-surface-200 bg-surface-50">
+          <img
+            src={property.images[0].image.startsWith("http") ? property.images[0].image : ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + property.images[0].image)}
+            alt={property.name}
+            className="w-full max-h-64 object-cover"
+          />
+        </section>
+      )}
+
+      <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-surface-900 mb-3">Overview</h2>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div>
+            <dt className="text-surface-500">Location</dt>
+            <dd className="font-medium text-surface-900">{property.location || property.address?.slice(0, 40) || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-surface-500">Owner</dt>
+            <dd className="font-medium text-surface-900">
+              {property.landlord ? `${property.landlord.first_name || ""} ${property.landlord.last_name || ""}`.trim() || property.landlord.email : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-surface-500">Units</dt>
+            <dd className="font-medium text-surface-900">{property.unit_count ?? property.units?.length ?? 0} total</dd>
+          </div>
+          <div>
+            <dt className="text-surface-500">Occupied / Vacant</dt>
+            <dd className="font-medium text-surface-900">{property.occupied_count ?? 0} / {property.vacant_count ?? 0}</dd>
+          </div>
+          <div>
+            <dt className="text-surface-500">Total monthly rent potential</dt>
+            <dd className="font-medium text-surface-900">{formatKSH(property.total_rent_potential ?? 0)}</dd>
+          </div>
+        </dl>
+      </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-surface-900 mb-2">Units</h2>
-        <ul className="space-y-1">
-          {property.units?.map((u) => (
-            <li key={u.id}>
-              <Link href={`/units?property=${property.id}`} className="text-primary-600 hover:underline">
-                Unit {u.unit_number}
-              </Link>
-            </li>
-          ))}
-          {(!property.units || property.units.length === 0) && <li className="text-surface-500">No units</li>}
-        </ul>
+        <h2 className="text-lg font-semibold text-surface-900 mb-3">Units</h2>
+        {(!property.units || property.units.length === 0) ? (
+          <p className="text-surface-500">No units. {canEdit && <Link href={`/units/new?property=${property.id}`} className="text-primary-600 hover:underline">Add one</Link>}</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {property.units.map((u) => (
+              <div key={u.id} className="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link href={`/units?property=${property.id}`} className="font-medium text-surface-900 hover:text-primary-600">
+                    Unit {u.unit_number}
+                    {u.unit_type && <span className="text-surface-500 font-normal text-sm ml-1">({String(u.unit_type).replace(/_/g, " ")})</span>}
+                  </Link>
+                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${u.is_vacant ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"}`}>
+                    {u.is_vacant ? "Vacant" : "Occupied"}
+                  </span>
+                </div>
+                <dl className="mt-2 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-surface-500">Rent</dt>
+                    <dd className="font-medium">{formatKSH(u.monthly_rent ?? 0)}</dd>
+                  </div>
+                  {!u.is_vacant && u.current_tenant_name && (
+                    <div className="flex justify-between">
+                      <dt className="text-surface-500">Tenant</dt>
+                      <dd className="font-medium">{u.current_tenant_name}</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {canManageAssignments && (

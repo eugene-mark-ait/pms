@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { api, User } from "@/lib/api";
+import { api, User, PaginatedResponse } from "@/lib/api";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface Property {
   id: string;
@@ -13,21 +14,35 @@ interface Property {
   first_image?: string | null;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 export default function PropertiesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [list, setList] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [count, setCount] = useState(0);
+  const [next, setNext] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<string | null>(null);
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
   const canEditDelete = isLandlord || isManager;
 
-  function refresh() {
-    api.get<Property[] | { results: Property[] }>("/properties/").then((res) => {
-      const data = res.data;
-      setList(Array.isArray(data) ? data : data.results ?? []);
-    }).catch(() => setList([])).finally(() => setLoading(false));
-  }
+  const refresh = useCallback(() => {
+    setLoading(true);
+    api.get<PaginatedResponse<Property>>("/properties/", { params: { page, page_size: pageSize } })
+      .then((res) => {
+        const d = res.data;
+        setList(d.results ?? []);
+        setCount(d.count ?? 0);
+        setNext(d.next ?? null);
+        setPrevious(d.previous ?? null);
+      })
+      .catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); })
+      .finally(() => setLoading(false));
+  }, [page, pageSize]);
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -36,7 +51,7 @@ export default function PropertiesPage() {
   useEffect(() => {
     if (user != null && !isLandlord && !isManager) return;
     refresh();
-  }, [user]);
+  }, [user, refresh, isLandlord, isManager]);
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete property "${name}"? This cannot be undone.`)) return;
@@ -75,35 +90,51 @@ export default function PropertiesPage() {
       ) : list.length === 0 ? (
         <p className="text-surface-600">No properties.{isLandlord && <> <Link href="/properties/new" className="text-primary-600 hover:underline">Add one</Link>.</>}</p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm hover:shadow-md transition">
-              <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 relative">
-                {p.first_image ? (
-                  <img src={p.first_image} alt={p.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-surface-400 text-sm">No image</div>
-                )}
-              </Link>
-              <div className="p-4">
-                <h2 className="font-semibold text-surface-900">{p.name}</h2>
-                <p className="text-sm text-surface-600 mt-1">{p.location || p.address}</p>
-                <p className="text-xs text-surface-500 mt-1">{p.unit_count ?? 0} unit(s)</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link href={`/properties/${p.id}`} className="text-primary-600 hover:underline text-sm font-medium">View</Link>
-                  {canEditDelete && (
-                    <>
-                      <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm">Edit</Link>
-                      {isLandlord && (
-                        <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 hover:underline text-sm">Delete</button>
-                      )}
-                    </>
+        <>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((p) => (
+              <div key={p.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm hover:shadow-md transition">
+                <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 relative">
+                  {p.first_image ? (
+                    <img src={p.first_image} alt={p.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-surface-400 text-sm">No image</div>
                   )}
+                </Link>
+                <div className="p-4">
+                  <h2 className="font-semibold text-surface-900">{p.name}</h2>
+                  <p className="text-sm text-surface-600 mt-1">{p.location || p.address}</p>
+                  <p className="text-xs text-surface-500 mt-1">{p.unit_count ?? 0} unit(s)</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href={`/properties/${p.id}`} className="text-primary-600 hover:underline text-sm font-medium min-h-[44px] sm:min-h-0 inline-flex items-center">View</Link>
+                    {canEditDelete && (
+                      <>
+                        <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
+                        {isLandlord && (
+                          <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 hover:underline text-sm min-h-[44px] sm:min-h-0">Delete</button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
+            <PaginationControls
+              count={count}
+              page={page}
+              next={next}
+              previous={previous}
+              pageSize={pageSize}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              onNext={() => setPage((p) => p + 1)}
+              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+              loading={loading}
+            />
+          </div>
+        </>
       )}
     </div>
   );
