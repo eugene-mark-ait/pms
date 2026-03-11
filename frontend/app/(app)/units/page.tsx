@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, User, PaginatedResponse } from "@/lib/api";
-import { PaginationControls } from "@/components/PaginationControls";
+import { api, User } from "@/lib/api";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface Unit {
   id: string;
@@ -37,45 +37,27 @@ export default function UnitsPage() {
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("property");
   const [user, setUser] = useState<User | null>(null);
-  const [list, setList] = useState<Unit[]>([]);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkPropertyId, setBulkPropertyId] = useState(propertyId ?? "");
   const [bulkFile, setBulkFile] = useState<string>("");
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-
   const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
+  const enabled = !!user && !!canView;
+
+  const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Unit>({
+    endpoint: "/units/",
+    params: propertyId ? { property: propertyId } : {},
+    pageSize: 20,
+    enabled,
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
-
-  const refresh = useCallback(() => {
-    const url = propertyId ? `/units/?property=${propertyId}` : "/units/";
-    setLoading(true);
-    api.get<PaginatedResponse<Unit>>(url, { params: { page, page_size: pageSize } }).then((res) => {
-      const d = res.data;
-      setList(d.results ?? []);
-      setCount(d.count ?? 0);
-      setNext(d.next ?? null);
-      setPrevious(d.previous ?? null);
-    }).catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); }).finally(() => setLoading(false));
-  }, [propertyId, page, pageSize]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (canView) refresh();
-    else setLoading(false);
-  }, [propertyId, canView, user, refresh]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -161,6 +143,7 @@ export default function UnitsPage() {
           </div>
         )}
       </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500">Loading…</p>
       ) : list.length === 0 ? (
@@ -225,20 +208,10 @@ export default function UnitsPage() {
               </div>
             ))}
           </div>
-          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
-            <PaginationControls
-              count={count}
-              page={page}
-              next={next}
-              previous={previous}
-              pageSize={pageSize}
-              pageSizeOptions={[10, 20, 50]}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              onNext={() => setPage((p) => p + 1)}
-              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-              loading={loading}
-            />
+          <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
+            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more units</p>}
         </>
       )}
 
