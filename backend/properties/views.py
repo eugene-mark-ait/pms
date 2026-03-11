@@ -214,6 +214,57 @@ def _property_for_user(request, pk):
     return get_object_or_404(qs.distinct())
 
 
+class PropertyRuleListCreateView(APIView):
+    """GET/POST /api/properties/<pk>/rules/ - list or create rules (landlord/manager only)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+
+    def get(self, request, pk):
+        property_obj = _property_for_user(request, pk)
+        rules = property_obj.rules.all().order_by("created_at")
+        return Response(PropertyRuleSerializer(rules, many=True).data)
+
+    def post(self, request, pk):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot add rules.")
+        property_obj = _property_for_user(request, pk)
+        serializer = PropertyRuleSerializer(data={**request.data, "property": str(property_obj.id)})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PropertyRuleDetailView(APIView):
+    """PUT/PATCH/DELETE /api/properties/<pk>/rules/<rule_id>/ - update or delete a rule (landlord/manager only)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+
+    def put(self, request, pk, rule_id):
+        return self._update(request, pk, rule_id, partial=False)
+
+    def patch(self, request, pk, rule_id):
+        return self._update(request, pk, rule_id, partial=True)
+
+    def _update(self, request, pk, rule_id, partial):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot edit rules.")
+        property_obj = _property_for_user(request, pk)
+        rule = get_object_or_404(PropertyRule, pk=rule_id, property=property_obj)
+        serializer = PropertyRuleSerializer(rule, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk, rule_id):
+        if request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Caretakers cannot delete rules.")
+        property_obj = _property_for_user(request, pk)
+        rule = get_object_or_404(PropertyRule, pk=rule_id, property=property_obj)
+        rule.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class PropertyImageUploadView(APIView):
     """POST /api/properties/<id>/images/ - upload image (multipart). Landlord/manager only."""
     permission_classes = [IsAuthenticated, IsLandlordOrManager]

@@ -107,7 +107,6 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class PropertyDetailSerializer(serializers.ModelSerializer):
-    units = UnitSerializer(many=True, read_only=True)
     rules = PropertyRuleSerializer(many=True, read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
     manager_assignments = ManagerAssignmentSerializer(many=True, read_only=True)
@@ -117,6 +116,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     occupied_count = serializers.SerializerMethodField()
     vacant_count = serializers.SerializerMethodField()
     total_rent_potential = serializers.SerializerMethodField()
+    upcoming_vacancies = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
@@ -127,11 +127,11 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "location",
             "landlord",
             "images",
-            "units",
             "unit_count",
             "occupied_count",
             "vacant_count",
             "total_rent_potential",
+            "upcoming_vacancies",
             "rules",
             "manager_assignments",
             "caretaker_assignments",
@@ -152,3 +152,31 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         from django.db.models import Sum
         total = obj.units.aggregate(s=Sum("monthly_rent"))["s"]
         return total if total is not None else 0
+
+    def get_upcoming_vacancies(self, obj):
+        from vacancies.models import VacancyListing
+        from vacancies.views import process_due_notices
+        process_due_notices()
+        qs = (
+            VacancyListing.objects.filter(property=obj, is_filled=False)
+            .select_related("unit", "vacate_notice", "vacate_notice__lease", "vacate_notice__lease__tenant")
+            .order_by("available_from")[:50]
+        )
+        out = []
+        for listing in qs:
+            tenant_name = None
+            if listing.vacate_notice_id and listing.vacate_notice.lease_id:
+                t = listing.vacate_notice.lease.tenant
+                tenant_name = f"{t.first_name or ''} {t.last_name or ''}".strip() or t.email
+            out.append({
+                "id": str(listing.id),
+                "property_id": str(listing.property_id),
+                "property_name": listing.property.name,
+                "unit_id": str(listing.unit_id),
+                "unit_number": listing.unit.unit_number,
+                "tenant_name": tenant_name,
+                "notice_due_date": listing.available_from,
+                "available_from": listing.available_from,
+                "is_filled": listing.is_filled,
+            })
+        return out

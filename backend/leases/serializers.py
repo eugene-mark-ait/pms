@@ -84,8 +84,9 @@ class LeaseSerializer(serializers.ModelSerializer):
 
 
 class LeaseCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create lease: monthly_rent optional (defaults from unit)."""
+    """Create lease: rent and deposit are always taken from the unit (not editable by landlord)."""
     monthly_rent = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    deposit_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
 
     class Meta:
         model = Lease
@@ -103,8 +104,9 @@ class LeaseCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         unit = attrs.get("unit")
-        if unit and attrs.get("monthly_rent") is None:
+        if unit:
             attrs["monthly_rent"] = unit.monthly_rent
+            attrs["deposit_amount"] = getattr(unit, "security_deposit", None) or 0
         return attrs
 
 

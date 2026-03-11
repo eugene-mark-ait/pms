@@ -24,13 +24,15 @@ interface CaretakerAssignment {
   assigned_at: string;
 }
 
-interface UnitDetail {
+interface UpcomingVacancy {
   id: string;
+  property_id: string;
+  property_name: string;
+  unit_id: string;
   unit_number: string;
-  unit_type?: string;
-  monthly_rent?: string;
-  is_vacant?: boolean;
-  current_tenant_name?: string | null;
+  tenant_name: string | null;
+  notice_due_date: string;
+  available_from: string;
 }
 
 interface PropertyDetail {
@@ -39,13 +41,13 @@ interface PropertyDetail {
   address: string;
   location?: string;
   landlord?: { id: string; email: string; first_name?: string; last_name?: string };
-  units: UnitDetail[];
   unit_count?: number;
   occupied_count?: number;
   vacant_count?: number;
   total_rent_potential?: number | string;
   images?: { id: string; image: string; caption?: string }[];
-  rules: { id: string; title: string }[];
+  upcoming_vacancies?: UpcomingVacancy[];
+  rules: { id: string; title: string; description?: string }[];
   manager_assignments?: ManagerAssignment[];
   caretaker_assignments?: CaretakerAssignment[];
 }
@@ -65,6 +67,9 @@ export default function PropertyDetailPage() {
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [ruleForm, setRuleForm] = useState<{ open: boolean; id: string | null; title: string; description: string }>({ open: false, id: null, title: "", description: "" });
+  const [ruleSubmitting, setRuleSubmitting] = useState(false);
+  const [ruleError, setRuleError] = useState("");
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
@@ -158,6 +163,43 @@ export default function PropertyDetailPage() {
     }
   }
 
+  function openAddRule() {
+    setRuleForm({ open: true, id: null, title: "", description: "" });
+    setRuleError("");
+  }
+  function openEditRule(r: { id: string; title: string; description?: string }) {
+    setRuleForm({ open: true, id: r.id, title: r.title, description: r.description ?? "" });
+    setRuleError("");
+  }
+  async function saveRule(e: React.FormEvent) {
+    e.preventDefault();
+    setRuleError("");
+    setRuleSubmitting(true);
+    try {
+      if (ruleForm.id) {
+        await api.patch(`/properties/${id}/rules/${ruleForm.id}/`, { title: ruleForm.title, description: ruleForm.description });
+      } else {
+        await api.post(`/properties/${id}/rules/`, { title: ruleForm.title, description: ruleForm.description });
+      }
+      setRuleForm((prev) => ({ ...prev, open: false }));
+      refresh();
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "response" in err ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail : "Failed to save rule.";
+      setRuleError(typeof msg === "string" ? msg : "Failed to save rule.");
+    } finally {
+      setRuleSubmitting(false);
+    }
+  }
+  async function deleteRule(ruleId: string) {
+    if (!confirm("Delete this rule?")) return;
+    try {
+      await api.delete(`/properties/${id}/rules/${ruleId}/`);
+      refresh();
+    } catch {
+      alert("Failed to delete rule.");
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -190,15 +232,19 @@ export default function PropertyDetailPage() {
           </div>
         )}
       </div>
-      {property.images && property.images.length > 0 && (
-        <section className="rounded-xl overflow-hidden border border-surface-200 bg-surface-50">
+      <section className="rounded-xl overflow-hidden border border-surface-200 bg-surface-50">
+        {property.images && property.images.length > 0 ? (
           <img
             src={property.images[0].image.startsWith("http") ? property.images[0].image : ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + property.images[0].image)}
             alt={property.name}
             className="w-full max-h-64 object-cover"
           />
-        </section>
-      )}
+        ) : (
+          <div className="w-full max-h-64 flex items-center justify-center bg-surface-100 text-surface-400 text-sm">
+            No property image
+          </div>
+        )}
+      </section>
 
       <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
         <h2 className="text-base font-semibold text-surface-900 mb-3">Overview</h2>
@@ -215,53 +261,47 @@ export default function PropertyDetailPage() {
           </div>
           <div>
             <dt className="text-surface-500">Units</dt>
-            <dd className="font-medium text-surface-900">{property.unit_count ?? property.units?.length ?? 0} total</dd>
+            <dd className="font-medium text-surface-900">{property.unit_count ?? 0} total</dd>
           </div>
           <div>
             <dt className="text-surface-500">Occupied / Vacant</dt>
             <dd className="font-medium text-surface-900">{property.occupied_count ?? 0} / {property.vacant_count ?? 0}</dd>
           </div>
           <div>
+            <dt className="text-surface-500">Upcoming vacancies</dt>
+            <dd className="font-medium text-surface-900">{property.upcoming_vacancies?.length ?? 0}</dd>
+          </div>
+          <div>
             <dt className="text-surface-500">Total monthly rent potential</dt>
             <dd className="font-medium text-surface-900">{formatKSH(property.total_rent_potential ?? 0)}</dd>
           </div>
         </dl>
+        <p className="text-sm text-surface-500 mt-3">
+          {canEdit && <Link href={`/units?property=${property.id}`} className="text-primary-600 hover:underline">View and manage units →</Link>}
+        </p>
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold text-surface-900 mb-3">Units</h2>
-        {(!property.units || property.units.length === 0) ? (
-          <p className="text-surface-500">No units. {canEdit && <Link href={`/units/new?property=${property.id}`} className="text-primary-600 hover:underline">Add one</Link>}</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {property.units.map((u) => (
-              <div key={u.id} className="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/units?property=${property.id}`} className="font-medium text-surface-900 hover:text-primary-600">
-                    Unit {u.unit_number}
-                    {u.unit_type && <span className="text-surface-500 font-normal text-sm ml-1">({String(u.unit_type).replace(/_/g, " ")})</span>}
-                  </Link>
-                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${u.is_vacant ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"}`}>
-                    {u.is_vacant ? "Vacant" : "Occupied"}
-                  </span>
-                </div>
-                <dl className="mt-2 space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-surface-500">Rent</dt>
-                    <dd className="font-medium">{formatKSH(u.monthly_rent ?? 0)}</dd>
-                  </div>
-                  {!u.is_vacant && u.current_tenant_name && (
-                    <div className="flex justify-between">
-                      <dt className="text-surface-500">Tenant</dt>
-                      <dd className="font-medium">{u.current_tenant_name}</dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
+      {property.upcoming_vacancies && property.upcoming_vacancies.length > 0 && (
+        <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
+          <h2 className="text-base font-semibold text-surface-900 mb-3">Upcoming vacancies</h2>
+          <ul className="space-y-3">
+            {property.upcoming_vacancies.map((v) => (
+              <li key={v.id} className="border border-surface-200 rounded-lg p-3 text-sm">
+                <p className="font-medium text-surface-900">Tenant: {v.tenant_name ?? "—"}</p>
+                <p className="mt-1">
+                  <span className="text-surface-500">Property: </span>
+                  <Link href={`/properties/${v.property_id}`} className="text-primary-600 hover:underline">{v.property_name}</Link>
+                </p>
+                <p className="mt-1">
+                  <span className="text-surface-500">Unit: </span>
+                  <Link href={`/units/${v.unit_id}/edit`} className="text-primary-600 hover:underline">{v.unit_number}</Link>
+                </p>
+                <p className="mt-1 text-surface-600">Vacates on: {new Date(v.notice_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+              </li>
             ))}
-          </div>
-        )}
-      </section>
+          </ul>
+        </section>
+      )}
 
       {canManageAssignments && (
         <>
@@ -299,12 +339,63 @@ export default function PropertyDetailPage() {
         </>
       )}
 
-      <section>
-        <h2 className="text-lg font-semibold text-surface-900 mb-2">Rules</h2>
-        <ul className="list-disc pl-6 space-y-1">
-          {property.rules?.map((r) => <li key={r.id}>{r.title}</li>)}
-          {(!property.rules || property.rules.length === 0) && <li className="text-surface-500">No rules</li>}
-        </ul>
+      <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-surface-900">Property rules</h2>
+          {canEdit && (
+            <button type="button" onClick={openAddRule} className="rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50 min-h-[44px] sm:min-h-0">
+              Add rule
+            </button>
+          )}
+        </div>
+        {(!property.rules || property.rules.length === 0) && !ruleForm.open ? (
+          <p className="text-surface-500 text-sm">No rules.</p>
+        ) : (
+          <ul className="space-y-3">
+            {property.rules?.map((r) => (
+              <li key={r.id} className="border-l-2 border-surface-200 pl-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-medium text-surface-900">{r.title}</p>
+                  {r.description && <p className="text-sm text-surface-600 mt-0.5">{r.description}</p>}
+                </div>
+                {canEdit && (
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openEditRule(r)} className="text-primary-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</button>
+                    <button type="button" onClick={() => deleteRule(r.id)} className="text-red-600 hover:underline text-sm">Delete</button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {ruleForm.open && (
+          <form onSubmit={saveRule} className="mt-4 p-4 border border-surface-200 rounded-lg space-y-3">
+            <input
+              type="text"
+              placeholder="Rule title"
+              value={ruleForm.title}
+              onChange={(e) => setRuleForm((prev) => ({ ...prev, title: e.target.value }))}
+              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              required
+            />
+            <textarea
+              placeholder="Description (optional)"
+              value={ruleForm.description}
+              onChange={(e) => setRuleForm((prev) => ({ ...prev, description: e.target.value }))}
+              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900 min-h-[80px]"
+              rows={3}
+            />
+            {ruleError && <p className="text-red-600 text-sm">{ruleError}</p>}
+            <div className="flex gap-2">
+              <button type="submit" disabled={ruleSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 text-sm hover:bg-primary-700 disabled:opacity-50">
+                {ruleSubmitting ? "Saving…" : ruleForm.id ? "Update rule" : "Add rule"}
+              </button>
+              <button type="button" onClick={() => setRuleForm((prev) => ({ ...prev, open: false }))} disabled={ruleSubmitting} className="rounded-lg border border-surface-300 px-4 py-2 text-sm text-surface-700 hover:bg-surface-50">
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
       </section>
 
       {assignMode && (

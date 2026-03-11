@@ -1,31 +1,66 @@
-from rest_framework import generics
+from datetime import date as date_type
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
-from .models import VacancyListing, TenantVacancyPreference
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
 )
-from accounts.permissions import IsLandlordOrManager, IsLandlordOrManagerOrCaretaker, IsTenant
+from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
+
+
+def process_due_notices():
+    """For any vacate notice where move_out_date <= today and not cancelled, mark unit vacant, close lease, mark listing filled."""
+    today = date_type.today()
+    listings = VacancyListing.objects.filter(
+        is_filled=False,
+        vacate_notice__move_out_date__lte=today,
+        vacate_notice__notice_cancelled=False,
+    ).select_related("vacate_notice", "vacate_notice__lease", "vacate_notice__lease__unit")
+    for listing in listings:
+        notice = listing.vacate_notice
+        if not notice or notice.notice_cancelled:
+            continue
+        lease = notice.lease
+        unit = lease.unit
+        unit.is_vacant = True
+        unit.save(update_fields=["is_vacant", "updated_at"])
+        lease.is_active = False
+        lease.save(update_fields=["is_active", "updated_at"])
+        listing.is_filled = True
+        listing.save(update_fields=["is_filled", "updated_at"])
 
 
 class VacancyListingListView(generics.ListAPIView):
-    """GET /api/vacancies/ - list upcoming vacancies (landlord/manager/caretaker)."""
+    """GET /api/vacancies/ - list upcoming vacancies (landlord/manager/caretaker). ?property=<uuid> filters by property."""
     permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = VacancyListingSerializer
 
     def get_queryset(self):
+        process_due_notices()
         user = self.request.user
-        qs = VacancyListing.objects.filter(is_filled=False).select_related("property", "unit")
+        qs = (
+            VacancyListing.objects.filter(is_filled=False)
+            .select_related("property", "unit", "vacate_notice", "vacate_notice__lease", "vacate_notice__lease__tenant")
+        )
         if user.has_role("landlord"):
-            return qs.filter(property__landlord=user).order_by("available_from")
-        if user.has_role("manager"):
-            return qs.filter(property__manager_assignments__manager=user).distinct().order_by("available_from")
-        if user.has_role("caretaker"):
-            return qs.filter(property__caretaker_assignments__caretaker=user).distinct().order_by("available_from")
-        return qs.none()
+            qs = qs.filter(property__landlord=user)
+        elif user.has_role("manager"):
+            qs = qs.filter(property__manager_assignments__manager=user).distinct()
+        elif user.has_role("caretaker"):
+            qs = qs.filter(property__caretaker_assignments__caretaker=user).distinct()
+        else:
+            return qs.none()
+        property_id = self.request.query_params.get("property")
+        if property_id:
+            qs = qs.filter(property_id=property_id)
+        return qs.order_by("available_from")
 
 
 class VacancySearchView(generics.ListAPIView):
@@ -62,3 +97,30 @@ class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         pref, _ = TenantVacancyPreference.objects.get_or_create(user=self.request.user)
         return pref
+
+
+class CancelNoticeView(APIView):
+    """POST /api/vacancies/notice/<id>/cancel/ - tenant cancels their vacate notice. Only allowed before notice_due_date (move_out_date)."""
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def post(self, request, pk):
+        from django.utils import timezone
+        today = timezone.now().date()
+        notice = get_object_or_404(
+            VacateNotice,
+            pk=pk,
+            lease__tenant=request.user,
+            notice_cancelled=False,
+        )
+        if notice.move_out_date <= today:
+            return Response(
+                {"detail": "Cannot cancel notice after the due date has passed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        notice.notice_cancelled = True
+        notice.save(update_fields=["notice_cancelled"])
+        if hasattr(notice, "vacancy_listing") and notice.vacancy_listing_id:
+            listing = notice.vacancy_listing
+            listing.is_filled = True
+            listing.save(update_fields=["is_filled", "updated_at"])
+        return Response({"success": True})

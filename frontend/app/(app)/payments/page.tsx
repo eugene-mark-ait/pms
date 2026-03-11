@@ -1,72 +1,53 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { api, Payment, User, formatKSH, PaginatedResponse } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { api, Payment, User, formatKSH } from "@/lib/api";
 import { format } from "date-fns";
 import Link from "next/link";
-import { PaginationControls } from "@/components/PaginationControls";
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 export default function PaymentsPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [list, setList] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-
   const isTenant =
     user != null
     && user.role_names?.includes("tenant")
     && !user.role_names?.includes("landlord")
     && !user.role_names?.includes("manager");
+  const enabled = user != null;
+  const endpoint = isTenant ? "/payments/history/" : "/payments/";
+
+  const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Payment>({
+    endpoint,
+    pageSize: 20,
+    enabled,
+    parseResponse: (data) => {
+      const d = data as { results?: Payment[]; next?: string | null };
+      if (Array.isArray(d)) {
+        return { results: d, next: null };
+      }
+      return {
+        results: d?.results ?? [],
+        next: d?.next ?? null,
+      };
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
     api.get<User>("/auth/me/")
       .then((res) => { if (!cancelled) setUser(res.data); })
-      .catch(() => { if (!cancelled) { setUser(null); setLoading(false); } });
+      .catch(() => { if (!cancelled) setUser(null); });
     return () => { cancelled = true; };
   }, []);
 
-  const refresh = useCallback(() => {
-    if (user == null) return;
-    setLoading(true);
-    const endpoint = isTenant ? "/payments/history/" : "/payments/";
-    const params = { page, page_size: pageSize };
-    api.get<Payment[] | PaginatedResponse<Payment>>(endpoint, { params }).then((res) => {
-      const data = res.data;
-      if (Array.isArray(data)) {
-        setList(data);
-        setCount(data.length);
-        setNext(null);
-        setPrevious(null);
-      } else {
-        const p = data as PaginatedResponse<Payment>;
-        setList(p.results ?? []);
-        setCount(p.count ?? 0);
-        setNext(p.next ?? null);
-        setPrevious(p.previous ?? null);
-      }
-    }).catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); }).finally(() => setLoading(false));
-  }, [user, isTenant, page, pageSize]);
-
-  useEffect(() => {
-    if (user == null) return;
-    refresh();
-  }, [user, refresh]);
-
-  async function handleExport(format: "csv" | "pdf") {
+  async function handleExport(formatType: "csv" | "pdf") {
     const token = typeof window !== "undefined" ? localStorage.getItem("pms_access_token") : null;
     const base = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + "/api";
-    const url = `${base}/payments/export/?format=${format}`;
+    const url = `${base}/payments/export/?format=${formatType}`;
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) return;
     const blob = await res.blob();
-    const ext = format === "pdf" ? "pdf" : "csv";
+    const ext = formatType === "pdf" ? "pdf" : "csv";
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `payments-${new Date().toISOString().slice(0, 10)}.${ext}`;
@@ -85,13 +66,13 @@ export default function PaymentsPage() {
         </div>
         {!isTenant && list.length > 0 && (
           <div className="flex gap-2">
-            <a
-              href="#"
-              onClick={(e) => { e.preventDefault(); handleExport("csv"); }}
+            <button
+              type="button"
+              onClick={() => handleExport("csv")}
               className="inline-flex items-center min-h-[44px] px-4 py-2 rounded-lg border border-surface-300 bg-white text-surface-700 hover:bg-surface-50 text-sm font-medium"
             >
               Export CSV
-            </a>
+            </button>
             <button
               type="button"
               onClick={() => handleExport("pdf")}
@@ -102,13 +83,13 @@ export default function PaymentsPage() {
           </div>
         )}
       </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500">Loading…</p>
       ) : list.length === 0 ? (
         <p className="text-surface-600">No payments yet.</p>
       ) : (
         <>
-          {/* Desktop table */}
           <div className="hidden md:block bg-white rounded-xl border border-surface-200 overflow-hidden">
             <table className="w-full">
               <thead className="bg-surface-50 border-b border-surface-200">
@@ -147,7 +128,6 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           </div>
-          {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {list.map((p) => (
               <div key={p.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
@@ -164,22 +144,10 @@ export default function PaymentsPage() {
               </div>
             ))}
           </div>
-          {(next != null || previous != null || count > list.length) && (
-            <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
-              <PaginationControls
-                count={count}
-                page={page}
-                next={next}
-                previous={previous}
-                pageSize={pageSize}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-                onNext={() => setPage((p) => p + 1)}
-                onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-                loading={loading}
-              />
-            </div>
-          )}
+          <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
+            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
+          </div>
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more payments</p>}
         </>
       )}
       {isTenant && <Link href="/dashboard/my-units" className="inline-block text-primary-600 hover:underline">← My units</Link>}

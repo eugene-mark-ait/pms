@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { api, PaginatedResponse } from "@/lib/api";
-import { PaginationControls } from "@/components/PaginationControls";
+import { api } from "@/lib/api";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface Complaint {
   id: string;
@@ -14,38 +13,17 @@ interface Complaint {
   created_at: string;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
 export default function ComplaintsPage() {
-  const [list, setList] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-
-  const refresh = useCallback(() => {
-    setLoading(true);
-    api.get<PaginatedResponse<Complaint>>("/complaints/", { params: { page, page_size: pageSize } })
-      .then((res) => {
-        const d = res.data;
-        setList(d.results ?? []);
-        setCount(d.count ?? 0);
-        setNext(d.next ?? null);
-        setPrevious(d.previous ?? null);
-      })
-      .catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); })
-      .finally(() => setLoading(false));
-  }, [page, pageSize]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const { items: list, loading, loadingMore, hasMore, error, sentinelRef } = useInfiniteScroll<Complaint>({
+    endpoint: "/complaints/",
+    pageSize: 20,
+    enabled: true,
+  });
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-surface-900">Complaints</h1>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500">Loading…</p>
       ) : list.length === 0 ? (
@@ -89,20 +67,10 @@ export default function ComplaintsPage() {
               </div>
             ))}
           </div>
-          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
-            <PaginationControls
-              count={count}
-              page={page}
-              next={next}
-              previous={previous}
-              pageSize={pageSize}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              onNext={() => setPage((p) => p + 1)}
-              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-              loading={loading}
-            />
+          <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
+            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more complaints</p>}
         </>
       )}
     </div>

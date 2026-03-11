@@ -90,7 +90,7 @@ export default function NewLeasePage() {
       await api.post("/leases/", {
         unit: unitId,
         tenant: selectedTenantId,
-        ...(monthlyRent ? { monthly_rent: monthlyRent } : {}),
+        monthly_rent: monthlyRent || undefined,
         deposit_amount: depositAmount || "0",
         deposit_paid: depositPaid,
         start_date: startDate,
@@ -195,25 +195,23 @@ export default function NewLeasePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent (from unit, editable)</label>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent (from unit)</label>
             <input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               value={monthlyRent}
-              onChange={(e) => setMonthlyRent(e.target.value)}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              readOnly
+              disabled
+              className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-surface-700"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Deposit amount</label>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Deposit amount (from unit)</label>
             <input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              readOnly
+              disabled
+              className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-surface-700"
             />
           </div>
         </div>

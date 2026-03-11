@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, User, PaginatedResponse } from "@/lib/api";
-import { PaginationControls } from "@/components/PaginationControls";
+import { api, User } from "@/lib/api";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface Property {
   id: string;
@@ -14,44 +14,22 @@ interface Property {
   first_image?: string | null;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
 export default function PropertiesPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [list, setList] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
   const canEditDelete = isLandlord || isManager;
+  const enabled = user !== null && (isLandlord || isManager);
 
-  const refresh = useCallback(() => {
-    setLoading(true);
-    api.get<PaginatedResponse<Property>>("/properties/", { params: { page, page_size: pageSize } })
-      .then((res) => {
-        const d = res.data;
-        setList(d.results ?? []);
-        setCount(d.count ?? 0);
-        setNext(d.next ?? null);
-        setPrevious(d.previous ?? null);
-      })
-      .catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); })
-      .finally(() => setLoading(false));
-  }, [page, pageSize]);
+  const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Property>({
+    endpoint: "/properties/",
+    pageSize: 20,
+    enabled,
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
-
-  useEffect(() => {
-    if (user != null && !isLandlord && !isManager) return;
-    refresh();
-  }, [user, refresh, isLandlord, isManager]);
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete property "${name}"? This cannot be undone.`)) return;
@@ -79,12 +57,13 @@ export default function PropertiesPage() {
         {isLandlord && (
           <Link
             href="/properties/new"
-            className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium"
+            className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center"
           >
             Add Property
           </Link>
         )}
       </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500">Loading…</p>
       ) : list.length === 0 ? (
@@ -120,20 +99,10 @@ export default function PropertiesPage() {
               </div>
             ))}
           </div>
-          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
-            <PaginationControls
-              count={count}
-              page={page}
-              next={next}
-              previous={previous}
-              pageSize={pageSize}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              onNext={() => setPage((p) => p + 1)}
-              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-              loading={loading}
-            />
+          <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
+            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more properties</p>}
         </>
       )}
     </div>

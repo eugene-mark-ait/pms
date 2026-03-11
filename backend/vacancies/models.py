@@ -31,16 +31,17 @@ class TenantVacancyPreference(models.Model):
 
 
 class VacateNotice(models.Model):
-    """Notice submitted by tenant; triggers vacancy listing."""
+    """Notice submitted by tenant; triggers vacancy listing. notice_due_date = move_out_date; notice_given_date from created_at."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lease = models.ForeignKey(
         Lease,
         on_delete=models.CASCADE,
         related_name="vacate_notices",
     )
-    move_out_date = models.DateField()
+    move_out_date = models.DateField(help_text="Notice due date; when reached and not cancelled, unit is marked vacant.")
     reason = models.CharField(max_length=255, blank=True)
     notice_message = models.TextField(blank=True)
+    notice_cancelled = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, User, PaginatedResponse } from "@/lib/api";
-import { PaginationControls } from "@/components/PaginationControls";
+import { api, User } from "@/lib/api";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface Lease {
   id: string;
@@ -13,44 +13,21 @@ interface Lease {
   is_active?: boolean;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
 export default function TenantsPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [list, setList] = useState<Lease[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-
   const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
+  const enabled = !!user && !!canView;
+
+  const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Lease>({
+    endpoint: "/leases/",
+    pageSize: 20,
+    enabled,
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
-
-  const refresh = useCallback(() => {
-    if (!canView) return;
-    setLoading(true);
-    api.get<PaginatedResponse<Lease>>("/leases/", { params: { page, page_size: pageSize } })
-      .then((res) => {
-        const d = res.data;
-        setList(d.results ?? []);
-        setCount(d.count ?? 0);
-        setNext(d.next ?? null);
-        setPrevious(d.previous ?? null);
-      })
-      .catch(() => { setList([]); setCount(0); setNext(null); setPrevious(null); })
-      .finally(() => setLoading(false));
-  }, [canView, page, pageSize]);
-
-  useEffect(() => {
-    if (!canView) return;
-    refresh();
-  }, [canView, refresh]);
 
   if (user && !canView) {
     return (
@@ -66,11 +43,12 @@ export default function TenantsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-surface-900">Tenants</h1>
         {canManage && (
-          <Link href="/tenants/new" className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium">
+          <Link href="/tenants/new" className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center">
             Add Lease (Assign Tenant)
           </Link>
         )}
       </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500">Loading…</p>
       ) : list.length === 0 ? (
@@ -152,20 +130,10 @@ export default function TenantsPage() {
               </div>
             ))}
           </div>
-          <div className="bg-white rounded-b-xl border border-surface-200 border-t-0 px-4">
-            <PaginationControls
-              count={count}
-              page={page}
-              next={next}
-              previous={previous}
-              pageSize={pageSize}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-              onNext={() => setPage((p) => p + 1)}
-              onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-              loading={loading}
-            />
+          <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
+            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more tenants</p>}
         </>
       )}
     </div>
