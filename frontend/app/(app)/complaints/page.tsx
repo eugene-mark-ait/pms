@@ -1,7 +1,9 @@
 "use client";
 
-import { api } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import FileComplaintModal from "@/components/FileComplaintModal";
 
 interface Complaint {
   id: string;
@@ -14,20 +16,39 @@ interface Complaint {
 }
 
 export default function ComplaintsPage() {
-  const { items: list, loading, loadingMore, hasMore, error, sentinelRef } = useInfiniteScroll<Complaint>({
+  const [user, setUser] = useState<User | null>(null);
+  const [fileModalOpen, setFileModalOpen] = useState(false);
+  const { items: list, loading, loadingMore, hasMore, error, sentinelRef, refresh } = useInfiniteScroll<Complaint>({
     endpoint: "/complaints/",
     pageSize: 20,
     enabled: true,
   });
 
+  useEffect(() => {
+    api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
+  }, []);
+
+  const isTenant = user?.role_names?.includes("tenant");
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-surface-900">Complaints</h1>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Complaints</h1>
+        {isTenant && (
+          <button
+            type="button"
+            onClick={() => setFileModalOpen(true)}
+            className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium"
+          >
+            File complaint
+          </button>
+        )}
+      </div>
+      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       {loading ? (
-        <p className="text-surface-500">Loading…</p>
+        <p className="text-surface-500 dark:text-surface-400">Loading…</p>
       ) : list.length === 0 ? (
-        <p className="text-surface-600">No complaints.</p>
+        <p className="text-surface-600 dark:text-surface-400">No complaints.{isTenant && " Use \"File complaint\" to submit an issue for your unit."}</p>
       ) : (
         <>
           <div className="hidden md:block bg-white rounded-xl border border-surface-200 overflow-hidden">
@@ -70,8 +91,15 @@ export default function ComplaintsPage() {
           <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
             {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
-          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more complaints</p>}
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more complaints</p>}
         </>
+      )}
+
+      {fileModalOpen && (
+        <FileComplaintModal
+          onClose={() => setFileModalOpen(false)}
+          onSuccess={() => { setFileModalOpen(false); refresh(); }}
+        />
       )}
     </div>
   );

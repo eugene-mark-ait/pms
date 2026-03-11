@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -37,6 +37,7 @@ function parseCSV(text: string): Record<string, string>[] {
 
 export default function UnitsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const propertyId = searchParams.get("property");
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
@@ -62,12 +63,11 @@ export default function UnitsPage() {
   }, []);
 
   useEffect(() => {
-    if (!canManage) return;
-    api.get<PropertyOption[] | { results: PropertyOption[] }>("/properties/").then((res) => {
-      const data = res.data;
-      setProperties(Array.isArray(data) ? data : (data as { results?: PropertyOption[] })?.results ?? []);
+    if (!canView) return;
+    api.get<PropertyOption[]>("/properties/options/").then((res) => {
+      setProperties(Array.isArray(res.data) ? res.data : []);
     }).catch(() => setProperties([]));
-  }, [canManage]);
+  }, [canView]);
 
   async function handleBulkSubmit() {
     if (!bulkPropertyId || !bulkFile.trim()) {
@@ -127,6 +127,30 @@ export default function UnitsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900">Units</h1>
+        {canView && properties.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="unit-property-filter" className="text-sm font-medium text-surface-700 whitespace-nowrap">
+              Property
+            </label>
+            <select
+              id="unit-property-filter"
+              value={propertyId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                const params = new URLSearchParams(searchParams?.toString() ?? "");
+                if (v) params.set("property", v);
+                else params.delete("property");
+                router.replace(params.toString() ? `/units?${params.toString()}` : "/units");
+              }}
+              className="rounded-lg border border-surface-300 px-3 py-2 text-surface-900 bg-white min-w-[180px]"
+            >
+              <option value="">All properties</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {canManage && (
           <div className="flex gap-2">
             <Link

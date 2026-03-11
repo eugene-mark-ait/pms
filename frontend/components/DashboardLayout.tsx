@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api, clearTokens, User } from "@/lib/api";
 import { clsx } from "clsx";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems: { href: string; label: string; roles: string[]; icon: React.ReactNode }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <DashboardIcon /> },
@@ -63,13 +64,13 @@ export default function DashboardLayout({
   const sidebarWidth = sidebarCollapsed ? 72 : 256;
 
   return (
-    <div className="flex min-h-screen bg-surface-50">
+    <div className="flex min-h-screen bg-surface-50 dark:bg-surface-900">
       <aside
-        className="border-r border-surface-200 bg-white flex flex-col fixed h-full z-30 transition-[width] duration-200 ease-in-out overflow-hidden shrink-0"
+        className="border-r border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex flex-col fixed h-full z-30 transition-[width] duration-200 ease-in-out overflow-hidden shrink-0"
         style={{ width: sidebarWidth }}
       >
-        <div className="flex items-center justify-between h-14 px-3 border-b border-surface-200 shrink-0">
-          <Link href="/dashboard" className={clsx("font-bold text-primary-600 truncate", sidebarCollapsed ? "w-0 overflow-hidden" : "text-lg")}>
+        <div className="flex items-center justify-between h-14 px-3 border-b border-surface-200 dark:border-surface-700 shrink-0">
+          <Link href="/dashboard" className={clsx("font-bold text-primary-600 dark:text-primary-400 truncate", sidebarCollapsed ? "w-0 overflow-hidden" : "text-lg")}>
             PMS
           </Link>
           <button
@@ -100,8 +101,8 @@ export default function DashboardLayout({
                     "flex items-center gap-3 rounded-lg text-sm font-medium transition py-2.5",
                     sidebarCollapsed ? "justify-center px-2" : "px-3",
                     pathname === item.href
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-surface-700 hover:bg-surface-100"
+                      ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+                      : "text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700"
                   )}
                   title={sidebarCollapsed ? item.label : undefined}
                 >
@@ -134,8 +135,8 @@ export default function DashboardLayout({
         </div>
       </aside>
       <div className="flex-1 flex flex-col transition-[margin] duration-200" style={{ marginLeft: sidebarWidth }}>
-        <header className="h-14 border-b border-surface-200 bg-white flex items-center px-6 shrink-0">
-          <span className="text-surface-600 text-sm">Property Management</span>
+        <header className="h-14 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex items-center justify-between px-6 shrink-0">
+          <span className="text-surface-600 dark:text-surface-400 text-sm">Property Management</span>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>

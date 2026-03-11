@@ -29,6 +29,7 @@ class LeaseSerializer(serializers.ModelSerializer):
     can_pay_rent = serializers.SerializerMethodField()
     has_active_notice = serializers.SerializerMethodField()
     active_notice_move_out_date = serializers.SerializerMethodField()
+    active_notice_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Lease
@@ -49,6 +50,7 @@ class LeaseSerializer(serializers.ModelSerializer):
             "can_pay_rent",
             "has_active_notice",
             "active_notice_move_out_date",
+            "active_notice_id",
             "created_at",
         ]
 
@@ -71,6 +73,11 @@ class LeaseSerializer(serializers.ModelSerializer):
         from vacancies.models import VacateNotice
         notice = VacateNotice.objects.filter(lease=obj, notice_cancelled=False).order_by("-created_at").first()
         return notice.move_out_date.isoformat() if notice else None
+
+    def get_active_notice_id(self, obj):
+        from vacancies.models import VacateNotice
+        notice = VacateNotice.objects.filter(lease=obj, notice_cancelled=False).order_by("-created_at").first()
+        return str(notice.id) if notice else None
 
     def get_next_rent_due(self, obj):
         return get_next_rent_due_date(obj)

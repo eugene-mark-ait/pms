@@ -10,6 +10,7 @@ from .serializers import (
     PropertyListSerializer,
     PropertyDetailSerializer,
     PropertyImageSerializer,
+    PropertyOptionsSerializer,
     UnitSerializer,
     PropertyRuleSerializer,
     ManagerAssignmentSerializer,
@@ -18,6 +19,7 @@ from .serializers import (
     AssignCaretakerSerializer,
 )
 from accounts.permissions import IsLandlord, IsLandlordOrManager, IsLandlordOrManagerOrCaretaker
+from leases.models import Lease
 
 User = get_user_model()
 
@@ -50,8 +52,25 @@ class PropertyListCreateView(generics.ListCreateAPIView):
         serializer.save(landlord=self.request.user)
 
 
+class PropertyOptionsView(generics.ListAPIView):
+    """GET /api/properties/options/ - id and name only for dropdowns. No pagination; same permission as list."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    serializer_class = PropertyOptionsSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.has_role("landlord"):
+            return Property.objects.filter(landlord=user, is_closed=False).order_by("name")
+        if user.has_role("manager"):
+            return Property.objects.filter(manager_assignments__manager=user, is_closed=False).distinct().order_by("name")
+        if user.has_role("caretaker"):
+            return Property.objects.filter(caretaker_assignments__caretaker=user, is_closed=False).distinct().order_by("name")
+        return Property.objects.none()
+
+
 class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PUT/PATCH/DELETE /api/properties/<id>/ - caretaker can view only."""
+    """GET/PUT/PATCH/DELETE /api/properties/<id>/ - caretaker can view only. Landlord/manager can PATCH is_closed to close property."""
     permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
     serializer_class = PropertyDetailSerializer
 
@@ -69,6 +88,7 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
         if request.user.has_role("caretaker"):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Caretakers cannot edit property details.")
+        # Only landlord and manager can set is_closed (handled by serializer + same update path)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -347,3 +367,60 @@ class UnitBulkCreateView(APIView):
             else:
                 errors.append({i: serializer.errors})
         return Response({"created": len(created), "units": created, "errors": errors}, status=status.HTTP_201_CREATED)
+
+
+class PropertyComplaintRecipientsView(APIView):
+    """GET /api/properties/<id>/complaint-recipients/ - list users who can receive complaints (landlord, managers, caretakers) with role label. Tenant must have lease in this property; landlord/manager/caretaker must be assigned."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        user = request.user
+        # Tenant: must have an active lease in this property
+        if user.has_role("tenant"):
+            if not Lease.objects.filter(tenant=user, unit__property=prop, is_active=True).exists():
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You can only file complaints for properties you rent in.")
+        else:
+            # Landlord / manager / caretaker: must be assigned to this property
+            if user.has_role("landlord") and prop.landlord_id != user.id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have access to this property.")
+            if user.has_role("manager") and not prop.manager_assignments.filter(manager=user).exists():
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have access to this property.")
+            if user.has_role("caretaker") and not prop.caretaker_assignments.filter(caretaker=user).exists():
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have access to this property.")
+            if not (user.has_role("landlord") or user.has_role("manager") or user.has_role("caretaker")):
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have access to this property.")
+
+        out = []
+        landlord = prop.landlord
+        out.append({
+            "id": str(landlord.id),
+            "email": landlord.email,
+            "first_name": landlord.first_name or "",
+            "last_name": landlord.last_name or "",
+            "role": "Landlord",
+        })
+        for ma in prop.manager_assignments.select_related("manager").all():
+            m = ma.manager
+            out.append({
+                "id": str(m.id),
+                "email": m.email,
+                "first_name": m.first_name or "",
+                "last_name": m.last_name or "",
+                "role": "Manager",
+            })
+        for ca in prop.caretaker_assignments.select_related("caretaker").all():
+            c = ca.caretaker
+            out.append({
+                "id": str(c.id),
+                "email": c.email,
+                "first_name": c.first_name or "",
+                "last_name": c.last_name or "",
+                "role": "Caretaker",
+            })
+        return Response(out)

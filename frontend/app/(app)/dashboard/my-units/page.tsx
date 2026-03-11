@@ -37,7 +37,11 @@ export default function MyUnitsPage() {
           {units.map((lease) => (
             <div
               key={lease.id}
-              className="bg-white rounded-xl border border-surface-200 p-6 shadow-sm flex flex-col"
+              className={`rounded-xl border p-6 shadow-sm flex flex-col ${
+                lease.has_active_notice
+                  ? "bg-amber-50/80 border-amber-200 ring-1 ring-amber-200/50"
+                  : "bg-white border-surface-200"
+              }`}
             >
               <div className="font-semibold text-surface-900">
                 {lease.unit?.property?.name ?? "Property"}
@@ -85,19 +89,41 @@ export default function MyUnitsPage() {
                 </div>
               </dl>
               <div className="mt-6 flex gap-3">
-                <button
-                  onClick={() => setPayModalLease(lease)}
-                  disabled={lease.can_pay_rent === false || lease.payment_status === "paid"}
-                  className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
-                >
-                  Pay Rent
-                </button>
-                <button
-                  onClick={() => setNoticeModalLease(lease)}
-                  className="flex-1 py-2.5 px-4 border border-surface-300 hover:bg-surface-50 font-medium rounded-lg transition"
-                >
-                  Give Notice
-                </button>
+                {lease.payment_status === "paid" ? (
+                  <span className="flex-1 inline-flex items-center justify-center py-2.5 px-4 rounded-lg bg-emerald-100 text-emerald-800 font-medium">
+                    Paid
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setPayModalLease(lease)}
+                    disabled={lease.can_pay_rent === false}
+                    className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
+                  >
+                    Pay Rent
+                  </button>
+                )}
+                {lease.has_active_notice && lease.active_notice_id ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post(`/vacancies/notice/${lease.active_notice_id}/cancel/`);
+                        load();
+                      } catch {
+                        alert("Failed to revoke notice.");
+                      }
+                    }}
+                    className="flex-1 py-2.5 px-4 border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition"
+                  >
+                    Revoke Notice
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setNoticeModalLease(lease)}
+                    className="flex-1 py-2.5 px-4 border border-surface-300 hover:bg-surface-50 font-medium rounded-lg transition"
+                  >
+                    Give Notice
+                  </button>
+                )}
               </div>
             </div>
           ))}

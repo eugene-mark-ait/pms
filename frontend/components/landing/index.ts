@@ -5,6 +5,7 @@ export { default as Solution } from "./Solution";
 export { default as FeaturesByUser } from "./FeaturesByUser";
 export { default as Benefits } from "./Benefits";
 export { default as HowItWorks } from "./HowItWorks";
+export { default as MpesaRentSection } from "./MpesaRentSection";
 export { default as DashboardPreview } from "./DashboardPreview";
 export { default as Testimonials } from "./Testimonials";
 export { default as CTA } from "./CTA";

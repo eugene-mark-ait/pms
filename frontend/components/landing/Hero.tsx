@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative flex min-h-screen min-h-[100dvh] flex-col justify-center overflow-hidden bg-gradient-to-b from-surface-50 via-white to-surface-50 pt-20 pb-16 sm:pt-24 sm:pb-20">
+    <section className="relative flex min-h-[85vh] min-h-[100dvh] flex-col justify-center overflow-hidden bg-gradient-to-b from-surface-50 via-white to-surface-50 pt-20 pb-16 sm:pt-24 sm:pb-20">
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary-100/40 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-primary-50/60 blur-3xl" />
@@ -14,25 +14,29 @@ export default function Hero() {
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
           <div className="text-center lg:text-left">
             <h1 className="text-4xl font-bold tracking-tight text-surface-900 sm:text-5xl lg:text-6xl">
-              Smarter Renting &{" "}
-              <span className="text-primary-600">Property Management</span>{" "}
-              in One Platform
+              Property Management & Rent Collection, Simplified
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg text-surface-600 leading-relaxed lg:mx-0">
-              Simplify renting, property management, and financial tracking. Verified listings for tenants. Powerful tools for landlords and property managers.
+              One platform for landlords and tenants: list properties, manage leases, collect rent via M-Pesa, and track everything in one place. Tenants get verified listings and easy payments.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-4 lg:justify-start">
               <Link
-                href="/find-units"
+                href="/register"
                 className="inline-flex items-center justify-center rounded-xl bg-primary-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/25 hover:bg-primary-700 transition"
               >
-                Find a Home
+                Create Property
               </Link>
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center rounded-xl border-2 border-surface-300 bg-white px-6 py-3.5 text-base font-semibold text-surface-900 hover:border-surface-400 hover:bg-surface-50 transition"
               >
-                List Your Property
+                Get Started
+              </Link>
+              <Link
+                href="/find-units"
+                className="inline-flex items-center justify-center rounded-xl border-2 border-surface-200 bg-surface-50 px-6 py-3.5 text-base font-semibold text-surface-700 hover:bg-surface-100 transition"
+              >
+                Find a Home
               </Link>
             </div>
           </div>

@@ -40,6 +40,7 @@ interface PropertyDetail {
   name: string;
   address: string;
   location?: string;
+  is_closed?: boolean;
   landlord?: { id: string; email: string; first_name?: string; last_name?: string };
   unit_count?: number;
   occupied_count?: number;
@@ -73,8 +74,10 @@ export default function PropertyDetailPage() {
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
+  const isCaretaker = user?.role_names?.includes("caretaker");
   const canEdit = isLandlord || isManager;
   const canManageAssignments = isLandlord;
+  const canCloseProperty = (isLandlord || isManager) && !isCaretaker;
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -96,6 +99,16 @@ export default function PropertyDetailPage() {
       router.push("/properties");
     } catch {
       alert("Failed to delete property.");
+    }
+  }
+
+  async function handleCloseProperty() {
+    if (!property || property.is_closed || !confirm(`Close property "${property.name}"? You can reopen it later by editing the property.`)) return;
+    try {
+      await api.patch(`/properties/${id}/`, { is_closed: true });
+      refresh();
+    } catch {
+      alert("Failed to close property.");
     }
   }
 
@@ -221,13 +234,25 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/properties" className="text-surface-500 hover:text-surface-700">← Properties</Link>
-        {canEdit && (
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Link href="/properties" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Properties</Link>
+          {property.is_closed && (
+            <span className="inline-flex items-center rounded-md bg-surface-200 dark:bg-surface-600 px-2 py-0.5 text-xs font-medium text-surface-700 dark:text-surface-300">
+              Closed
+            </span>
+          )}
+        </div>
+        {canEdit && !property.is_closed && (
           <div className="flex gap-2">
-            <Link href={`/properties/${id}/edit`} className="rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">Edit</Link>
+            <Link href={`/properties/${id}/edit`} className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Edit</Link>
+            {canCloseProperty && (
+              <button type="button" onClick={handleCloseProperty} className="rounded-lg border border-amber-200 dark:border-amber-700 px-3 py-1.5 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
+                Close property
+              </button>
+            )}
             {isLandlord && (
-              <button type="button" onClick={handleDelete} className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Delete</button>
+              <button type="button" onClick={handleDelete} className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
             )}
           </div>
         )}

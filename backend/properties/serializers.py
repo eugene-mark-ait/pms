@@ -95,8 +95,15 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Property
-        fields = ["id", "name", "address", "location", "landlord", "unit_count", "first_image", "created_at"]
+        fields = ["id", "name", "address", "location", "landlord", "unit_count", "first_image", "is_closed", "created_at"]
         read_only_fields = ["id", "landlord", "unit_count", "created_at"]
+
+
+class PropertyOptionsSerializer(serializers.ModelSerializer):
+    """Minimal serializer for dropdowns: id and name only."""
+    class Meta:
+        model = Property
+        fields = ["id", "name"]
 
     def get_unit_count(self, obj):
         return obj.units.count()
@@ -112,10 +119,10 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create/update: name, address, location (landlord set in view). Returns id on create."""
+    """Create/update: name, address, location, is_closed (landlord set in view). Only landlord/manager can set is_closed."""
     class Meta:
         model = Property
-        fields = ["id", "name", "address", "location"]
+        fields = ["id", "name", "address", "location", "is_closed"]
         read_only_fields = ["id"]
 
 
@@ -139,6 +146,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "address",
             "location",
             "landlord",
+            "is_closed",
             "images",
             "unit_count",
             "occupied_count",

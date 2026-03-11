@@ -14,6 +14,10 @@ class Property(models.Model):
         on_delete=models.CASCADE,
         related_name="owned_properties",
     )
+    is_closed = models.BooleanField(
+        default=False,
+        help_text="When True, property is ended/closed (e.g. by manager). No new leases; existing data retained.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

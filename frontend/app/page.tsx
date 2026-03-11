@@ -1,11 +1,10 @@
 import {
   Navbar,
   Hero,
-  Problem,
-  Solution,
-  FeaturesByUser,
   Benefits,
+  FeaturesByUser,
   HowItWorks,
+  MpesaRentSection,
   DashboardPreview,
   Testimonials,
   CTA,
@@ -18,10 +17,9 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <Problem />
-        <Solution />
-        <FeaturesByUser />
         <Benefits />
+        <MpesaRentSection />
+        <FeaturesByUser />
         <HowItWorks />
         <DashboardPreview />
         <Testimonials />

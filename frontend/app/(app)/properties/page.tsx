@@ -12,14 +12,16 @@ interface Property {
   location?: string;
   unit_count: number;
   first_image?: string | null;
+  is_closed?: boolean;
 }
 
 export default function PropertiesPage() {
   const [user, setUser] = useState<User | null>(null);
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
+  const isCaretaker = user?.role_names?.includes("caretaker");
   const canEditDelete = isLandlord || isManager;
-  const enabled = user !== null && (isLandlord || isManager);
+  const enabled = user !== null && (isLandlord || isManager || isCaretaker);
 
   const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Property>({
     endpoint: "/properties/",
@@ -41,11 +43,11 @@ export default function PropertiesPage() {
     }
   }
 
-  if (user && !isLandlord && !isManager) {
+  if (user && !isLandlord && !isManager && !isCaretaker) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-surface-900">Properties</h1>
-        <p className="text-surface-600">You don’t have access to view properties.</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Properties</h1>
+        <p className="text-surface-600 dark:text-surface-400">You don’t have access to view properties.</p>
       </div>
     );
   }
@@ -81,12 +83,19 @@ export default function PropertiesPage() {
                   )}
                 </Link>
                 <div className="p-4">
-                  <h2 className="font-semibold text-surface-900">{p.name}</h2>
-                  <p className="text-sm text-surface-600 mt-1">{p.location || p.address}</p>
-                  <p className="text-xs text-surface-500 mt-1">{p.unit_count ?? 0} unit(s)</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-semibold text-surface-900 dark:text-surface-100">{p.name}</h2>
+                    {p.is_closed && (
+                      <span className="inline-flex items-center rounded-md bg-surface-200 dark:bg-surface-600 px-2 py-0.5 text-xs font-medium text-surface-700 dark:text-surface-300">
+                        Closed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{p.location || p.address}</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-500 mt-1">{p.unit_count ?? 0} unit(s)</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/properties/${p.id}`} className="text-primary-600 hover:underline text-sm font-medium min-h-[44px] sm:min-h-0 inline-flex items-center">View</Link>
-                    {canEditDelete && (
+                    <Link href={`/properties/${p.id}`} className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium min-h-[44px] sm:min-h-0 inline-flex items-center">View</Link>
+                    {canEditDelete && !p.is_closed && (
                       <>
                         <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
                         {isLandlord && (

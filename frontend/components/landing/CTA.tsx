@@ -20,16 +20,16 @@ export default function CTA() {
             Get Started
           </Link>
           <Link
+            href="/register"
+            className="inline-flex items-center justify-center rounded-xl border-2 border-white/50 bg-white/10 px-6 py-3.5 text-base font-semibold text-white hover:bg-white/20 transition backdrop-blur"
+          >
+            Create Property
+          </Link>
+          <Link
             href="/find-units"
             className="inline-flex items-center justify-center rounded-xl border-2 border-white/50 bg-white/10 px-6 py-3.5 text-base font-semibold text-white hover:bg-white/20 transition backdrop-blur"
           >
             Find a Home
-          </Link>
-          <Link
-            href="/register"
-            className="inline-flex items-center justify-center rounded-xl border-2 border-white/50 bg-white/10 px-6 py-3.5 text-base font-semibold text-white hover:bg-white/20 transition backdrop-blur"
-          >
-            List Your Property
           </Link>
         </div>
       </div>

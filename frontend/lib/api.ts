@@ -109,6 +109,7 @@ export interface Lease {
   can_pay_rent?: boolean;
   has_active_notice?: boolean;
   active_notice_move_out_date?: string | null;
+  active_notice_id?: string | null;
   created_at: string;
 }
 
