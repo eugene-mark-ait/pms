@@ -12,12 +12,7 @@ class Payment(models.Model):
         REFUNDED = "refunded", "Refunded"
 
     class PaymentMethod(models.TextChoices):
-        CARD = "card", "Card"
-        BANK_TRANSFER = "bank_transfer", "Bank Transfer"
-        CASH = "cash", "Cash"
-        CHECK = "check", "Check"
         MPESA = "mpesa", "M-Pesa"
-        OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lease = models.ForeignKey(
@@ -33,7 +28,7 @@ class Payment(models.Model):
     payment_method = models.CharField(
         max_length=50,
         choices=PaymentMethod.choices,
-        default=PaymentMethod.OTHER,
+        default=PaymentMethod.MPESA,
     )
     payment_status = models.CharField(
         max_length=20,

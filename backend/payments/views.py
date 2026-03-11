@@ -28,7 +28,7 @@ class PayRentView(generics.GenericAPIView):
         data = serializer.validated_data
         lease_id = data["lease_id"]
         months = data["months"]
-        payment_method = data["payment_method"]
+        payment_method = data.get("payment_method") or Payment.PaymentMethod.MPESA
 
         lease = get_object_or_404(
             Lease,
@@ -87,7 +87,7 @@ class PayRentView(generics.GenericAPIView):
             period_start=period_start,
             period_end=period_end,
             payment_date=today,
-            payment_method=payment_method,
+            payment_method=Payment.PaymentMethod.MPESA,
             payment_status=Payment.PaymentStatus.COMPLETED,
         )
 

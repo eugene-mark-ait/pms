@@ -43,47 +43,47 @@ export default function GiveNoticeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-surface-900 mb-4">Give Notice</h2>
-        <p className="text-surface-600 text-sm mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Give Notice</h2>
+        <p className="text-surface-600 dark:text-surface-400 text-sm mb-6">
           {lease.unit?.property?.name} – Unit {lease.unit?.unit_number}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Move-out date *</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Move-out date *</label>
             <input
               type="date"
               value={moveOutDate}
               onChange={(e) => setMoveOutDate(e.target.value)}
               required
-              className="w-full px-4 py-2 rounded-lg border border-surface-300"
+              className="w-full px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Reason (optional)</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Reason (optional)</label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Relocating"
-              className="w-full px-4 py-2 rounded-lg border border-surface-300"
+              className="w-full px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder:text-surface-400 dark:placeholder:text-surface-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Message (optional)</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Message (optional)</label>
             <textarea
               value={noticeMessage}
               onChange={(e) => setNoticeMessage(e.target.value)}
               rows={3}
               placeholder="Additional details for landlord/manager"
-              className="w-full px-4 py-2 rounded-lg border border-surface-300"
+              className="w-full px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder:text-surface-400 dark:placeholder:text-surface-500"
             />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 rounded-lg hover:bg-surface-50">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button type="submit" disabled={loading} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">

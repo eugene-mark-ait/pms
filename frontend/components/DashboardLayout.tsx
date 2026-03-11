@@ -76,7 +76,7 @@ export default function DashboardLayout({
           <button
             type="button"
             onClick={() => setSidebarCollapsed((c) => !c)}
-            className="p-2 rounded-lg text-surface-500 hover:bg-surface-100 hover:text-surface-700 shrink-0"
+            className="p-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 hover:text-surface-700 dark:hover:text-surface-200 shrink-0"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -120,11 +120,11 @@ export default function DashboardLayout({
             })
           )}
         </nav>
-        <div className="p-2 border-t border-surface-200">
+        <div className="p-2 border-t border-surface-200 dark:border-surface-700">
           <button
             onClick={logout}
             className={clsx(
-              "w-full flex items-center gap-3 rounded-lg text-sm font-medium text-surface-700 hover:bg-surface-100 py-2.5 transition",
+              "w-full flex items-center gap-3 rounded-lg text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 py-2.5 transition",
               sidebarCollapsed ? "justify-center px-2" : "px-3"
             )}
             title={sidebarCollapsed ? "Log out" : undefined}
@@ -137,6 +137,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 transition-[margin] duration-200" style={{ marginLeft: sidebarWidth }}>
         <header className="h-14 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex items-center justify-between px-4 sm:px-6 shrink-0">
           <span className="text-surface-600 dark:text-surface-400 text-sm">Property Management / Rent Collection</span>
+          <ThemeToggle />
         </header>
         <main className="flex-1 w-full min-w-0 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>

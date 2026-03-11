@@ -100,18 +100,23 @@ class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):
 
 
 class CancelNoticeView(APIView):
-    """POST /api/vacancies/notice/<id>/cancel/ - tenant cancels their vacate notice. Only allowed before notice_due_date (move_out_date)."""
+    """POST /api/vacancies/notice/<id>/cancel/ - tenant cancels their vacate notice. Only allowed before notice_due_date (move_out_date). Idempotent: already cancelled returns success."""
     permission_classes = [IsAuthenticated, IsTenant]
 
     def post(self, request, pk):
         from django.utils import timezone
         today = timezone.now().date()
-        notice = get_object_or_404(
-            VacateNotice,
+        notice = VacateNotice.objects.filter(
             pk=pk,
             lease__tenant=request.user,
-            notice_cancelled=False,
-        )
+        ).first()
+        if not notice:
+            return Response(
+                {"detail": "No vacate notice found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if notice.notice_cancelled:
+            return Response({"success": True, "already_cancelled": True})
         if notice.move_out_date <= today:
             return Response(
                 {"detail": "Cannot cancel notice after the due date has passed."},
@@ -119,8 +124,8 @@ class CancelNoticeView(APIView):
             )
         notice.notice_cancelled = True
         notice.save(update_fields=["notice_cancelled"])
-        if hasattr(notice, "vacancy_listing") and notice.vacancy_listing_id:
-            listing = notice.vacancy_listing
+        listing = getattr(notice, "vacancy_listing", None)
+        if listing:
             listing.is_filled = True
             listing.save(update_fields=["is_filled", "updated_at"])
         return Response({"success": True})

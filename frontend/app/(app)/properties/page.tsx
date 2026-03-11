@@ -55,7 +55,7 @@ export default function PropertiesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-surface-900">Properties</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Properties</h1>
         {isLandlord && (
           <Link
             href="/properties/new"
@@ -84,12 +84,12 @@ export default function PropertiesPage() {
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {list.map((p) => (
-              <div key={p.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm hover:shadow-md transition">
-                <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 relative">
+              <div key={p.id} className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden shadow-sm hover:shadow-md transition">
+                <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 dark:bg-surface-700 relative">
                   {p.first_image ? (
                     <img src={p.first_image} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-surface-400 text-sm">No image</div>
+                    <div className="w-full h-full flex items-center justify-center text-surface-400 dark:text-surface-500 text-sm">No image</div>
                   )}
                 </Link>
                 <div className="p-4">
@@ -107,9 +107,9 @@ export default function PropertiesPage() {
                     <Link href={`/properties/${p.id}`} className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium min-h-[44px] sm:min-h-0 inline-flex items-center">View</Link>
                     {canEditDelete && !p.is_closed && (
                       <>
-                        <Link href={`/properties/${p.id}/edit`} className="text-surface-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
+                        <Link href={`/properties/${p.id}/edit`} className="text-surface-600 dark:text-surface-400 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
                         {isLandlord && (
-                          <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 hover:underline text-sm min-h-[44px] sm:min-h-0">Delete</button>
+                          <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 dark:text-red-400 hover:underline text-sm min-h-[44px] sm:min-h-0">Delete</button>
                         )}
                       </>
                     )}

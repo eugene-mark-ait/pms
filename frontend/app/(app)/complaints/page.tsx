@@ -29,6 +29,16 @@ export default function ComplaintsPage() {
   }, []);
 
   const isTenant = user?.role_names?.includes("tenant");
+  const canManageComplaints = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
+
+  async function closeComplaint(id: string) {
+    try {
+      await api.patch(`/complaints/${id}/`, { status: "closed" });
+      refresh();
+    } catch {
+      alert("Failed to close complaint.");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -51,27 +61,37 @@ export default function ComplaintsPage() {
         <p className="text-surface-600 dark:text-surface-400">No complaints.{isTenant && " Use \"File complaint\" to submit an issue for your unit."}</p>
       ) : (
         <>
-          <div className="hidden md:block bg-white rounded-xl border border-surface-200 overflow-hidden">
+          <div className="hidden md:block bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-surface-50 border-b border-surface-200">
+              <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-700">
                 <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Title</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Priority</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Assigned to</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Created</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Title</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Status</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Priority</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Assigned to</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Created</th>
+                  {canManageComplaints && <th className="text-right px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-200">
+              <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                 {list.map((c) => (
-                  <tr key={c.id} className="hover:bg-surface-50">
-                    <td className="px-6 py-4 font-medium">{c.title}</td>
-                    <td className="px-6 py-4 capitalize">{c.status?.replace("_", " ")}</td>
-                    <td className="px-6 py-4 capitalize">{c.priority ?? "—"}</td>
-                    <td className="px-6 py-4 text-surface-600">
+                  <tr key={c.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/30">
+                    <td className="px-6 py-4 font-medium text-surface-900 dark:text-surface-100">{c.title}</td>
+                    <td className="px-6 py-4 capitalize text-surface-700 dark:text-surface-300">{c.status?.replace("_", " ")}</td>
+                    <td className="px-6 py-4 capitalize text-surface-600 dark:text-surface-400">{c.priority ?? "—"}</td>
+                    <td className="px-6 py-4 text-surface-600 dark:text-surface-400">
                       {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "—"}
                     </td>
-                    <td className="px-6 py-4 text-surface-600">{new Date(c.created_at).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{new Date(c.created_at).toLocaleDateString()}</td>
+                    {canManageComplaints && (
+                      <td className="px-6 py-4 text-right">
+                        {c.status !== "closed" && (
+                          <button type="button" onClick={() => closeComplaint(c.id)} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                            Close
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -79,12 +99,17 @@ export default function ComplaintsPage() {
           </div>
           <div className="md:hidden space-y-3">
             {list.map((c) => (
-              <div key={c.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
-                <p className="font-medium text-surface-900">{c.title}</p>
-                <p className="text-sm text-surface-600 mt-1 capitalize">{c.status?.replace("_", " ")} · {c.priority ?? "—"}</p>
-                <p className="text-sm text-surface-500 mt-2">
+              <div key={c.id} className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm">
+                <p className="font-medium text-surface-900 dark:text-surface-100">{c.title}</p>
+                <p className="text-sm text-surface-600 dark:text-surface-400 mt-1 capitalize">{c.status?.replace("_", " ")} · {c.priority ?? "—"}</p>
+                <p className="text-sm text-surface-500 dark:text-surface-500 mt-2">
                   {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "Unassigned"} · {new Date(c.created_at).toLocaleDateString()}
                 </p>
+                {canManageComplaints && c.status !== "closed" && (
+                  <button type="button" onClick={() => closeComplaint(c.id)} className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">
+                    Close complaint
+                  </button>
+                )}
               </div>
             ))}
           </div>

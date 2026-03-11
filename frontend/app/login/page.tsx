@@ -42,7 +42,7 @@ export default function LoginPage() {
 
   return (
     <SocialAuthProviders>
-      <div className="min-h-screen flex items-center justify-center bg-surface-100 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-surface-100 dark:bg-surface-900 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 p-8">
             <h1 className="text-2xl font-bold text-center text-surface-900 dark:text-white mb-2">
@@ -63,7 +63,7 @@ export default function LoginPage() {
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-surface-200" />
+                <div className="w-full border-t border-surface-200 dark:border-surface-600" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white dark:bg-surface-800 text-surface-500">

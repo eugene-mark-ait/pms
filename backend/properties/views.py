@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -120,6 +121,8 @@ class UnitListCreateView(generics.ListCreateAPIView):
         return qs.distinct().order_by("property", "unit_number")
 
     def perform_create(self, serializer):
+        if self.request.user.has_role("caretaker"):
+            raise PermissionDenied("Caretakers cannot create units.")
         serializer.save()
 
 
@@ -137,6 +140,16 @@ class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
         if user.has_role("caretaker"):
             return Unit.objects.filter(property__caretaker_assignments__caretaker=user).distinct()
         return Unit.objects.none()
+
+    def update(self, request, *args, **kwargs):
+        if request.user.has_role("caretaker"):
+            raise PermissionDenied("Caretakers cannot edit units.")
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_role("caretaker"):
+            raise PermissionDenied("Caretakers cannot delete units.")
+        return super().destroy(request, *args, **kwargs)
 
 
 def _property_for_landlord(request, pk):

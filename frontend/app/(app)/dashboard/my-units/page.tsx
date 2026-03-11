@@ -13,6 +13,7 @@ export default function MyUnitsPage() {
   const [noticeModalLease, setNoticeModalLease] = useState<Lease | null>(null);
 
   function load() {
+    setLoading(true);
     api.get<Lease[]>("/tenant/my-units/").then((res) => {
       const data = res.data;
       setUnits(Array.isArray(data) ? data : (data as { results?: Lease[] })?.results ?? []);

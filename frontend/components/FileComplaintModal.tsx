@@ -83,9 +83,20 @@ export default function FileComplaintModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60" onClick={onClose}>
-      <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-surface-200 dark:border-surface-700" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">File a complaint</h2>
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-surface-900/40 dark:bg-surface-950/50 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="file-complaint-title"
+    >
+      <div
+        className="w-full max-w-md h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 overflow-y-auto animate-slide-in-right"
+        onClick={(e) => e.stopPropagation()}
+        style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
+      >
+        <div className="p-6">
+        <h2 id="file-complaint-title" className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">File a complaint</h2>
         <p className="text-surface-600 dark:text-surface-400 text-sm mb-6">
           Choose the unit and who should receive this (Landlord, Caretaker, or Manager). The complaint will be linked to your unit.
         </p>
@@ -170,6 +181,7 @@ export default function FileComplaintModal({
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

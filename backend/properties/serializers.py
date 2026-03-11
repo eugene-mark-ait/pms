@@ -98,13 +98,6 @@ class PropertyListSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "address", "location", "landlord", "unit_count", "first_image", "is_closed", "created_at"]
         read_only_fields = ["id", "landlord", "unit_count", "created_at"]
 
-
-class PropertyOptionsSerializer(serializers.ModelSerializer):
-    """Minimal serializer for dropdowns: id and name only."""
-    class Meta:
-        model = Property
-        fields = ["id", "name"]
-
     def get_unit_count(self, obj):
         return obj.units.count()
 
@@ -116,6 +109,13 @@ class PropertyOptionsSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(img.image.url)
             return img.image.url
         return None
+
+
+class PropertyOptionsSerializer(serializers.ModelSerializer):
+    """Minimal serializer for dropdowns: id and name only."""
+    class Meta:
+        model = Property
+        fields = ["id", "name"]
 
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
@@ -180,6 +180,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         process_due_notices()
         qs = (
             VacancyListing.objects.filter(property=obj, is_filled=False)
+            .exclude(vacate_notice__notice_cancelled=True)
             .select_related("unit", "vacate_notice", "vacate_notice__lease", "vacate_notice__lease__tenant")
             .order_by("available_from")[:50]
         )

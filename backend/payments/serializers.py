@@ -29,5 +29,5 @@ class PayRentSerializer(serializers.Serializer):
     months = serializers.IntegerField(min_value=1, max_value=3)
     payment_method = serializers.ChoiceField(
         choices=Payment.PaymentMethod.choices,
-        default=Payment.PaymentMethod.OTHER,
+        default=Payment.PaymentMethod.MPESA,
     )

@@ -14,7 +14,7 @@ export default function PayRentModal({
   onSuccess: () => void;
 }) {
   const [months, setMonths] = useState<1 | 2 | 3>(1);
-  const [paymentMethod, setPaymentMethod] = useState("other");
+  const [paymentMethod] = useState("mpesa");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,35 +45,35 @@ export default function PayRentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-surface-900 mb-4">Pay Rent</h2>
-        <p className="text-surface-600 text-sm mb-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Pay Rent</h2>
+        <p className="text-surface-600 dark:text-surface-400 text-sm mb-2">
           {lease.unit?.property?.name} – Unit {lease.unit?.unit_number}
         </p>
-        <dl className="space-y-1 text-sm mb-6">
+        <dl className="space-y-1 text-sm mb-6 text-surface-700 dark:text-surface-300">
           <div className="flex justify-between">
-            <dt className="text-surface-500">Monthly rent</dt>
+            <dt className="text-surface-500 dark:text-surface-400">Monthly rent</dt>
             <dd>{formatKSH(lease.monthly_rent)}</dd>
           </div>
           {depositToAdd > 0 && (
-            <div className="flex justify-between text-amber-700">
-              <dt className="text-surface-500">Deposit (included in first payment)</dt>
+            <div className="flex justify-between text-amber-700 dark:text-amber-400">
+              <dt className="text-surface-500 dark:text-surface-400">Deposit (included in first payment)</dt>
               <dd>{formatKSH(depositToAdd)}</dd>
             </div>
           )}
           <div className="flex justify-between">
-            <dt className="text-surface-500">Last payment</dt>
+            <dt className="text-surface-500 dark:text-surface-400">Last payment</dt>
             <dd>{lease.last_payment_date ? format(new Date(lease.last_payment_date), "MMM d, yyyy") : "—"}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-surface-500">Outstanding balance</dt>
+            <dt className="text-surface-500 dark:text-surface-400">Outstanding balance</dt>
             <dd>{formatKSH(lease.outstanding_balance ?? "0")}</dd>
           </div>
         </dl>
 
         {!canPay && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
             {lease.payment_status === "paid"
               ? "Current period is already paid."
               : "Rent is not yet due. You can pay from the due date."}
@@ -81,9 +81,9 @@ export default function PayRentModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-2">Months to pay</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Months to pay</label>
             <div className="flex gap-2">
               {([1, 2, 3] as const).map((n) => (
                 <button
@@ -93,7 +93,7 @@ export default function PayRentModal({
                   className={`flex-1 py-2 rounded-lg border font-medium transition ${
                     months === n
                       ? "bg-primary-600 text-white border-primary-600"
-                      : "border-surface-300 hover:bg-surface-50"
+                      : "border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-900 dark:text-surface-200"
                   }`}
                 >
                   {n} {n === 1 ? "month" : "months"}
@@ -101,24 +101,10 @@ export default function PayRentModal({
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Payment method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-surface-300"
-            >
-              <option value="mpesa">M-Pesa</option>
-              <option value="card">Card</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="cash">Cash</option>
-              <option value="check">Check</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <p className="text-lg font-semibold text-surface-900">Total: {formatKSH(total)}</p>
+          <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Payment method: M-Pesa</p>
+          <p className="text-lg font-semibold text-surface-900 dark:text-surface-100">Total: {formatKSH(total)}</p>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 rounded-lg hover:bg-surface-50 min-h-[44px]">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 min-h-[44px]">
               Cancel
             </button>
             <button type="submit" disabled={loading || !canPay} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 min-h-[44px]">
