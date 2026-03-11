@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -9,8 +9,10 @@ interface UnitOption {
   id: string;
   unit_number: string;
   property: string;
+  property_name?: string;
   monthly_rent?: string;
   security_deposit?: string;
+  is_vacant?: boolean;
 }
 
 interface PropertyOption {
@@ -22,6 +24,7 @@ export default function NewLeasePage() {
   const router = useRouter();
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [propertyId, setPropertyId] = useState("");
   const [unitId, setUnitId] = useState("");
   const [tenantSearch, setTenantSearch] = useState("");
   const [searchByPhone, setSearchByPhone] = useState(false);
@@ -34,19 +37,57 @@ export default function NewLeasePage() {
   const [depositPaid, setDepositPaid] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [propertiesError, setPropertiesError] = useState("");
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [unitsError, setUnitsError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Load properties once (options endpoint, no pagination)
   useEffect(() => {
-    Promise.all([
-      api.get<UnitOption[] | { results: UnitOption[] }>("/units/").then((r) => r.data),
-      api.get<PropertyOption[] | { results: PropertyOption[] }>("/properties/").then((r) => r.data),
-    ]).then(([unitsData, propsData]) => {
-      setUnits(Array.isArray(unitsData) ? unitsData : (unitsData as { results?: UnitOption[] })?.results ?? []);
-      setProperties(Array.isArray(propsData) ? propsData : (propsData as { results?: PropertyOption[] })?.results ?? []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    setPropertiesLoading(true);
+    setPropertiesError("");
+    api.get<PropertyOption[]>("/properties/options/")
+      .then((res) => setProperties(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setPropertiesError("Could not load properties. Check your connection or permissions."))
+      .finally(() => setPropertiesLoading(false));
   }, []);
+
+  // Load units when property is selected (filtered by property, vacant only for assign-tenant)
+  const fetchUnits = useCallback((propId: string) => {
+    if (!propId) {
+      setUnits([]);
+      setUnitId("");
+      setUnitsError("");
+      return;
+    }
+    setUnitsLoading(true);
+    setUnitsError("");
+    setUnitId("");
+    setUnits([]);
+    setMonthlyRent("");
+    setDepositAmount("0");
+    api.get<UnitOption[] | { results: UnitOption[] }>("/units/", {
+      params: { property: propId, page_size: 500 },
+    })
+      .then((res) => {
+        const data = res.data;
+        const list = Array.isArray(data) ? data : (data as { results?: UnitOption[] })?.results ?? [];
+        setUnits(list);
+      })
+      .catch(() => setUnitsError("Could not load units for this property."))
+      .finally(() => setUnitsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (propertyId) fetchUnits(propertyId);
+    else {
+      setUnits([]);
+      setUnitId("");
+      setUnitsError("");
+    }
+  }, [propertyId, fetchUnits]);
 
   useEffect(() => {
     if (!unitId) return;
@@ -108,32 +149,80 @@ export default function NewLeasePage() {
     }
   }
 
-  const propertyName = (id: string) => properties.find((p) => p.id === id)?.name ?? id;
+  const vacantUnits = units.filter((u) => u.is_vacant !== false);
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
+  if (propertiesLoading) {
+    return (
+      <div className="space-y-6">
+        <Link href="/tenants" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Tenants</Link>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add Lease (Assign Tenant)</h1>
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+          <span>Loading properties…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (propertiesError) {
+    return (
+      <div className="space-y-6">
+        <Link href="/tenants" className="text-surface-500 dark:text-surface-400 hover:text-surface-700">← Tenants</Link>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add Lease (Assign Tenant)</h1>
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+          <p className="text-red-700 dark:text-red-300 text-sm">{propertiesError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <Link href="/tenants" className="text-surface-500 hover:text-surface-700">← Tenants</Link>
-      <h1 className="text-2xl font-bold text-surface-900">Add Lease (Assign Tenant)</h1>
+      <Link href="/tenants" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Tenants</Link>
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add Lease (Assign Tenant)</h1>
       <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Unit</label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Property</label>
+          <select
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 px-3 py-2"
+            required
+          >
+            <option value="">Select property</option>
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Unit</label>
           <select
             value={unitId}
             onChange={(e) => setUnitId(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 dark:bg-surface-700 dark:text-surface-100 px-3 py-2"
             required
+            disabled={!propertyId || unitsLoading}
           >
-            <option value="">Select unit</option>
-            {units.map((u) => (
+            <option value="">
+              {!propertyId ? "Select a property first" : unitsLoading ? "Loading units…" : vacantUnits.length === 0 ? "No vacant units" : "Select unit"}
+            </option>
+            {vacantUnits.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.unit_number} – {propertyName(u.property)}
+                {u.unit_number} {u.property_name ? `– ${u.property_name}` : ""}
               </option>
             ))}
           </select>
+          {unitsLoading && (
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400 flex items-center gap-2">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+              Loading units…
+            </p>
+          )}
+          {unitsError && !unitsLoading && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{unitsError}</p>}
         </div>
 
         <div>

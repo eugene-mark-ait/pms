@@ -72,8 +72,16 @@ export function useInfiniteScroll<T>({
         }
         setNextUrl(next ?? null);
         nextPageRef.current = page + 1;
-      } catch {
-        setError("Failed to load.");
+      } catch (err: unknown) {
+        const ax = err as { response?: { status?: number; data?: { detail?: string } } };
+        const status = ax.response?.status;
+        const detail = ax.response?.data?.detail;
+        if (status === 401) setError("Please log in again.");
+        else if (status === 403) setError("You don’t have permission to view this.");
+        else if (status === 404) setError("Not found.");
+        else if (typeof detail === "string" && detail) setError(detail);
+        else if (status && status >= 500) setError("Server error. Please try again later.");
+        else setError("Failed to load. Check your connection and try again.");
         if (!append) setItems([]);
       } finally {
         setLoading(false);

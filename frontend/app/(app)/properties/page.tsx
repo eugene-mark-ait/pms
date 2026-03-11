@@ -65,14 +65,24 @@ export default function PropertiesPage() {
           </Link>
         )}
       </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && (
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+          <button type="button" onClick={() => refresh()} className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700">
+            Retry
+          </button>
+        </div>
+      )}
       {loading ? (
-        <p className="text-surface-500">Loading…</p>
-      ) : list.length === 0 ? (
-        <p className="text-surface-600">No properties.{isLandlord && <> <Link href="/properties/new" className="text-primary-600 hover:underline">Add one</Link>.</>}</p>
-      ) : (
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+          <span>Loading properties…</span>
+        </div>
+      ) : list.length === 0 && !error ? (
+        <p className="text-surface-600 dark:text-surface-400">No properties.{isLandlord && <> <Link href="/properties/new" className="text-primary-600 dark:text-primary-400 hover:underline">Add one</Link>.</>}</p>
+      ) : list.length > 0 ? (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {list.map((p) => (
               <div key={p.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm hover:shadow-md transition">
                 <Link href={`/properties/${p.id}`} className="block aspect-video bg-surface-100 relative">
@@ -111,9 +121,9 @@ export default function PropertiesPage() {
           <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
             {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
           </div>
-          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more properties</p>}
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more properties</p>}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

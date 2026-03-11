@@ -134,11 +134,11 @@ export default function DashboardLayout({
           </button>
         </div>
       </aside>
-      <div className="flex-1 flex flex-col transition-[margin] duration-200" style={{ marginLeft: sidebarWidth }}>
-        <header className="h-14 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex items-center justify-between px-6 shrink-0">
-          <span className="text-surface-600 dark:text-surface-400 text-sm">Property Management</span>
+      <div className="flex-1 flex flex-col min-w-0 transition-[margin] duration-200" style={{ marginLeft: sidebarWidth }}>
+        <header className="h-14 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex items-center justify-between px-4 sm:px-6 shrink-0">
+          <span className="text-surface-600 dark:text-surface-400 text-sm">Property Management / Rent Collection</span>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
