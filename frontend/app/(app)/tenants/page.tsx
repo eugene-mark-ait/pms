@@ -1,140 +1,299 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { api, User, getDisplayName } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { clsx } from "clsx";
 
 interface Lease {
   id: string;
-  tenant: { email: string; first_name: string; last_name: string };
-  unit: { unit_number: string; property: { name: string } };
+  tenant: { email: string; first_name?: string; last_name?: string; phone?: string };
+  unit: { id?: string; unit_number: string; property: { name: string } };
   payment_status?: string;
   is_active?: boolean;
 }
 
+interface UnitOption {
+  id: string;
+  unit_number: string;
+  property_name?: string;
+  property?: { name: string };
+}
+
 export default function TenantsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"current" | "previous" | "all">("current");
+  const [unitFilter, setUnitFilter] = useState<string>("");
+  const [units, setUnits] = useState<UnitOption[]>([]);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+
   const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
   const enabled = !!user && !!canView;
+
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (statusFilter === "current") p.is_active = "true";
+    else if (statusFilter === "previous") p.is_active = "false";
+    if (unitFilter) p.unit = unitFilter;
+    return p;
+  }, [statusFilter, unitFilter]);
 
   const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Lease>({
     endpoint: "/leases/",
     pageSize: 20,
     enabled,
+    params,
   });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
+  useEffect(() => {
+    if (!canView) return;
+    setUnitsLoading(true);
+    api
+      .get<UnitOption[] | { results: UnitOption[] }>("/units/", { params: { page_size: 500, page: 1 } })
+      .then((res) => {
+        const data = res.data;
+        const list = Array.isArray(data) ? data : (data as { results?: UnitOption[] })?.results ?? [];
+        const options: UnitOption[] = list.map((u) => ({
+          id: u.id,
+          unit_number: u.unit_number,
+          property_name: u.property?.name ?? u.property_name,
+        }));
+        setUnits(options.sort((a, b) => (a.property_name || "").localeCompare(b.property_name || "") || a.unit_number.localeCompare(b.unit_number)));
+      })
+      .catch(() => setUnits([]))
+      .finally(() => setUnitsLoading(false));
+  }, [canView]);
+
   if (user && !canView) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-surface-900">Tenants</h1>
-        <p className="text-surface-600">You don’t have access to view tenants and leases.</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Tenants</h1>
+        <p className="text-surface-600 dark:text-surface-400">You don’t have access to view tenants and leases.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-surface-900">Tenants</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Tenants</h1>
         {canManage && (
           <Link href="/tenants/new" className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center">
             Add Lease (Assign Tenant)
           </Link>
         )}
       </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+
+      {canView && (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="tenant-status-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
+              Status
+            </label>
+            <select
+              id="tenant-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "current" | "previous" | "all")}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm min-w-[140px]"
+            >
+              <option value="current">Current tenants</option>
+              <option value="previous">Previous tenants</option>
+              <option value="all">All tenants</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="tenant-unit-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
+              Apartment / Unit
+            </label>
+            <select
+              id="tenant-unit-filter"
+              value={unitFilter}
+              onChange={(e) => setUnitFilter(e.target.value)}
+              disabled={unitsLoading}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm min-w-[180px]"
+            >
+              <option value="">All units</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.property_name ? `${u.property_name} – ${u.unit_number}` : u.unit_number}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       {loading ? (
-        <p className="text-surface-500">Loading…</p>
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+          <span>Loading tenants…</span>
+        </div>
       ) : list.length === 0 ? (
-        <p className="text-surface-600">No tenants.</p>
+        <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
+          <p className="text-surface-600 dark:text-surface-400 font-medium">No tenants found.</p>
+          <p className="text-sm text-surface-500 dark:text-surface-500 mt-1">Try changing the filters or add a lease to assign a tenant.</p>
+        </div>
       ) : (
         <>
-          <div className="hidden md:block bg-white rounded-xl border border-surface-200 overflow-hidden">
+          <div className="hidden md:block bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-surface-50 border-b border-surface-200">
+              <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-700">
                 <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Tenant</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Property / Unit</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700">Status</th>
-                  <th className="text-right px-6 py-3 text-sm font-medium text-surface-700">Actions</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Tenant</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Property / Unit</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Status</th>
+                  <th className="text-right px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-200">
-                {list.map((l) => (
-                  <tr key={l.id} className="hover:bg-surface-50">
-                    <td className="px-6 py-4">
-                      <span className="font-medium text-surface-900">{getDisplayName(l.tenant)}</span>
-                      <span className="text-surface-500 text-sm block">{l.tenant?.email}</span>
-                      {l.tenant?.phone && <span className="text-surface-500 text-sm block">{l.tenant.phone}</span>}
-                    </td>
-                    <td className="px-6 py-4 text-surface-600">
-                      {typeof l.unit?.property === "object" && l.unit?.property?.name
-                        ? `${l.unit.property.name} – ${l.unit.unit_number}`
-                        : `${l.unit?.unit_number}`}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {l.is_active !== false && (
-                          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Active lease</span>
-                        )}
-                        {l.payment_status === "overdue" && (
-                          <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-600/20">Overdue</span>
-                        )}
-                        {l.payment_status === "paid" || l.payment_status === "current" ? (
-                          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">Paid</span>
-                        ) : l.payment_status !== "overdue" && l.payment_status && (
-                          <span className="inline-flex items-center rounded-md bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600">{l.payment_status}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {canManage && (
-                        <Link href={`/tenants/${l.id}/edit`} className="text-primary-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
+              <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
+                {list.map((l) => {
+                  const isPrevious = l.is_active === false;
+                  return (
+                    <tr
+                      key={l.id}
+                      className={clsx(
+                        "hover:bg-surface-50 dark:hover:bg-surface-700/30",
+                        isPrevious && "opacity-70 bg-surface-50/50 dark:bg-surface-800/50"
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    >
+                      <td className="px-6 py-4">
+                        <span className={clsx("font-medium", isPrevious ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>
+                          {getDisplayName(l.tenant)}
+                        </span>
+                        <span className={clsx("text-sm block", isPrevious ? "text-surface-400 dark:text-surface-500" : "text-surface-500 dark:text-surface-400")}>
+                          {l.tenant?.email}
+                        </span>
+                        {l.tenant?.phone && (
+                          <span className={clsx("text-sm block", isPrevious ? "text-surface-400 dark:text-surface-500" : "text-surface-500 dark:text-surface-400")}>
+                            {l.tenant.phone}
+                          </span>
+                        )}
+                      </td>
+                      <td className={clsx("px-6 py-4", isPrevious ? "text-surface-500 dark:text-surface-400" : "text-surface-600 dark:text-surface-400")}>
+                        {typeof l.unit?.property === "object" && l.unit?.property?.name
+                          ? `${l.unit.property.name} – ${l.unit.unit_number}`
+                          : `${l.unit?.unit_number ?? "—"}`}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {l.is_active !== false && (
+                            <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-600/20">
+                              Active lease
+                            </span>
+                          )}
+                          {l.is_active === false && (
+                            <span className="inline-flex items-center rounded-md bg-surface-200 dark:bg-surface-600 px-2 py-0.5 text-xs font-medium text-surface-600 dark:text-surface-400">
+                              Previous
+                            </span>
+                          )}
+                          {l.payment_status === "overdue" && (
+                            <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-red-600/20">
+                              Overdue
+                            </span>
+                          )}
+                          {l.payment_status === "paid" || l.payment_status === "current" ? (
+                            <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-600/20">
+                              Paid
+                            </span>
+                          ) : (
+                            l.payment_status !== "overdue" &&
+                            l.payment_status && (
+                              <span className="inline-flex items-center rounded-md bg-surface-100 dark:bg-surface-700 px-2 py-0.5 text-xs font-medium text-surface-600 dark:text-surface-400">
+                                {l.payment_status}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {canManage && (
+                          <Link
+                            href={`/tenants/${l.id}/edit`}
+                            className={clsx("text-sm min-h-[44px] sm:min-h-0 inline-flex items-center", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
+                          >
+                            Edit
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="md:hidden space-y-3">
-            {list.map((l) => (
-              <div key={l.id} className="bg-white rounded-xl border border-surface-200 p-4 shadow-sm">
-                <p className="font-medium text-surface-900">{getDisplayName(l.tenant)}</p>
-                <p className="text-sm text-surface-600 mt-0.5">{l.tenant?.email}</p>
-                {l.tenant?.phone && <p className="text-sm text-surface-500">{l.tenant.phone}</p>}
-                <p className="text-sm text-surface-500 mt-2">
-                  {typeof l.unit?.property === "object" && l.unit?.property?.name
-                    ? `${l.unit.property.name} – ${l.unit.unit_number}`
-                    : l.unit?.unit_number}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {l.is_active !== false && (
-                    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
+            {list.map((l) => {
+              const isPrevious = l.is_active === false;
+              return (
+                <div
+                  key={l.id}
+                  className={clsx(
+                    "bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm",
+                    isPrevious && "opacity-75"
                   )}
-                  {l.payment_status === "overdue" && (
-                    <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Overdue</span>
+                >
+                  <p className={clsx("font-medium", isPrevious ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>
+                    {getDisplayName(l.tenant)}
+                  </p>
+                  <p className={clsx("text-sm mt-0.5", isPrevious ? "text-surface-400 dark:text-surface-500" : "text-surface-600 dark:text-surface-400")}>{l.tenant?.email}</p>
+                  {l.tenant?.phone && (
+                    <p className={clsx("text-sm", isPrevious ? "text-surface-400 dark:text-surface-500" : "text-surface-500 dark:text-surface-400")}>{l.tenant.phone}</p>
                   )}
-                  {(l.payment_status === "paid" || l.payment_status === "current") && (
-                    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Paid</span>
+                  <p className={clsx("text-sm mt-2", isPrevious ? "text-surface-500 dark:text-surface-500" : "text-surface-500 dark:text-surface-400")}>
+                    {typeof l.unit?.property === "object" && l.unit?.property?.name
+                      ? `${l.unit.property.name} – ${l.unit.unit_number}`
+                      : l.unit?.unit_number}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {l.is_active !== false && (
+                      <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        Active
+                      </span>
+                    )}
+                    {l.is_active === false && (
+                      <span className="inline-flex items-center rounded-md bg-surface-200 dark:bg-surface-600 px-2 py-0.5 text-xs font-medium text-surface-600 dark:text-surface-400">
+                        Previous
+                      </span>
+                    )}
+                    {l.payment_status === "overdue" && (
+                      <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+                        Overdue
+                      </span>
+                    )}
+                    {(l.payment_status === "paid" || l.payment_status === "current") && (
+                      <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        Paid
+                      </span>
+                    )}
+                  </div>
+                  {canManage && (
+                    <Link
+                      href={`/tenants/${l.id}/edit`}
+                      className={clsx("inline-flex items-center min-h-[44px] mt-3 text-sm font-medium", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
+                    >
+                      Edit lease
+                    </Link>
                   )}
                 </div>
-                {canManage && (
-                  <Link href={`/tenants/${l.id}/edit`} className="inline-flex items-center min-h-[44px] mt-3 text-primary-600 hover:underline text-sm font-medium">Edit lease</Link>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
-            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400 text-sm">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+                Loading more…
+              </div>
+            )}
           </div>
-          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more tenants</p>}
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more tenants</p>}
         </>
       )}
     </div>

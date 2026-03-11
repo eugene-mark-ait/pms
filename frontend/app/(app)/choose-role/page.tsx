@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api, User } from "@/lib/api";
 import { clsx } from "clsx";
@@ -18,21 +18,36 @@ export default function ChooseRolePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [role, setRole] = useState<Role>("tenant");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    api.get<User>("/auth/me/")
-      .then((res) => {
-        setUser(res.data);
-        if (res.data.role_names?.length) {
-          router.replace("/dashboard");
-        }
-      })
-      .catch(() => router.replace("/login"))
-      .finally(() => setLoading(false));
+  const fetchUser = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await api.get<User>("/auth/me/");
+      setUser(res.data);
+      if (res.data.role_names?.length) {
+        router.replace("/dashboard");
+        return;
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number } };
+      if (ax.response?.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      setLoadError("Failed to load roles. Retry.");
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,12 +65,29 @@ export default function ChooseRolePage() {
     }
   }
 
-  if (loading) {
+  if (loading && !loadError) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
           <span className="text-sm text-surface-500 dark:text-surface-400">Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-lg mx-auto py-6">
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
+          <p className="text-red-700 dark:text-red-300 font-medium">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => fetchUser()}
+            className="mt-4 rounded-lg bg-primary-600 text-white px-4 py-2 text-sm font-medium hover:bg-primary-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

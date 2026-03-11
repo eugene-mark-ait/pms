@@ -39,7 +39,7 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
         return ComplaintSerializer
 
     def get_queryset(self):
-        return _complaints_queryset(self.request.user).select_related("property", "unit", "tenant", "assigned_to")
+        return _complaints_queryset(self.request.user).select_related("property", "unit", "unit__property", "tenant", "assigned_to")
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user)
@@ -51,4 +51,4 @@ class ComplaintDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = ComplaintSerializer
 
     def get_queryset(self):
-        return _complaints_queryset(self.request.user).select_related("property", "unit", "tenant", "assigned_to")
+        return _complaints_queryset(self.request.user).select_related("property", "unit", "unit__property", "tenant", "assigned_to")

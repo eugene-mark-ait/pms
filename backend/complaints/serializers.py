@@ -6,6 +6,7 @@ from accounts.serializers import UserSerializer
 class ComplaintSerializer(serializers.ModelSerializer):
     tenant = UserSerializer(read_only=True)
     assigned_to = UserSerializer(read_only=True)
+    unit_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -13,6 +14,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "id",
             "property",
             "unit",
+            "unit_display",
             "tenant",
             "lease",
             "assigned_to",
@@ -25,6 +27,15 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "resolved_at",
         ]
         read_only_fields = ["id", "tenant", "created_at"]
+
+    def get_unit_display(self, obj):
+        if not obj.unit_id:
+            return None
+        return {
+            "id": str(obj.unit.id),
+            "unit_number": obj.unit.unit_number,
+            "property_name": obj.unit.property.name if obj.unit.property_id else None,
+        }
 
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):

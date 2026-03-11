@@ -36,12 +36,23 @@ class LeaseListCreateView(generics.ListCreateAPIView):
         process_due_notices()
         user = self.request.user
         if user.has_role("landlord"):
-            return Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
-        if user.has_role("manager"):
-            return Lease.objects.filter(unit__property__manager_assignments__manager=user).select_related("unit", "unit__property", "tenant").distinct()
-        if user.has_role("caretaker"):
-            return Lease.objects.filter(unit__property__caretaker_assignments__caretaker=user).select_related("unit", "unit__property", "tenant").distinct()
-        return Lease.objects.none()
+            qs = Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
+        elif user.has_role("manager"):
+            qs = Lease.objects.filter(unit__property__manager_assignments__manager=user).select_related("unit", "unit__property", "tenant").distinct()
+        elif user.has_role("caretaker"):
+            qs = Lease.objects.filter(unit__property__caretaker_assignments__caretaker=user).select_related("unit", "unit__property", "tenant").distinct()
+        else:
+            return Lease.objects.none()
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            if is_active.lower() in ("true", "1", "yes"):
+                qs = qs.filter(is_active=True)
+            elif is_active.lower() in ("false", "0", "no"):
+                qs = qs.filter(is_active=False)
+        unit_id = self.request.query_params.get("unit")
+        if unit_id:
+            qs = qs.filter(unit_id=unit_id)
+        return qs.order_by("-start_date")
 
     def get_serializer_class(self):
         if self.request.method == "POST":

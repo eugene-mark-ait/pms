@@ -4,21 +4,15 @@ import { useState, useEffect } from "react";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import FileComplaintModal from "@/components/FileComplaintModal";
+import ComplaintDetailModal, { type ComplaintDetail } from "@/components/ComplaintDetailModal";
 import { clsx } from "clsx";
 
-interface Complaint {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority?: string;
-  assigned_to?: { id: string; email: string; first_name?: string; last_name?: string } | null;
-  created_at: string;
-}
+interface Complaint extends ComplaintDetail {}
 
 export default function ComplaintsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [fileModalOpen, setFileModalOpen] = useState(false);
+  const [detailComplaint, setDetailComplaint] = useState<Complaint | null>(null);
   const { items: list, loading, loadingMore, hasMore, error, sentinelRef, refresh } = useInfiniteScroll<Complaint>({
     endpoint: "/complaints/",
     pageSize: 20,
@@ -35,6 +29,7 @@ export default function ComplaintsPage() {
   async function closeComplaint(id: string) {
     try {
       await api.patch(`/complaints/${id}/`, { status: "closed" });
+      setDetailComplaint(null);
       refresh();
       if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
     } catch {
@@ -58,9 +53,15 @@ export default function ComplaintsPage() {
       </div>
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       {loading ? (
-        <p className="text-surface-500 dark:text-surface-400">Loading…</p>
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+          <span>Loading complaints…</span>
+        </div>
       ) : list.length === 0 ? (
-        <p className="text-surface-600 dark:text-surface-400">No complaints.{isTenant && " Use \"File complaint\" to submit an issue for your unit."}</p>
+        <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
+          <p className="text-surface-600 dark:text-surface-400 font-medium">No complaints available.</p>
+          {isTenant && <p className="text-sm text-surface-500 dark:text-surface-500 mt-1">Use &quot;File complaint&quot; to submit an issue for your unit.</p>}
+        </div>
       ) : (
         <>
           <div className="hidden md:block bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
@@ -77,7 +78,14 @@ export default function ComplaintsPage() {
               </thead>
               <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                 {list.map((c) => (
-                  <tr key={c.id} className={clsx("hover:bg-surface-50 dark:hover:bg-surface-700/30", c.status === "closed" && "opacity-70 bg-surface-50/50 dark:bg-surface-800/50")}>
+                  <tr
+                    key={c.id}
+                    onClick={() => setDetailComplaint(c)}
+                    className={clsx(
+                      "hover:bg-surface-50 dark:hover:bg-surface-700/30 cursor-pointer",
+                      c.status === "closed" && "opacity-70 bg-surface-50/50 dark:bg-surface-800/50"
+                    )}
+                  >
                     <td className={clsx("px-6 py-4 font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</td>
                     <td className="px-6 py-4">
                       <span className={clsx(
@@ -95,7 +103,7 @@ export default function ComplaintsPage() {
                     </td>
                     <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{new Date(c.created_at).toLocaleDateString()}</td>
                     {canManageComplaints && (
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         {c.status !== "closed" && (
                           <button type="button" onClick={() => closeComplaint(c.id)} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
                             Close
@@ -110,7 +118,17 @@ export default function ComplaintsPage() {
           </div>
           <div className="md:hidden space-y-3">
             {list.map((c) => (
-              <div key={c.id} className={clsx("bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm", c.status === "closed" && "opacity-75")}>
+              <div
+                key={c.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailComplaint(c)}
+                onKeyDown={(e) => e.key === "Enter" && setDetailComplaint(c)}
+                className={clsx(
+                  "bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 shadow-sm cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700/30",
+                  c.status === "closed" && "opacity-75"
+                )}
+              >
                 <p className={clsx("font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</p>
                 <p className="text-sm mt-1">
                   <span className={clsx(
@@ -127,7 +145,7 @@ export default function ComplaintsPage() {
                   {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "Unassigned"} · {new Date(c.created_at).toLocaleDateString()}
                 </p>
                 {canManageComplaints && c.status !== "closed" && (
-                  <button type="button" onClick={() => closeComplaint(c.id)} className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">
+                  <button type="button" onClick={(e) => { e.stopPropagation(); closeComplaint(c.id); }} className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">
                     Close complaint
                   </button>
                 )}
@@ -149,6 +167,14 @@ export default function ComplaintsPage() {
             refresh();
             if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
           }}
+        />
+      )}
+      {detailComplaint && (
+        <ComplaintDetailModal
+          complaint={detailComplaint}
+          onClose={() => setDetailComplaint(null)}
+          onCloseComplaint={canManageComplaints ? closeComplaint : undefined}
+          canManage={canManageComplaints}
         />
       )}
     </div>
