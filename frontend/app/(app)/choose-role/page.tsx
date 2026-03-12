@@ -67,7 +67,9 @@ export default function ChooseRolePage() {
     setSubmitting(true);
     try {
       await api.post("/auth/choose-role/", { role });
-      router.push("/dashboard");
+      // Hard redirect so the app layout remounts and fetches /auth/me/ again.
+      // Otherwise the layout still has the old user (no role) and redirects back to choose-role.
+      if (typeof window !== "undefined") window.location.href = "/dashboard";
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } } };
       setError(ax.response?.data?.detail || "Failed to set role.");
