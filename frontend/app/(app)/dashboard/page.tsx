@@ -255,23 +255,6 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
-
-      {isTenant && (
-        <section>
-          <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider mb-4">Quick actions</h2>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard/my-units" className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700">
-              My units
-            </Link>
-            <Link href="/payments" className="inline-flex items-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-4 py-2.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
-              Payment history
-            </Link>
-            <Link href="/find-units" className="inline-flex items-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-4 py-2.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
-              Find units
-            </Link>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

@@ -33,10 +33,10 @@ export function PaginationControls({
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-between gap-3 py-3 border-t border-surface-200"
+      className="flex flex-wrap items-center justify-between gap-3 py-3 border-t border-surface-200 dark:border-surface-700"
       aria-label="Pagination"
     >
-      <div className="flex items-center gap-4 text-sm text-surface-600">
+      <div className="flex items-center gap-4 text-sm text-surface-600 dark:text-surface-400">
         <span>
           Showing {from}–{to} of {count}
         </span>
@@ -46,7 +46,7 @@ export function PaginationControls({
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="rounded border border-surface-300 px-2 py-1 text-surface-900 min-h-[44px] sm:min-h-0"
+              className="rounded border border-surface-300 dark:border-surface-600 px-2 py-1 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-h-[44px] sm:min-h-0"
               aria-label="Items per page"
             >
               {pageSizeOptions.map((n) => (
@@ -62,7 +62,7 @@ export function PaginationControls({
             type="button"
             onClick={onPrevious}
             disabled={!previous || loading}
-            className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] inline-flex items-center justify-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50 disabled:pointer-events-none"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] inline-flex items-center justify-center rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50 disabled:pointer-events-none"
             aria-label="Previous page"
           >
             Previous
@@ -71,7 +71,7 @@ export function PaginationControls({
             type="button"
             onClick={onNext}
             disabled={!next || loading}
-            className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] inline-flex items-center justify-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50 disabled:pointer-events-none"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] inline-flex items-center justify-center rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50 disabled:pointer-events-none"
             aria-label="Next page"
           >
             Next

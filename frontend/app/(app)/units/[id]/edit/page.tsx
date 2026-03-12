@@ -44,21 +44,21 @@ export default function EditUnitPage() {
     }
   }
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
+  if (loading) return <p className="text-surface-500 dark:text-surface-400">Loading…</p>;
 
   return (
     <div className="space-y-6">
-      <Link href="/units" className="text-surface-500 hover:text-surface-700">← Units</Link>
-      <h1 className="text-2xl font-bold text-surface-900">Edit Unit</h1>
+      <Link href="/units" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Units</Link>
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Edit Unit</h1>
       <form onSubmit={handleSubmit} className="max-w-md space-y-4">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Unit number</label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Unit number</label>
           <input
             type="text"
             value={unitNumber}
             onChange={(e) => setUnitNumber(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             required
           />
         </div>
@@ -66,7 +66,7 @@ export default function EditUnitPage() {
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
             {submitting ? "Saving…" : "Save"}
           </button>
-          <Link href="/units" className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50">Cancel</Link>
+          <Link href="/units" className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Cancel</Link>
         </div>
       </form>
     </div>

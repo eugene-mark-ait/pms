@@ -167,7 +167,7 @@ export default function NewLeasePage() {
   if (propertiesError) {
     return (
       <div className="space-y-6">
-        <Link href="/tenants" className="text-surface-500 dark:text-surface-400 hover:text-surface-700">← Tenants</Link>
+        <Link href="/tenants" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Tenants</Link>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add Lease (Assign Tenant)</h1>
         <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
           <p className="text-red-700 dark:text-red-300 text-sm">{propertiesError}</p>
@@ -226,14 +226,14 @@ export default function NewLeasePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Tenant</label>
-          <p className="text-xs text-surface-500 mb-1">Search by phone or email. The user will get the tenant role automatically.</p>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Tenant</label>
+          <p className="text-xs text-surface-500 dark:text-surface-400 mb-1">Search by phone or email. The user will get the tenant role automatically.</p>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <label className="flex items-center gap-1.5 text-sm text-surface-600">
+            <label className="flex items-center gap-1.5 text-sm text-surface-600 dark:text-surface-400">
               <input type="radio" checked={!searchByPhone} onChange={() => setSearchByPhone(false)} className="rounded border-surface-300 text-primary-600" />
               Email
             </label>
-            <label className="flex items-center gap-1.5 text-sm text-surface-600">
+            <label className="flex items-center gap-1.5 text-sm text-surface-600 dark:text-surface-400">
               <input type="radio" checked={searchByPhone} onChange={() => setSearchByPhone(true)} className="rounded border-surface-300 text-primary-600" />
               Phone
             </label>
@@ -245,14 +245,14 @@ export default function NewLeasePage() {
               value={tenantSearch}
               onChange={(e) => { setTenantSearch(e.target.value); setSelectedTenantId(""); setSelectedTenantEmail(""); setSelectedTenantName(""); }}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchTenants())}
-              className="flex-1 rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              className="flex-1 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             />
-            <button type="button" onClick={searchTenants} className="rounded-lg bg-surface-200 text-surface-700 px-4 py-2 hover:bg-surface-300">
+            <button type="button" onClick={searchTenants} className="rounded-lg bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-200 px-4 py-2 hover:bg-surface-300 dark:hover:bg-surface-500">
               Search
             </button>
           </div>
           {tenantResults.length > 0 && (
-            <ul className="border border-surface-200 rounded-lg divide-y max-h-32 overflow-y-auto">
+            <ul className="border border-surface-200 dark:border-surface-600 rounded-lg divide-y divide-surface-200 dark:divide-surface-600 max-h-32 overflow-y-auto">
               {tenantResults.map((u) => {
                 const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email;
                 return (
@@ -266,7 +266,7 @@ export default function NewLeasePage() {
                         setTenantResults([]);
                         setTenantSearch(searchByPhone ? (u as { phone?: string }).phone || u.email : u.email);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm ${selectedTenantId === u.id ? "bg-primary-50 text-primary-700" : "hover:bg-surface-50"}`}
+                      className={`w-full text-left px-3 py-2 text-sm ${selectedTenantId === u.id ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" : "hover:bg-surface-50 dark:hover:bg-surface-700/50 text-surface-900 dark:text-surface-100"}`}
                     >
                       {name} {u.email !== name ? `(${u.email})` : ""} {u.role_names?.length ? ` · ${u.role_names.join(", ")}` : ""}
                     </button>
@@ -276,7 +276,7 @@ export default function NewLeasePage() {
             </ul>
           )}
           {selectedTenantId && (
-            <p className="text-sm text-surface-600 mt-1">
+            <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">
               Selected: {selectedTenantName || selectedTenantEmail} ({selectedTenantEmail})
             </p>
           )}
@@ -284,23 +284,23 @@ export default function NewLeasePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Monthly rent (from unit)</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Monthly rent (from unit)</label>
             <input
               type="text"
               value={monthlyRent}
               readOnly
               disabled
-              className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-surface-700"
+              className="w-full rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700/50 px-3 py-2 text-surface-700 dark:text-surface-300"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Deposit amount (from unit)</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Deposit amount (from unit)</label>
             <input
               type="text"
               value={depositAmount}
               readOnly
               disabled
-              className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-surface-700"
+              className="w-full rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700/50 px-3 py-2 text-surface-700 dark:text-surface-300"
             />
           </div>
         </div>
@@ -311,29 +311,29 @@ export default function NewLeasePage() {
             id="depositPaid"
             checked={depositPaid}
             onChange={(e) => setDepositPaid(e.target.checked)}
-            className="rounded border-surface-300"
+            className="rounded border-surface-300 dark:border-surface-600"
           />
-          <label htmlFor="depositPaid" className="text-sm text-surface-700">Deposit paid</label>
+          <label htmlFor="depositPaid" className="text-sm text-surface-700 dark:text-surface-300">Deposit paid</label>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Start date</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Start date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">End date</label>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">End date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
               required
             />
           </div>
@@ -343,7 +343,7 @@ export default function NewLeasePage() {
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
             {submitting ? "Creating…" : "Create Lease"}
           </button>
-          <Link href="/tenants" className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50">Cancel</Link>
+          <Link href="/tenants" className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Cancel</Link>
         </div>
       </form>
     </div>

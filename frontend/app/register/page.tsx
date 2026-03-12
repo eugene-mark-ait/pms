@@ -83,7 +83,7 @@ export default function RegisterPage() {
                 <div className="w-full border-t border-surface-200 dark:border-surface-600" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-surface-800 text-surface-500">or register with email</span>
+                <span className="px-2 bg-white dark:bg-surface-800 text-surface-500 dark:text-surface-400">or register with email</span>
               </div>
             </div>
 

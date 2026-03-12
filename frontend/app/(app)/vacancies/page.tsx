@@ -64,14 +64,14 @@ export default function VacanciesPage() {
                   Tenant: {v.tenant_name ?? "—"}
                 </p>
                 <p className="text-sm mt-1">
-                  <span className="text-surface-500">Property: </span>
-                  <Link href={`/properties/${v.property_id}`} className="text-primary-600 hover:underline">
+                  <span className="text-surface-500 dark:text-surface-400">Property: </span>
+                  <Link href={`/properties/${v.property_id}`} className="text-primary-600 dark:text-primary-400 hover:underline">
                     {v.property_name}
                   </Link>
                 </p>
                 <p className="text-sm mt-1">
-                  <span className="text-surface-500">Unit: </span>
-                  <Link href={`/units/${v.unit_id}/edit`} className="text-primary-600 hover:underline">
+                  <span className="text-surface-500 dark:text-surface-400">Unit: </span>
+                  <Link href={`/units/${v.unit_id}/edit`} className="text-primary-600 dark:text-primary-400 hover:underline">
                     {v.unit_number}
                   </Link>
                 </p>
@@ -82,9 +82,9 @@ export default function VacanciesPage() {
             ))}
           </div>
           <div ref={sentinelRef} className="min-h-[24px] flex justify-center py-4">
-            {loadingMore && <p className="text-surface-500 text-sm">Loading more…</p>}
+            {loadingMore && <p className="text-surface-500 dark:text-surface-400 text-sm">Loading more…</p>}
           </div>
-          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 text-sm">No more vacancies</p>}
+          {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more vacancies</p>}
         </>
       )}
     </div>

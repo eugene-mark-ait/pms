@@ -116,7 +116,7 @@ export default function DashboardLayout({
         </div>
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {navLoading ? (
-            <p className="px-3 py-2 text-sm text-surface-500">Loading…</p>
+            <p className="px-3 py-2 text-sm text-surface-500 dark:text-surface-400">Loading…</p>
           ) : (
             nav.map((item) => {
               const showBadge = item.href === "/complaints" && openComplaintsCount > 0;

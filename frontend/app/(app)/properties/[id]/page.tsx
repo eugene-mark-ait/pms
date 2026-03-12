@@ -216,15 +216,15 @@ export default function PropertyDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-surface-500">Loading property…</div>
+        <div className="text-surface-500 dark:text-surface-400">Loading property…</div>
       </div>
     );
   }
   if (!property) {
     return (
       <div className="space-y-4">
-        <Link href="/properties" className="text-primary-600 hover:underline">← Back to properties</Link>
-        <p className="text-surface-600">Property not found. It may have been removed or you don’t have access.</p>
+        <Link href="/properties" className="text-primary-600 dark:text-primary-400 hover:underline">← Back to properties</Link>
+        <p className="text-surface-600 dark:text-surface-400">Property not found. It may have been removed or you don’t have access.</p>
       </div>
     );
   }
@@ -257,7 +257,7 @@ export default function PropertyDetailPage() {
           </div>
         )}
       </div>
-      <section className="rounded-xl overflow-hidden border border-surface-200 bg-surface-50">
+      <section className="rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
         {property.images && property.images.length > 0 ? (
           <img
             src={property.images[0].image.startsWith("http") ? property.images[0].image : ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + property.images[0].image)}
@@ -265,63 +265,63 @@ export default function PropertyDetailPage() {
             className="w-full h-[320px] sm:h-[400px] object-cover"
           />
         ) : (
-          <div className="w-full h-[320px] sm:h-[400px] flex items-center justify-center bg-surface-100 text-surface-400 text-sm">
+          <div className="w-full h-[320px] sm:h-[400px] flex items-center justify-center bg-surface-100 dark:bg-surface-700 text-surface-400 dark:text-surface-500 text-sm">
             No property image
           </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
-        <h2 className="text-base font-semibold text-surface-900 mb-3">Overview</h2>
+      <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">Overview</h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div>
-            <dt className="text-surface-500">Location</dt>
-            <dd className="font-medium text-surface-900">{property.location || property.address?.slice(0, 40) || "—"}</dd>
+            <dt className="text-surface-500 dark:text-surface-400">Location</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">{property.location || property.address?.slice(0, 40) || "—"}</dd>
           </div>
           <div>
-            <dt className="text-surface-500">Owner</dt>
-            <dd className="font-medium text-surface-900">
+            <dt className="text-surface-500 dark:text-surface-400">Owner</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">
               {property.landlord ? `${property.landlord.first_name || ""} ${property.landlord.last_name || ""}`.trim() || property.landlord.email : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-surface-500">Units</dt>
-            <dd className="font-medium text-surface-900">{property.unit_count ?? 0} total</dd>
+            <dt className="text-surface-500 dark:text-surface-400">Units</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">{property.unit_count ?? 0} total</dd>
           </div>
           <div>
-            <dt className="text-surface-500">Occupied / Vacant</dt>
-            <dd className="font-medium text-surface-900">{property.occupied_count ?? 0} / {property.vacant_count ?? 0}</dd>
+            <dt className="text-surface-500 dark:text-surface-400">Occupied / Vacant</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">{property.occupied_count ?? 0} / {property.vacant_count ?? 0}</dd>
           </div>
           <div>
-            <dt className="text-surface-500">Upcoming vacancies</dt>
-            <dd className="font-medium text-surface-900">{property.upcoming_vacancies?.length ?? 0}</dd>
+            <dt className="text-surface-500 dark:text-surface-400">Upcoming vacancies</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">{property.upcoming_vacancies?.length ?? 0}</dd>
           </div>
           <div>
-            <dt className="text-surface-500">Total monthly rent potential</dt>
-            <dd className="font-medium text-surface-900">{formatKSH(property.total_rent_potential ?? 0)}</dd>
+            <dt className="text-surface-500 dark:text-surface-400">Total monthly rent potential</dt>
+            <dd className="font-medium text-surface-900 dark:text-surface-100">{formatKSH(property.total_rent_potential ?? 0)}</dd>
           </div>
         </dl>
-        <p className="text-sm text-surface-500 mt-3">
-          {canEdit && <Link href={`/units?property=${property.id}`} className="text-primary-600 hover:underline">View and manage units →</Link>}
+        <p className="text-sm text-surface-500 dark:text-surface-400 mt-3">
+          {canEdit && <Link href={`/units?property=${property.id}`} className="text-primary-600 dark:text-primary-400 hover:underline">View and manage units →</Link>}
         </p>
       </section>
 
       {property.upcoming_vacancies && property.upcoming_vacancies.length > 0 && (
-        <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
-          <h2 className="text-base font-semibold text-surface-900 mb-3">Upcoming vacancies</h2>
+        <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
+          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">Upcoming vacancies</h2>
           <ul className="space-y-3">
             {property.upcoming_vacancies.map((v) => (
-              <li key={v.id} className="border border-surface-200 rounded-lg p-3 text-sm">
-                <p className="font-medium text-surface-900">Tenant: {v.tenant_name ?? "—"}</p>
+              <li key={v.id} className="border border-surface-200 dark:border-surface-600 rounded-lg p-3 text-sm">
+                <p className="font-medium text-surface-900 dark:text-surface-100">Tenant: {v.tenant_name ?? "—"}</p>
                 <p className="mt-1">
-                  <span className="text-surface-500">Property: </span>
-                  <Link href={`/properties/${v.property_id}`} className="text-primary-600 hover:underline">{v.property_name}</Link>
+                  <span className="text-surface-500 dark:text-surface-400">Property: </span>
+                  <Link href={`/properties/${v.property_id}`} className="text-primary-600 dark:text-primary-400 hover:underline">{v.property_name}</Link>
                 </p>
                 <p className="mt-1">
-                  <span className="text-surface-500">Unit: </span>
-                  <Link href={`/units/${v.unit_id}/edit`} className="text-primary-600 hover:underline">{v.unit_number}</Link>
+                  <span className="text-surface-500 dark:text-surface-400">Unit: </span>
+                  <Link href={`/units/${v.unit_id}/edit`} className="text-primary-600 dark:text-primary-400 hover:underline">{v.unit_number}</Link>
                 </p>
-                <p className="mt-1 text-surface-600">Vacates on: {new Date(v.notice_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+                <p className="mt-1 text-surface-600 dark:text-surface-400">Vacates on: {new Date(v.notice_due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
               </li>
             ))}
           </ul>
@@ -331,62 +331,62 @@ export default function PropertyDetailPage() {
       {canManageAssignments && (
         <>
           <section>
-            <h2 className="text-lg font-semibold text-surface-900 mb-2">Managers</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Managers</h2>
             <ul className="space-y-1">
               {managers.map((ma) => (
-                <li key={ma.id} className="flex items-center justify-between gap-2">
+                <li key={ma.id} className="flex items-center justify-between gap-2 text-surface-900 dark:text-surface-100">
                   <span>{ma.manager?.email ?? "—"}</span>
-                  <button type="button" onClick={() => removeManager(ma.manager.id)} className="text-red-600 hover:underline text-sm">Remove</button>
+                  <button type="button" onClick={() => removeManager(ma.manager.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
                 </li>
               ))}
-              {managers.length === 0 && <li className="text-surface-500">No managers assigned</li>}
+              {managers.length === 0 && <li className="text-surface-500 dark:text-surface-400">No managers assigned</li>}
             </ul>
-            <button type="button" onClick={() => setAssignMode("manager")} className="mt-2 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
+            <button type="button" onClick={() => setAssignMode("manager")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
               Assign manager
             </button>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-surface-900 mb-2">Caretakers</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Caretakers</h2>
             <ul className="space-y-1">
               {caretakers.map((ca) => (
-                <li key={ca.id} className="flex items-center justify-between gap-2">
+                <li key={ca.id} className="flex items-center justify-between gap-2 text-surface-900 dark:text-surface-100">
                   <span>{ca.caretaker?.email ?? "—"}</span>
-                  <button type="button" onClick={() => removeCaretaker(ca.caretaker.id)} className="text-red-600 hover:underline text-sm">Remove</button>
+                  <button type="button" onClick={() => removeCaretaker(ca.caretaker.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
                 </li>
               ))}
-              {caretakers.length === 0 && <li className="text-surface-500">No caretakers assigned</li>}
+              {caretakers.length === 0 && <li className="text-surface-500 dark:text-surface-400">No caretakers assigned</li>}
             </ul>
-            <button type="button" onClick={() => setAssignMode("caretaker")} className="mt-2 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
+            <button type="button" onClick={() => setAssignMode("caretaker")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
               Assign caretaker
             </button>
           </section>
         </>
       )}
 
-      <section className="rounded-xl border border-surface-200 bg-white p-4 sm:p-6">
+      <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-surface-900">Property rules</h2>
+          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Property rules</h2>
           {canEdit && (
-            <button type="button" onClick={openAddRule} className="rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50 min-h-[44px] sm:min-h-0">
+            <button type="button" onClick={openAddRule} className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 min-h-[44px] sm:min-h-0">
               Add rule
             </button>
           )}
         </div>
         {(!property.rules || property.rules.length === 0) && !ruleForm.open ? (
-          <p className="text-surface-500 text-sm">No rules.</p>
+          <p className="text-surface-500 dark:text-surface-400 text-sm">No rules.</p>
         ) : (
           <ul className="space-y-3">
             {property.rules?.map((r) => (
-              <li key={r.id} className="border-l-2 border-surface-200 pl-3 flex flex-wrap items-start justify-between gap-2">
+              <li key={r.id} className="border-l-2 border-surface-200 dark:border-surface-600 pl-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-surface-900">{r.title}</p>
-                  {r.description && <p className="text-sm text-surface-600 mt-0.5">{r.description}</p>}
+                  <p className="font-medium text-surface-900 dark:text-surface-100">{r.title}</p>
+                  {r.description && <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">{r.description}</p>}
                 </div>
                 {canEdit && (
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => openEditRule(r)} className="text-primary-600 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</button>
-                    <button type="button" onClick={() => deleteRule(r.id)} className="text-red-600 hover:underline text-sm">Delete</button>
+                    <button type="button" onClick={() => openEditRule(r)} className="text-primary-600 dark:text-primary-400 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</button>
+                    <button type="button" onClick={() => deleteRule(r.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Delete</button>
                   </div>
                 )}
               </li>
@@ -394,28 +394,28 @@ export default function PropertyDetailPage() {
           </ul>
         )}
         {ruleForm.open && (
-          <form onSubmit={saveRule} className="mt-4 p-4 border border-surface-200 rounded-lg space-y-3">
+          <form onSubmit={saveRule} className="mt-4 p-4 border border-surface-200 dark:border-surface-600 rounded-lg space-y-3 bg-surface-50/50 dark:bg-surface-700/30">
             <input
               type="text"
               placeholder="Rule title"
               value={ruleForm.title}
               onChange={(e) => setRuleForm((prev) => ({ ...prev, title: e.target.value }))}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
               required
             />
             <textarea
               placeholder="Description (optional)"
               value={ruleForm.description}
               onChange={(e) => setRuleForm((prev) => ({ ...prev, description: e.target.value }))}
-              className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900 min-h-[80px]"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-h-[80px]"
               rows={3}
             />
-            {ruleError && <p className="text-red-600 text-sm">{ruleError}</p>}
+            {ruleError && <p className="text-red-600 dark:text-red-400 text-sm">{ruleError}</p>}
             <div className="flex gap-2">
               <button type="submit" disabled={ruleSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 text-sm hover:bg-primary-700 disabled:opacity-50">
                 {ruleSubmitting ? "Saving…" : ruleForm.id ? "Update rule" : "Add rule"}
               </button>
-              <button type="button" onClick={() => setRuleForm((prev) => ({ ...prev, open: false }))} disabled={ruleSubmitting} className="rounded-lg border border-surface-300 px-4 py-2 text-sm text-surface-700 hover:bg-surface-50">
+              <button type="button" onClick={() => setRuleForm((prev) => ({ ...prev, open: false }))} disabled={ruleSubmitting} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
                 Cancel
               </button>
             </div>
@@ -425,11 +425,11 @@ export default function PropertyDetailPage() {
 
       {assignMode && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !assigning && setAssignMode(null)}>
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-surface-900">
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
               Assign {assignMode === "manager" ? "manager" : "caretaker"}
             </h3>
-            <p className="text-sm text-surface-600">Search by email to find a user, then assign them to this property. They will get the {assignMode} role if needed.</p>
+            <p className="text-sm text-surface-600 dark:text-surface-400">Search by email to find a user, then assign them to this property. They will get the {assignMode} role if needed.</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -437,31 +437,31 @@ export default function PropertyDetailPage() {
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && searchUsers()}
-                className="flex-1 rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+                className="flex-1 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
               />
               <button type="button" onClick={searchUsers} disabled={searching} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
                 {searching ? "Searching…" : "Search"}
               </button>
             </div>
             {assignError && <p className="text-red-600 text-sm">{assignError}</p>}
-            <ul className="max-h-48 overflow-y-auto space-y-1 border border-surface-200 rounded-lg p-2">
+            <ul className="max-h-48 overflow-y-auto space-y-1 border border-surface-200 dark:border-surface-600 rounded-lg p-2 bg-surface-50 dark:bg-surface-700/30">
               {searchResults.map((u) => (
-                <li key={u.id} className="flex items-center justify-between py-1">
+                <li key={u.id} className="flex items-center justify-between py-1 text-surface-900 dark:text-surface-100">
                   <span className="text-sm">{u.email} {u.role_names?.length ? `(${u.role_names.join(", ")})` : ""}</span>
                   <button
                     type="button"
                     onClick={() => assignUser(u.id, u.email, u.role_names ?? [])}
                     disabled={assigning}
-                    className="text-primary-600 hover:underline text-sm disabled:opacity-50"
+                    className="text-primary-600 dark:text-primary-400 hover:underline text-sm disabled:opacity-50"
                   >
                     Assign
                   </button>
                 </li>
               ))}
-              {searchResults.length === 0 && userSearch.trim() && !searching && <li className="text-surface-500 text-sm">No users found. Try another search.</li>}
+              {searchResults.length === 0 && userSearch.trim() && !searching && <li className="text-surface-500 dark:text-surface-400 text-sm">No users found. Try another search.</li>}
             </ul>
             <div className="flex justify-end">
-              <button type="button" onClick={() => setAssignMode(null)} disabled={assigning} className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50">
+              <button type="button" onClick={() => setAssignMode(null)} disabled={assigning} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
                 Close
               </button>
             </div>

@@ -5,9 +5,9 @@ import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { getDisplayName } from "@/lib/api";
 
-/** Full-viewport overlay: covers entire screen including top; render via portal so not clipped. */
+/** Full-viewport overlay; drawer slides in from the right (same as Give Notice / File complaint). */
 const MODAL_OVERLAY_CLASS =
-  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm z-[100]";
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm z-[100] transition-opacity";
 
 /** Submitter/contact info: only name, email, phone (no other user data). */
 export interface ComplaintContactInfo {
@@ -67,10 +67,11 @@ export default function ComplaintDetailModal({
       aria-labelledby="complaint-detail-title"
     >
       <div
-        className="bg-white dark:bg-surface-800 rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 overflow-y-auto animate-slide-in-right"
         onClick={(e) => e.stopPropagation()}
+        style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
       >
-        <div className="p-6">
+        <div className="p-6 pt-4">
           <div className="flex items-start justify-between gap-4">
             <h2 id="complaint-detail-title" className="text-xl font-bold text-surface-900 dark:text-surface-100">
               {complaint.title}

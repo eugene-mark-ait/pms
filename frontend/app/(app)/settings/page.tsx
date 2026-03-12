@@ -57,41 +57,41 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
-  if (!user) return <p className="text-surface-600">Not logged in.</p>;
+  if (loading) return <p className="text-surface-500 dark:text-surface-400">Loading…</p>;
+  if (!user) return <p className="text-surface-600 dark:text-surface-400">Not logged in.</p>;
 
   const canAssignRoles = user?.is_staff === true;
 
   return (
     <div className="space-y-6 max-w-xl">
-      <h1 className="text-2xl font-bold text-surface-900">Settings</h1>
-      <div className="bg-white rounded-xl border border-surface-200 p-6 space-y-4">
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Settings</h1>
+      <div className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-surface-500">Email</label>
-          <p className="text-surface-900">{user.email}</p>
+          <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">Email</label>
+          <p className="text-surface-900 dark:text-surface-100">{user.email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-500">First name</label>
-          <p className="text-surface-900">{user.first_name || "—"}</p>
+          <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">First name</label>
+          <p className="text-surface-900 dark:text-surface-100">{user.first_name || "—"}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-500">Last name</label>
-          <p className="text-surface-900">{user.last_name || "—"}</p>
+          <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">Last name</label>
+          <p className="text-surface-900 dark:text-surface-100">{user.last_name || "—"}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-500">Phone</label>
-          <p className="text-surface-900">{user.phone || "—"}</p>
+          <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">Phone</label>
+          <p className="text-surface-900 dark:text-surface-100">{user.phone || "—"}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-500">Roles</label>
-          <p className="text-surface-900">{user.role_names?.map((r) => r === "landlord" ? "Property Owner" : r).join(", ") || "—"}</p>
+          <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">Roles</label>
+          <p className="text-surface-900 dark:text-surface-100">{user.role_names?.map((r) => r === "landlord" ? "Property Owner" : r).join(", ") || "—"}</p>
         </div>
       </div>
 
       {canAssignRoles && (
-        <div className="bg-white rounded-xl border border-surface-200 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-surface-900">Assign roles to user</h2>
-          <p className="text-sm text-surface-600">Staff only. Search by email and set roles (e.g. manager, caretaker, tenant, property owner).</p>
+        <div className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Assign roles to user</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400">Staff only. Search by email and set roles (e.g. manager, caretaker, tenant, property owner).</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -99,17 +99,17 @@ export default function SettingsPage() {
               value={assignEmail}
               onChange={(e) => setAssignEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchForAssign())}
-              className="flex-1 rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+              className="flex-1 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
             />
             <button type="button" onClick={searchForAssign} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700">Search</button>
           </div>
-          {assignMsg && <p className="text-sm text-surface-600">{assignMsg}</p>}
+          {assignMsg && <p className="text-sm text-surface-600 dark:text-surface-400">{assignMsg}</p>}
           {assignResults.length > 0 && (
-            <ul className="space-y-2 border border-surface-200 rounded-lg p-2">
+            <ul className="space-y-2 border border-surface-200 dark:border-surface-600 rounded-lg p-2">
               {assignResults.map((u) => (
-                <li key={u.id} className="flex flex-wrap items-center gap-2 p-2 bg-surface-50 rounded">
+                <li key={u.id} className="flex flex-wrap items-center gap-2 p-2 bg-surface-50 dark:bg-surface-700/50 rounded text-surface-900 dark:text-surface-100">
                   <span className="font-medium">{u.email}</span>
-                  <span className="text-xs text-surface-500">({u.role_names?.join(", ") || "no roles"})</span>
+                  <span className="text-xs text-surface-500 dark:text-surface-400">({u.role_names?.join(", ") || "no roles"})</span>
                   <div className="flex flex-wrap gap-1">
                     {ROLES.filter((r) => r !== "landlord" || user.role_names?.includes("staff")).map((role) => (
                       <label key={role} className="flex items-center gap-1 text-sm">
@@ -118,7 +118,7 @@ export default function SettingsPage() {
                       </label>
                     ))}
                   </div>
-                  <button type="button" onClick={() => submitAssign(u.id)} disabled={assigning} className="text-primary-600 hover:underline text-sm disabled:opacity-50">Apply roles</button>
+                  <button type="button" onClick={() => submitAssign(u.id)} disabled={assigning} className="text-primary-600 dark:text-primary-400 hover:underline text-sm disabled:opacity-50">Apply roles</button>
                 </li>
               ))}
             </ul>

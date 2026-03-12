@@ -96,36 +96,36 @@ export default function EditPropertyPage() {
     }
   }
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
+  if (loading) return <p className="text-surface-500 dark:text-surface-400">Loading…</p>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/properties/${id}`} className="text-surface-500 hover:text-surface-700">← Property</Link>
+        <Link href={`/properties/${id}`} className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Property</Link>
       </div>
-      <h1 className="text-2xl font-bold text-surface-900">Edit Property</h1>
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Edit Property</h1>
       <form onSubmit={handleSubmit} className="max-w-md space-y-4">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Name</label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Location</label>
-          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="e.g. Downtown" />
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Location</label>
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800" placeholder="e.g. Downtown" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Address</label>
           <textarea
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             rows={3}
             required
           />
@@ -138,15 +138,15 @@ export default function EditPropertyPage() {
           >
             {submitting ? "Saving…" : "Save"}
           </button>
-          <Link href={`/properties/${id}`} className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50">
+          <Link href={`/properties/${id}`} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">
             Cancel
           </Link>
         </div>
       </form>
 
       <section>
-        <h2 className="text-lg font-semibold text-surface-900 mb-2">Images</h2>
-        <p className="text-sm text-surface-500 mb-2">JPG, PNG, or WebP. Multiple allowed.</p>
+        <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Images</h2>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mb-2">JPG, PNG, or WebP. Multiple allowed.</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -154,12 +154,12 @@ export default function EditPropertyPage() {
           multiple
           onChange={handleImageUpload}
           disabled={uploading}
-          className="block w-full text-sm text-surface-600 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-primary-700"
+          className="block w-full text-sm text-surface-600 dark:text-surface-400 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 dark:file:bg-primary-900/40 file:px-4 file:py-2 file:text-primary-700 dark:file:text-primary-300"
         />
-        {uploading && <p className="text-surface-500 text-sm mt-1">Uploading…</p>}
+        {uploading && <p className="text-surface-500 dark:text-surface-400 text-sm mt-1">Uploading…</p>}
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
           {images.map((img) => (
-            <div key={img.id} className="relative rounded-lg border border-surface-200 overflow-hidden bg-surface-50 aspect-[4/3]">
+            <div key={img.id} className="relative rounded-lg border border-surface-200 dark:border-surface-600 overflow-hidden bg-surface-50 dark:bg-surface-700/50 aspect-[4/3]">
               <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
