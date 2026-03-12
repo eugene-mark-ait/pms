@@ -31,14 +31,25 @@ class PropertyListCreateView(generics.ListCreateAPIView):
     serializer_class = PropertyListSerializer
 
     def get_queryset(self):
+        from django.db.models import Q
         user = self.request.user
         if user.has_role("landlord"):
-            return Property.objects.filter(landlord=user).order_by("-created_at")
-        if user.has_role("manager"):
-            return Property.objects.filter(manager_assignments__manager=user).distinct().order_by("-created_at")
-        if user.has_role("caretaker"):
-            return Property.objects.filter(caretaker_assignments__caretaker=user).distinct().order_by("-created_at")
-        return Property.objects.none()
+            qs = Property.objects.filter(landlord=user)
+        elif user.has_role("manager"):
+            qs = Property.objects.filter(manager_assignments__manager=user).distinct()
+        elif user.has_role("caretaker"):
+            qs = Property.objects.filter(caretaker_assignments__caretaker=user).distinct()
+        else:
+            return Property.objects.none()
+        # Search by property name or location (address/location fields)
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(location__icontains=search)
+                | Q(address__icontains=search)
+            ).distinct()
+        return qs.order_by("-created_at")
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -118,6 +129,10 @@ class UnitListCreateView(generics.ListCreateAPIView):
         property_id = self.request.query_params.get("property")
         if property_id:
             qs = qs.filter(property_id=property_id)
+        # Filter by unit name (unit_number)
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            qs = qs.filter(unit_number__icontains=search)
         return qs.distinct().order_by("property", "unit_number")
 
     def perform_create(self, serializer):

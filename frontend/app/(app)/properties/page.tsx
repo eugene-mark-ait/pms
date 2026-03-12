@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -17,16 +17,30 @@ interface Property {
 
 export default function PropertiesPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [propertySearch, setPropertySearch] = useState("");
+  const [propertySearchDebounced, setPropertySearchDebounced] = useState("");
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
   const canEditDelete = isLandlord || isManager;
   const enabled = user !== null && (isLandlord || isManager || isCaretaker);
 
+  useEffect(() => {
+    const t = setTimeout(() => setPropertySearchDebounced(propertySearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [propertySearch]);
+
+  const propertyParams = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (propertySearchDebounced) p.search = propertySearchDebounced;
+    return p;
+  }, [propertySearchDebounced]);
+
   const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Property>({
     endpoint: "/properties/",
     pageSize: 20,
     enabled,
+    params: propertyParams,
   });
 
   useEffect(() => {
@@ -54,8 +68,23 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Properties</h1>
+        {(isLandlord || isManager || isCaretaker) && (
+          <div className="flex items-center gap-2 min-w-[200px] max-w-sm flex-1">
+            <label htmlFor="property-search" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap sr-only">
+              Search properties
+            </label>
+            <input
+              id="property-search"
+              type="search"
+              value={propertySearch}
+              onChange={(e) => setPropertySearch(e.target.value)}
+              placeholder="Search by name or location…"
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm w-full"
+            />
+          </div>
+        )}
         {isLandlord && (
           <Link
             href="/properties/new"

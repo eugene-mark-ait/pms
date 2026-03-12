@@ -26,20 +26,32 @@ export default function ChooseRolePage() {
   const fetchUser = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout to avoid infinite loading
     try {
-      const res = await api.get<User>("/auth/me/");
-      setUser(res.data);
-      if (res.data.role_names?.length) {
+      const res = await api.get<User>("/auth/me/", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = res.data;
+      const roleNames = Array.isArray(data?.role_names) ? data.role_names : [];
+      setUser({ ...data, role_names: roleNames });
+      if (roleNames.length > 0) {
         router.replace("/dashboard");
         return;
       }
     } catch (err: unknown) {
-      const ax = err as { response?: { status?: number } };
+      clearTimeout(timeoutId);
+      const ax = err as { response?: { status?: number }; name?: string };
       if (ax.response?.status === 401) {
+        setLoading(false);
         router.replace("/login");
         return;
       }
-      setLoadError("Failed to load roles. Retry.");
+      const isAbort = (ax as { code?: string }).code === "ERR_CANCELED" || ax.name === "AbortError" || ax.name === "CanceledError";
+      if (isAbort) {
+        setLoadError("Request timed out. Check your connection and retry.");
+      } else {
+        setLoadError("Failed to load roles. Retry.");
+      }
     } finally {
       setLoading(false);
     }

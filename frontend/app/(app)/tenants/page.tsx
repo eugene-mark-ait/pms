@@ -25,6 +25,8 @@ export default function TenantsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [statusFilter, setStatusFilter] = useState<"current" | "previous" | "all">("current");
   const [unitFilter, setUnitFilter] = useState<string>("");
+  const [tenantSearch, setTenantSearch] = useState("");
+  const [tenantSearchDebounced, setTenantSearchDebounced] = useState("");
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
 
@@ -32,13 +34,20 @@ export default function TenantsPage() {
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
   const enabled = !!user && !!canView;
 
+  // Debounce tenant search so we don't hit API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setTenantSearchDebounced(tenantSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [tenantSearch]);
+
   const params = useMemo(() => {
     const p: Record<string, string> = {};
     if (statusFilter === "current") p.is_active = "true";
     else if (statusFilter === "previous") p.is_active = "false";
     if (unitFilter) p.unit = unitFilter;
+    if (tenantSearchDebounced) p.search = tenantSearchDebounced;
     return p;
-  }, [statusFilter, unitFilter]);
+  }, [statusFilter, unitFilter, tenantSearchDebounced]);
 
   const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Lease>({
     endpoint: "/leases/",
@@ -92,6 +101,19 @@ export default function TenantsPage() {
 
       {canView && (
         <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <label htmlFor="tenant-search" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap sr-only">
+              Search tenants
+            </label>
+            <input
+              id="tenant-search"
+              type="search"
+              value={tenantSearch}
+              onChange={(e) => setTenantSearch(e.target.value)}
+              placeholder="Search by name, email, phone…"
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm w-full max-w-xs"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <label htmlFor="tenant-status-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
               Status

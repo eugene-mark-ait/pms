@@ -3,6 +3,15 @@
 import { clsx } from "clsx";
 import { getDisplayName } from "@/lib/api";
 
+/** Submitter/contact info: only name, email, phone (no other user data). */
+export interface ComplaintContactInfo {
+  id?: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+}
+
 export interface ComplaintDetail {
   id: string;
   title: string;
@@ -12,10 +21,10 @@ export interface ComplaintDetail {
   created_at: string;
   updated_at?: string;
   resolved_at?: string | null;
-  tenant?: { id: string; email: string; first_name?: string; last_name?: string } | null;
+  tenant?: ComplaintContactInfo | null;
   unit?: string;
   unit_display?: { id: string; unit_number: string; property_name?: string } | null;
-  assigned_to?: { id: string; email: string; first_name?: string; last_name?: string } | null;
+  assigned_to?: ComplaintContactInfo | null;
 }
 
 export default function ComplaintDetailModal({
@@ -30,6 +39,10 @@ export default function ComplaintDetailModal({
   canManage?: boolean;
 }) {
   const tenantName = complaint.tenant ? getDisplayName(complaint.tenant) : "—";
+  const tenantPhone = complaint.tenant?.phone ?? "";
+  const assignedName = complaint.assigned_to ? getDisplayName(complaint.assigned_to) : "—";
+  const assignedEmail = complaint.assigned_to?.email ?? "";
+  const assignedPhone = complaint.assigned_to?.phone ?? "";
   const unitLabel = complaint.unit_display
     ? complaint.unit_display.property_name
       ? `${complaint.unit_display.property_name} – Unit ${complaint.unit_display.unit_number}`
@@ -89,10 +102,34 @@ export default function ComplaintDetailModal({
               <dt className="text-surface-500 dark:text-surface-400 font-medium">Description</dt>
               <dd className="text-surface-900 dark:text-surface-100 mt-0.5 whitespace-pre-wrap">{complaint.description || "—"}</dd>
             </div>
-            <div>
-              <dt className="text-surface-500 dark:text-surface-400 font-medium">Tenant</dt>
-              <dd className="text-surface-900 dark:text-surface-100">{tenantName}</dd>
-            </div>
+            {/* Submitted by (tenant): name, email, phone — visible to landlords/managers/caretakers */}
+            {canManage && complaint.tenant && (
+              <div>
+                <dt className="text-surface-500 dark:text-surface-400 font-medium">Submitted by</dt>
+                <dd className="text-surface-900 dark:text-surface-100 mt-0.5 space-y-0.5">
+                  <span className="block font-medium">{tenantName}</span>
+                  {complaint.tenant.email && <span className="block text-sm text-surface-600 dark:text-surface-400">{complaint.tenant.email}</span>}
+                  {tenantPhone && <span className="block text-sm text-surface-600 dark:text-surface-400">{tenantPhone}</span>}
+                </dd>
+              </div>
+            )}
+            {/* For tenants: show who the complaint is assigned to (name, email, phone) */}
+            {!canManage && complaint.assigned_to && (
+              <div>
+                <dt className="text-surface-500 dark:text-surface-400 font-medium">Assigned to</dt>
+                <dd className="text-surface-900 dark:text-surface-100 mt-0.5 space-y-0.5">
+                  <span className="block font-medium">{assignedName}</span>
+                  {assignedEmail && <span className="block text-sm text-surface-600 dark:text-surface-400">{assignedEmail}</span>}
+                  {assignedPhone && <span className="block text-sm text-surface-600 dark:text-surface-400">{assignedPhone}</span>}
+                </dd>
+              </div>
+            )}
+            {canManage && !complaint.tenant && (
+              <div>
+                <dt className="text-surface-500 dark:text-surface-400 font-medium">Submitted by</dt>
+                <dd className="text-surface-900 dark:text-surface-100">—</dd>
+              </div>
+            )}
             <div>
               <dt className="text-surface-500 dark:text-surface-400 font-medium">Apartment / Unit</dt>
               <dd className="text-surface-900 dark:text-surface-100">{unitLabel}</dd>
@@ -109,11 +146,13 @@ export default function ComplaintDetailModal({
                 <dd className="text-surface-900 dark:text-surface-100 capitalize">{complaint.priority}</dd>
               </div>
             )}
-            {complaint.assigned_to && (
+            {canManage && complaint.assigned_to && (
               <div>
                 <dt className="text-surface-500 dark:text-surface-400 font-medium">Assigned to</dt>
-                <dd className="text-surface-900 dark:text-surface-100">
-                  {getDisplayName(complaint.assigned_to) || complaint.assigned_to.email}
+                <dd className="text-surface-900 dark:text-surface-100 mt-0.5 space-y-0.5">
+                  <span className="block font-medium">{assignedName}</span>
+                  {assignedEmail && <span className="block text-sm text-surface-600 dark:text-surface-400">{assignedEmail}</span>}
+                  {assignedPhone && <span className="block text-sm text-surface-600 dark:text-surface-400">{assignedPhone}</span>}
                 </dd>
               </div>
             )}

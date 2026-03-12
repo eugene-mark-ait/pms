@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 
+// Features/anchors use /#section so from /pricing we go to home page section, not /pricing#section
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "#features", label: "Features" },
+  { href: "/#features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
 ];
 
@@ -23,25 +24,15 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden md:flex md:items-center md:gap-8">
-          {navLinks.map((link) =>
-            link.href.startsWith("#") ? (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-              >
-                {link.label}
-              </a>
-            ) : (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-              >
-                {link.label}
-              </Link>
-            )
-          )}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
@@ -77,27 +68,16 @@ export default function Navbar() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-surface-200 bg-white px-4 py-4 space-y-2">
-          {navLinks.map((link) =>
-            link.href.startsWith("#") ? (
-              <a
-                key={link.href}
-                href={link.href}
-                className="block py-2 text-sm font-medium text-surface-700"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </a>
-            ) : (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block py-2 text-sm font-medium text-surface-700"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </Link>
-            )
-          )}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="block py-2 text-sm font-medium text-surface-700"
+              onClick={() => setMobileOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ))}
           <div className="pt-4 space-y-2 border-t border-surface-100">
             <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
               Login

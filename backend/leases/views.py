@@ -52,6 +52,16 @@ class LeaseListCreateView(generics.ListCreateAPIView):
         unit_id = self.request.query_params.get("unit")
         if unit_id:
             qs = qs.filter(unit_id=unit_id)
+        # Tenant search: email, phone, or name (first/last)
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(tenant__email__icontains=search)
+                | Q(tenant__first_name__icontains=search)
+                | Q(tenant__last_name__icontains=search)
+                | Q(tenant__phone__icontains=search)
+            ).distinct()
         return qs.order_by("-start_date")
 
     def get_serializer_class(self):

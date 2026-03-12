@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
@@ -41,6 +41,8 @@ export default function UnitsPage() {
   const propertyId = searchParams.get("property");
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitSearchDebounced, setUnitSearchDebounced] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkPropertyId, setBulkPropertyId] = useState(propertyId ?? "");
   const [bulkFile, setBulkFile] = useState<string>("");
@@ -51,9 +53,21 @@ export default function UnitsPage() {
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
   const enabled = !!user && !!canView;
 
+  useEffect(() => {
+    const t = setTimeout(() => setUnitSearchDebounced(unitSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [unitSearch]);
+
+  const unitParams = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (propertyId) p.property = propertyId;
+    if (unitSearchDebounced) p.search = unitSearchDebounced;
+    return p;
+  }, [propertyId, unitSearchDebounced]);
+
   const { items: list, loading, loadingMore, hasMore, error, refresh, sentinelRef } = useInfiniteScroll<Unit>({
     endpoint: "/units/",
-    params: propertyId ? { property: propertyId } : {},
+    params: unitParams,
     pageSize: 20,
     enabled,
   });
@@ -127,12 +141,27 @@ export default function UnitsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Units</h1>
-        {canView && properties.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="unit-property-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
-              Property
-            </label>
-            <select
+        {canView && (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 min-w-[180px]">
+              <label htmlFor="unit-search" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap sr-only">
+                Search units
+              </label>
+              <input
+                id="unit-search"
+                type="search"
+                value={unitSearch}
+                onChange={(e) => setUnitSearch(e.target.value)}
+                placeholder="Search by unit name…"
+                className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm w-full"
+              />
+            </div>
+            {properties.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="unit-property-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
+                  Property
+                </label>
+                <select
               id="unit-property-filter"
               value={propertyId ?? ""}
               onChange={(e) => {
@@ -149,6 +178,8 @@ export default function UnitsPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+              </div>
+            )}
           </div>
         )}
         {canManage && (

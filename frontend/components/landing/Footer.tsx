@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 
+// Use /#section so from /pricing we navigate to home page section, not /pricing#section
 const productLinks = [
   { href: "/find-units", label: "Find a Home" },
   { href: "/register", label: "List Your Property" },
-  { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How It Works" },
+  { href: "/#features", label: "Features" },
+  { href: "/#how-it-works", label: "How It Works" },
 ];
 
 const companyLinks = [
@@ -23,14 +24,6 @@ const socialLinks = [
 ];
 
 function FooterLink({ href, label }: { href: string; label: string }) {
-  const isAnchor = href.startsWith("#");
-  if (isAnchor) {
-    return (
-      <a href={href} className="text-surface-500 hover:text-surface-900 transition text-sm">
-        {label}
-      </a>
-    );
-  }
   return (
     <Link href={href} className="text-surface-500 hover:text-surface-900 transition text-sm">
       {label}
