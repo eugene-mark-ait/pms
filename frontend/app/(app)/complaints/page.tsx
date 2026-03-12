@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api, User } from "@/lib/api";
+import { api, User, getDisplayName } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import FileComplaintModal from "@/components/FileComplaintModal";
 import ComplaintDetailModal, { type ComplaintDetail } from "@/components/ComplaintDetailModal";
@@ -68,10 +68,11 @@ export default function ComplaintsPage() {
             <table className="w-full">
               <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-700">
                 <tr>
+                  {canManageComplaints && <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Submitted by</th>}
                   <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Title</th>
                   <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Status</th>
                   <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Priority</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Assigned to</th>
+                  {canManageComplaints && <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Assigned to</th>}
                   <th className="text-left px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Created</th>
                   {canManageComplaints && <th className="text-right px-6 py-3 text-sm font-medium text-surface-700 dark:text-surface-300">Actions</th>}
                 </tr>
@@ -86,6 +87,16 @@ export default function ComplaintsPage() {
                       c.status === "closed" && "opacity-70 bg-surface-50/50 dark:bg-surface-800/50"
                     )}
                   >
+                    {canManageComplaints && (
+                      <td className="px-6 py-4 text-surface-700 dark:text-surface-300">
+                        <span className="font-medium">{c.tenant ? getDisplayName(c.tenant) : "—"}</span>
+                        {c.unit_display && (
+                          <span className="text-surface-500 dark:text-surface-400 text-sm block">
+                            {c.unit_display.property_name ? `${c.unit_display.property_name} – ` : ""}Unit {c.unit_display.unit_number}
+                          </span>
+                        )}
+                      </td>
+                    )}
                     <td className={clsx("px-6 py-4 font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</td>
                     <td className="px-6 py-4">
                       <span className={clsx(
@@ -98,9 +109,11 @@ export default function ComplaintsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 capitalize text-surface-600 dark:text-surface-400">{c.priority ?? "—"}</td>
-                    <td className="px-6 py-4 text-surface-600 dark:text-surface-400">
-                      {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "—"}
-                    </td>
+                    {canManageComplaints && (
+                      <td className="px-6 py-4 text-surface-600 dark:text-surface-400">
+                        {c.assigned_to ? getDisplayName(c.assigned_to) || c.assigned_to.email : "—"}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{new Date(c.created_at).toLocaleDateString()}</td>
                     {canManageComplaints && (
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -129,7 +142,17 @@ export default function ComplaintsPage() {
                   c.status === "closed" && "opacity-75"
                 )}
               >
-                <p className={clsx("font-medium", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</p>
+                {canManageComplaints && c.tenant && (
+                  <p className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                    {getDisplayName(c.tenant)}
+                    {c.unit_display && (
+                      <span className="text-surface-500 dark:text-surface-400 font-normal">
+                        {" "}· {c.unit_display.property_name ? `${c.unit_display.property_name} – ` : ""}Unit {c.unit_display.unit_number}
+                      </span>
+                    )}
+                  </p>
+                )}
+                <p className={clsx("font-medium mt-1", c.status === "closed" ? "text-surface-500 dark:text-surface-400" : "text-surface-900 dark:text-surface-100")}>{c.title}</p>
                 <p className="text-sm mt-1">
                   <span className={clsx(
                     "capitalize font-medium",
@@ -142,7 +165,7 @@ export default function ComplaintsPage() {
                   <span className="text-surface-600 dark:text-surface-400"> · {c.priority ?? "—"}</span>
                 </p>
                 <p className="text-sm text-surface-500 dark:text-surface-500 mt-2">
-                  {c.assigned_to ? `${c.assigned_to.first_name || ""} ${c.assigned_to.last_name || ""}`.trim() || c.assigned_to.email : "Unassigned"} · {new Date(c.created_at).toLocaleDateString()}
+                  {c.assigned_to ? getDisplayName(c.assigned_to) || c.assigned_to.email : "Unassigned"} · {new Date(c.created_at).toLocaleDateString()}
                 </p>
                 {canManageComplaints && c.status !== "closed" && (
                   <button type="button" onClick={(e) => { e.stopPropagation(); closeComplaint(c.id); }} className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">

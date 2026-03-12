@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
@@ -284,8 +285,8 @@ export default function UnitsPage() {
         </>
       )}
 
-      {canManage && bulkOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm p-4" onClick={() => !bulkSubmitting && setBulkOpen(false)}>
+      {canManage && bulkOpen && (typeof document !== "undefined" ? createPortal(
+        <div className="fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm p-4 z-[100]" onClick={() => !bulkSubmitting && setBulkOpen(false)}>
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Bulk upload units</h2>
             <p className="text-sm text-surface-600 dark:text-surface-400">Upload a CSV with columns: Unit Name, Type, Rent, Deposit, Status.</p>
@@ -319,8 +320,9 @@ export default function UnitsPage() {
               <button type="button" onClick={handleBulkSubmit} disabled={bulkSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">{bulkSubmitting ? "Creating…" : "Create units"}</button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null)}
     </div>
   );
 }

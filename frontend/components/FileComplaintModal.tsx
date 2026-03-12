@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { api, Lease } from "@/lib/api";
+
+const MODAL_OVERLAY_CLASS =
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end bg-surface-900/40 dark:bg-surface-950/50 backdrop-blur-sm z-[100] transition-opacity";
 
 interface Recipient {
   id: string;
@@ -82,9 +86,12 @@ export default function FileComplaintModal({
     }
   }
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const content = (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-surface-900/40 dark:bg-surface-950/50 backdrop-blur-sm transition-opacity"
+      className={MODAL_OVERLAY_CLASS}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -185,4 +192,7 @@ export default function FileComplaintModal({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(content, document.body);
 }

@@ -5,6 +5,7 @@ import { api, Payment, User, formatKSH, getDisplayName } from "@/lib/api";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import EmptyState from "@/components/EmptyState";
 
 export default function PaymentsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -87,7 +88,7 @@ export default function PaymentsPage() {
       {loading ? (
         <p className="text-surface-500 dark:text-surface-400">Loading…</p>
       ) : list.length === 0 ? (
-        <p className="text-surface-600 dark:text-surface-400">No payments yet.</p>
+        <EmptyState />
       ) : (
         <>
           <div className="hidden md:block bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">

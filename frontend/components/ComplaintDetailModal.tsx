@@ -1,7 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { getDisplayName } from "@/lib/api";
+
+/** Full-viewport overlay: covers entire screen including top; render via portal so not clipped. */
+const MODAL_OVERLAY_CLASS =
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm z-[100]";
 
 /** Submitter/contact info: only name, email, phone (no other user data). */
 export interface ComplaintContactInfo {
@@ -49,9 +55,12 @@ export default function ComplaintDetailModal({
       : `Unit ${complaint.unit_display.unit_number}`
     : "—";
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const content = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm"
+      className={MODAL_OVERLAY_CLASS}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -172,4 +181,7 @@ export default function ComplaintDetailModal({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(content, document.body);
 }

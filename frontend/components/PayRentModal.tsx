@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { api, Lease, formatKSH } from "@/lib/api";
 import { format } from "date-fns";
+
+const MODAL_OVERLAY_CLASS =
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm z-[100]";
 
 export default function PayRentModal({
   lease,
@@ -44,8 +48,11 @@ export default function PayRentModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm" onClick={onClose}>
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const content = (
+    <div className={MODAL_OVERLAY_CLASS} onClick={onClose}>
       <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Pay Rent</h2>
         <p className="text-surface-600 dark:text-surface-400 text-sm mb-2">
@@ -115,4 +122,7 @@ export default function PayRentModal({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(content, document.body);
 }
