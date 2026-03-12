@@ -67,20 +67,23 @@ export default function NewUnitPage() {
     }
   }
 
-  if (loading) return <p className="text-surface-500">Loading…</p>;
+  if (loading) return <p className="text-surface-500 dark:text-surface-400">Loading…</p>;
+
+  const inputBase = "w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition";
+  const labelClass = "block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1";
 
   return (
     <div className="space-y-6">
-      <Link href="/units" className="text-surface-500 hover:text-surface-700">← Units</Link>
-      <h1 className="text-2xl font-bold text-surface-900">Add Unit</h1>
+      <Link href="/units" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300">← Units</Link>
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add Unit</h1>
       <form onSubmit={handleSubmit} className="max-w-md space-y-4">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Property</label>
+          <label className={labelClass}>Property</label>
           <select
             value={propertyId}
             onChange={(e) => setPropertyId(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className={inputBase}
             required
           >
             <option value="">Select property</option>
@@ -90,19 +93,19 @@ export default function NewUnitPage() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Unit number</label>
+          <label className={labelClass}>Unit number</label>
           <input
             type="text"
             value={unitNumber}
             onChange={(e) => setUnitNumber(e.target.value)}
-            className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900"
+            className={inputBase}
             placeholder="e.g. 101"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Unit type</label>
-          <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900">
+          <label className={labelClass}>Unit type</label>
+          <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className={inputBase}>
             <option value="apartment">Apartment</option>
             <option value="studio">Studio</option>
             <option value="bedsitter">Bedsitter</option>
@@ -127,12 +130,12 @@ export default function NewUnitPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Rent</label>
-            <input type="number" step="0.01" min="0" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+            <label className={labelClass}>Rent</label>
+            <input type="number" step="0.01" min="0" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className={inputBase} placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Payment frequency</label>
-            <select value={paymentFrequency} onChange={(e) => setPaymentFrequency(e.target.value as "weekly" | "monthly" | "yearly")} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900">
+            <label className={labelClass}>Payment frequency</label>
+            <select value={paymentFrequency} onChange={(e) => setPaymentFrequency(e.target.value as "weekly" | "monthly" | "yearly")} className={inputBase}>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
@@ -141,23 +144,23 @@ export default function NewUnitPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Security deposit</label>
-            <input type="number" step="0.01" min="0" value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+            <label className={labelClass}>Security deposit</label>
+            <input type="number" step="0.01" min="0" value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} className={inputBase} placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Service charge</label>
-            <input type="number" step="0.01" min="0" value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="0" />
+            <label className={labelClass}>Service charge</label>
+            <input type="number" step="0.01" min="0" value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} className={inputBase} placeholder="0" />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-surface-700 mb-1">Extra costs (optional)</label>
-          <input type="text" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="w-full rounded-lg border border-surface-300 px-3 py-2 text-surface-900" placeholder="e.g. Water, parking" />
+          <label className={labelClass}>Extra costs (optional)</label>
+          <input type="text" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className={inputBase} placeholder="e.g. Water, parking" />
         </div>
         <div className="flex gap-3">
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
             {submitting ? "Creating…" : "Create Unit"}
           </button>
-          <Link href="/units" className="rounded-lg border border-surface-300 px-4 py-2 text-surface-700 hover:bg-surface-50">Cancel</Link>
+          <Link href="/units" className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Cancel</Link>
         </div>
       </form>
     </div>

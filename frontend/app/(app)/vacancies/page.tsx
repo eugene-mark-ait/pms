@@ -19,8 +19,15 @@ interface Vacancy {
   is_filled: boolean;
 }
 
+interface PropertyOption {
+  id: string;
+  name: string;
+}
+
 export default function VacanciesPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [propertyFilter, setPropertyFilter] = useState<string>("");
 
   const canView =
     user?.role_names?.includes("landlord") ||
@@ -32,11 +39,19 @@ export default function VacanciesPage() {
     endpoint: "/vacancies/",
     pageSize: 20,
     enabled,
+    params: propertyFilter ? { property: propertyFilter } : {},
   });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
+
+  useEffect(() => {
+    if (!canView || !user) return;
+    api.get<PropertyOption[]>("/properties/options/")
+      .then((res) => setProperties(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setProperties([]));
+  }, [canView, user]);
 
   if (user && !canView) {
     return (
@@ -49,7 +64,27 @@ export default function VacanciesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Upcoming Vacancies</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Upcoming Vacancies</h1>
+        {properties.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="vacancy-property-filter" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap">
+              Property
+            </label>
+            <select
+              id="vacancy-property-filter"
+              value={propertyFilter}
+              onChange={(e) => setPropertyFilter(e.target.value)}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-w-[180px] focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+            >
+              <option value="">All Properties</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       {loading ? (
         <p className="text-surface-500 dark:text-surface-400">Loading…</p>

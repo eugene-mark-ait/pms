@@ -47,7 +47,20 @@ export default function GoogleLoginButton({
     [onSuccess, onError],
   );
 
-  if (!GOOGLE_CLIENT_ID) return null;
+  if (!GOOGLE_CLIENT_ID) {
+    return (
+      <div className={className}>
+        <button
+          type="button"
+          disabled
+          className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-4 py-2.5 text-sm text-surface-500 dark:text-surface-400 cursor-not-allowed"
+          title="Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to .env.local and restart the dev server"
+        >
+          Sign in with Google (not configured)
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

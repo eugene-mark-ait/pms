@@ -296,7 +296,7 @@ export default function UnitsPage() {
               <select
                 value={bulkPropertyId}
                 onChange={(e) => setBulkPropertyId(e.target.value)}
-                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
               >
                 <option value="">Select property</option>
                 {properties.map((p) => (
@@ -310,7 +310,7 @@ export default function UnitsPage() {
                 value={bulkFile}
                 onChange={(e) => setBulkFile(e.target.value)}
                 placeholder="Unit Name,Type,Rent,Deposit,Status&#10;101,one_bedroom,1200,2400,vacant"
-                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 font-mono text-sm min-h-[120px] placeholder:text-surface-400 dark:placeholder:text-surface-500"
+                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 font-mono text-sm min-h-[120px] placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
                 rows={6}
               />
             </div>

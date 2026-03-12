@@ -71,15 +71,15 @@ export default function ComplaintDetailModal({
         onClick={(e) => e.stopPropagation()}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
       >
-        <div className="p-6 pt-4">
-          <div className="flex items-start justify-between gap-4">
-            <h2 id="complaint-detail-title" className="text-xl font-bold text-surface-900 dark:text-surface-100">
+        <div className="p-6 pb-8">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <h2 id="complaint-detail-title" className="text-xl font-bold text-surface-900 dark:text-surface-100 leading-tight pr-2">
               {complaint.title}
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="shrink-0 rounded-lg p-1.5 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700"
+              className="shrink-0 rounded-lg p-2 text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 hover:text-surface-700 dark:hover:text-surface-200 transition"
               aria-label="Close"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -87,7 +87,7 @@ export default function ComplaintDetailModal({
               </svg>
             </button>
           </div>
-          <dl className="mt-4 space-y-3 text-sm">
+          <dl className="space-y-4 text-sm">
             <div>
               <dt className="text-surface-500 dark:text-surface-400 font-medium">Status</dt>
               <dd>
@@ -168,11 +168,18 @@ export default function ComplaintDetailModal({
             )}
           </dl>
           {canManage && complaint.status !== "closed" && onCloseComplaint && (
-            <div className="mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+            <div className="mt-8 pt-6 border-t border-surface-200 dark:border-surface-700 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2.5 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700 transition"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={() => onCloseComplaint(complaint.id)}
-                className="rounded-lg bg-primary-600 text-white px-4 py-2 text-sm font-medium hover:bg-primary-700"
+                className="rounded-lg bg-primary-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-primary-700 transition"
               >
                 Close complaint
               </button>
