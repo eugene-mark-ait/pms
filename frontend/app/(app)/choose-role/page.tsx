@@ -62,15 +62,12 @@ export default function ChooseRolePage() {
   }, [fetchUser]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); // Prevent full page refresh
+    e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
       await api.post("/auth/choose-role/", { role });
-      // Only redirect on success; do not call router.refresh() here as it can
-      // revalidate the current route and cause the page to re-render or stay on choose-role
       router.push("/dashboard");
-      return;
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } } };
       setError(ax.response?.data?.detail || "Failed to set role.");
