@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 
-// Use /#section so from /pricing we navigate to home page section, not /pricing#section
 const productLinks = [
   { href: "/find-units", label: "Find a Home" },
-  { href: "/register", label: "List Your Property" },
-  { href: "/#features", label: "Features" },
-  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/register", label: "For Property Owners" },
+  { href: "/#overview", label: "Platform" },
+  { href: "/#financial-services", label: "Financial Services" },
 ];
 
 const companyLinks = [
@@ -41,7 +40,7 @@ export default function Footer() {
               PMS
             </Link>
             <p className="mt-3 max-w-xs text-sm text-surface-500">
-              Smarter renting and property management in one platform. For landlords, property managers, and tenants.
+              The financial operating system for rental housing. Property owners, tenants, and embedded financial services — one ecosystem.
             </p>
             <div className="mt-6 flex gap-4">
               {socialLinks.map((s) => (

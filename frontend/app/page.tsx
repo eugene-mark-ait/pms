@@ -1,13 +1,12 @@
 import {
   Navbar,
   Hero,
-  Benefits,
-  FeaturesByUser,
-  HowItWorks,
-  MpesaRentSection,
-  DashboardPreview,
-  Testimonials,
-  CTA,
+  PlatformOverview,
+  PropertyOwnerFeatures,
+  TenantExperience,
+  EmbeddedFinancialServices,
+  PlatformValue,
+  FinalCTA,
   Footer,
 } from "@/components/landing";
 
@@ -17,13 +16,12 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <Benefits />
-        <MpesaRentSection />
-        <FeaturesByUser />
-        <HowItWorks />
-        <DashboardPreview />
-        <Testimonials />
-        <CTA />
+        <PlatformOverview />
+        <PropertyOwnerFeatures />
+        <TenantExperience />
+        <EmbeddedFinancialServices />
+        <PlatformValue />
+        <FinalCTA />
         <Footer />
       </main>
     </div>

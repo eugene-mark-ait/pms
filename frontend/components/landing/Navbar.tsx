@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 
-// Features/anchors use /#section so from /pricing we go to home page section, not /pricing#section
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/#features", label: "Features" },
+  { href: "/#overview", label: "Platform" },
+  { href: "/#property-owners", label: "Property Owners" },
+  { href: "/#tenants", label: "Tenants" },
+  { href: "/#financial-services", label: "Financial Services" },
   { href: "/pricing", label: "Pricing" },
 ];
 
@@ -20,7 +22,7 @@ export default function Navbar() {
           <span className="text-xl font-bold tracking-tight text-surface-900">
             PMS
           </span>
-          <span className="hidden text-sm text-surface-500 sm:inline">Property Management</span>
+          <span className="hidden text-sm text-surface-500 sm:inline">Rental Housing OS</span>
         </Link>
 
         <div className="hidden md:flex md:items-center md:gap-8">

@@ -7,7 +7,7 @@ const baseTierFeatures = [
   "Track tenants and leases",
   "Rent payment tracking and M-Pesa integration",
   "Basic financial overview",
-  "Tenant and landlord messaging",
+  "Tenant and property owner messaging",
 ];
 
 const advancedTierFeatures = [
@@ -90,7 +90,7 @@ export default function PricingContent() {
           Simple, transparent pricing
         </h1>
         <p className="mt-4 text-lg text-surface-600">
-          Landlords pay a small percentage per unit. Tenants and property managers use the platform for free.
+          Property owners pay a small percentage per unit. Tenants and property managers use the platform for free.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export default function PricingContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </span>
-            <span><strong className="text-surface-900">Landlords</strong> pay a platform fee per unit (see tiers below).</span>
+            <span><strong className="text-surface-900">Property owners</strong> pay a platform fee per unit (see tiers below).</span>
           </li>
           <li className="flex items-start gap-3">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
