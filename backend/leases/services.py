@@ -55,9 +55,17 @@ def get_outstanding_balance(lease: Lease, as_of: date | None = None) -> Decimal:
 
 
 def get_payment_status(lease: Lease) -> str:
-    """Return 'paid', 'due', or 'overdue'."""
+    """Return 'paid', 'due', or 'overdue'. Never 'paid' until at least one payment has been made."""
     next_due = get_next_rent_due_date(lease)
     today = date.today()
+    last_end = get_last_payment_end(lease)
+    # New lease with no payments: never show as "paid" even if start_date is in the future
+    if last_end is None:
+        if next_due > today:
+            return "due"  # rent not yet due, but no payment made
+        if next_due == today:
+            return "due"
+        return "overdue"
     if next_due > today:
         return "paid"
     if next_due == today:
