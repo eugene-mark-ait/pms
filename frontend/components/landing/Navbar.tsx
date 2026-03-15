@@ -69,20 +69,12 @@ export default function Navbar({ user = null }: { user?: User | null }) {
               </button>
             </>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition shadow-sm"
-              >
-                Get Started
-              </Link>
-            </>
+            <Link
+              href="/dashboard"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition shadow-sm"
+            >
+              Go to Dashboard
+            </Link>
           )}
         </div>
 
@@ -130,14 +122,9 @@ export default function Navbar({ user = null }: { user?: User | null }) {
                 </button>
               </>
             ) : (
-              <>
-                <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
-                  Login
-                </Link>
-                <Link href="/register" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>
-                  Get Started
-                </Link>
-              </>
+              <Link href="/dashboard" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>
+                Go to Dashboard
+              </Link>
             )}
           </div>
         </div>

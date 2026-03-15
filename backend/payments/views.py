@@ -45,11 +45,6 @@ class PayRentView(generics.GenericAPIView):
 
         next_due = get_next_rent_due_date(lease)
         today = date.today()
-        if next_due > today:
-            return Response(
-                {"error": "Rent is not yet due. You can pay from the due date."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         if get_payment_status(lease) == "paid":
             return Response(
                 {"error": "Current period is already paid."},
