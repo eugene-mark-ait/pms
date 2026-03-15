@@ -1,3 +1,5 @@
+from datetime import date as date_type
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -23,6 +25,36 @@ from accounts.permissions import IsLandlordOrManager, IsLandlordOrManagerOrCaret
 from notifications.models import Notification
 
 
+def process_due_evictions():
+    """When an eviction notice's move-out deadline is today or in the past, mark the unit vacant, end the lease, create lease history, and mark the eviction as fulfilled (cancelled)."""
+    today = date_type.today()
+    due = EvictionNotice.objects.filter(
+        cancelled=False,
+        move_out_deadline__lte=today,
+    ).select_related("lease", "lease__unit", "lease__tenant")
+    for eviction in due:
+        lease = eviction.lease
+        unit = lease.unit
+        move_out = eviction.move_out_deadline
+        notice_date = eviction.created_at.date() if eviction.created_at else None
+        LeaseHistory.objects.get_or_create(
+            tenant=lease.tenant,
+            unit=unit,
+            move_out_date=move_out,
+            defaults={
+                "lease_start_date": lease.start_date,
+                "lease_end_date": lease.end_date,
+                "notice_date": notice_date,
+            },
+        )
+        unit.is_vacant = True
+        unit.save(update_fields=["is_vacant", "updated_at"])
+        lease.is_active = False
+        lease.save(update_fields=["is_active", "updated_at"])
+        eviction.cancelled = True
+        eviction.save(update_fields=["cancelled", "updated_at"])
+
+
 def tenant_leases_queryset(user):
     return Lease.objects.filter(tenant=user, is_active=True).select_related(
         "unit", "unit__property"
@@ -35,6 +67,7 @@ class LeaseListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         process_due_notices()
+        process_due_evictions()
         user = self.request.user
         if user.has_role("landlord"):
             qs = Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
@@ -87,6 +120,7 @@ class LeaseDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LeaseSerializer
 
     def get_queryset(self):
+        process_due_evictions()
         user = self.request.user
         if user.has_role("landlord"):
             return Lease.objects.filter(unit__property__landlord=user)
@@ -109,6 +143,7 @@ class TenantMyUnitsView(generics.ListAPIView):
     serializer_class = LeaseSerializer
 
     def get_queryset(self):
+        process_due_evictions()
         return tenant_leases_queryset(self.request.user)
 
 
