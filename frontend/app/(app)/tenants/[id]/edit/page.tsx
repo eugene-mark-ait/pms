@@ -124,8 +124,17 @@ export default function EditLeasePage() {
           </div>
         )}
       </div>
-      {lease.eviction_active && (
-        <div>
+      <div className="flex flex-wrap gap-3 items-center">
+        {!lease.eviction_active && lease.is_active && (
+          <button
+            type="button"
+            onClick={() => setEvictionDrawerOpen(true)}
+            className="rounded-lg border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2.5 font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition"
+          >
+            Give Eviction Notice
+          </button>
+        )}
+        {lease.eviction_active && (
           <button
             type="button"
             onClick={handleCancelEviction}
@@ -134,8 +143,8 @@ export default function EditLeasePage() {
           >
             {cancellingEviction ? "Cancelling…" : "Cancel Eviction"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
       <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <div className="grid grid-cols-2 gap-4">
@@ -169,15 +178,6 @@ export default function EditLeasePage() {
         <div className="flex flex-wrap gap-3 items-center">
           <button type="submit" disabled={submitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">{submitting ? "Saving…" : "Save"}</button>
           <Link href="/tenants" className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Cancel</Link>
-          {!lease.eviction_active && lease.is_active && (
-            <button
-              type="button"
-              onClick={() => setEvictionDrawerOpen(true)}
-              className="rounded-lg border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30"
-            >
-              Give Eviction Notice
-            </button>
-          )}
         </div>
       </form>
       {evictionDrawerOpen && (

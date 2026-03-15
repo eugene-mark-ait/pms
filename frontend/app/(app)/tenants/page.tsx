@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, User, getDisplayName } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { clsx } from "clsx";
+import GiveEvictionNoticeDrawer from "@/components/GiveEvictionNoticeDrawer";
 
 interface Lease {
   id: string;
@@ -30,6 +31,7 @@ export default function TenantsPage() {
   const [tenantSearchDebounced, setTenantSearchDebounced] = useState("");
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
+  const [evictionDrawerLease, setEvictionDrawerLease] = useState<Lease | null>(null);
 
   const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
@@ -242,12 +244,23 @@ export default function TenantsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {canManage && (
-                          <Link
-                            href={`/tenants/${l.id}/edit`}
-                            className={clsx("text-sm min-h-[44px] sm:min-h-0 inline-flex items-center", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
-                          >
-                            Edit
-                          </Link>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {!isPrevious && !l.eviction_active && (
+                              <button
+                                type="button"
+                                onClick={() => setEvictionDrawerLease(l)}
+                                className="text-sm text-red-600 dark:text-red-400 hover:underline font-medium min-h-[44px] sm:min-h-0 inline-flex items-center"
+                              >
+                                Give Eviction Notice
+                              </button>
+                            )}
+                            <Link
+                              href={`/tenants/${l.id}/edit`}
+                              className={clsx("text-sm min-h-[44px] sm:min-h-0 inline-flex items-center", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
+                            >
+                              Edit
+                            </Link>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -307,12 +320,23 @@ export default function TenantsPage() {
                     )}
                   </div>
                   {canManage && (
-                    <Link
-                      href={`/tenants/${l.id}/edit`}
-                      className={clsx("inline-flex items-center min-h-[44px] mt-3 text-sm font-medium", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
-                    >
-                      Edit lease
-                    </Link>
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      {!isPrevious && !l.eviction_active && (
+                        <button
+                          type="button"
+                          onClick={() => setEvictionDrawerLease(l)}
+                          className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline min-h-[44px] inline-flex items-center"
+                        >
+                          Give Eviction Notice
+                        </button>
+                      )}
+                      <Link
+                        href={`/tenants/${l.id}/edit`}
+                        className={clsx("inline-flex items-center min-h-[44px] text-sm font-medium", isPrevious ? "text-surface-500 dark:text-surface-400 hover:underline" : "text-primary-600 dark:text-primary-400 hover:underline")}
+                      >
+                        Edit lease
+                      </Link>
+                    </div>
                   )}
                 </div>
               );
@@ -328,6 +352,13 @@ export default function TenantsPage() {
           </div>
           {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more tenants</p>}
         </>
+      )}
+      {evictionDrawerLease && (
+        <GiveEvictionNoticeDrawer
+          lease={evictionDrawerLease}
+          onClose={() => setEvictionDrawerLease(null)}
+          onSuccess={() => { setEvictionDrawerLease(null); refresh(); }}
+        />
       )}
     </div>
   );
