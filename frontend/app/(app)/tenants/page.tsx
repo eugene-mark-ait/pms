@@ -12,6 +12,7 @@ interface Lease {
   unit: { id?: string; unit_number: string; property: { name: string } };
   payment_status?: string;
   is_active?: boolean;
+  eviction_active?: boolean;
 }
 
 interface UnitOption {
@@ -215,6 +216,11 @@ export default function TenantsPage() {
                               Previous
                             </span>
                           )}
+                          {l.eviction_active && (
+                            <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-red-600/20">
+                              Eviction notice
+                            </span>
+                          )}
                           {l.payment_status === "overdue" && (
                             <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-red-600/20">
                               Overdue
@@ -282,6 +288,11 @@ export default function TenantsPage() {
                     {l.is_active === false && (
                       <span className="inline-flex items-center rounded-md bg-surface-200 dark:bg-surface-600 px-2 py-0.5 text-xs font-medium text-surface-600 dark:text-surface-400">
                         Previous
+                      </span>
+                    )}
+                    {l.eviction_active && (
+                      <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+                        Eviction notice
                       </span>
                     )}
                     {l.payment_status === "overdue" && (

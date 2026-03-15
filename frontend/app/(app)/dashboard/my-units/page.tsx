@@ -39,7 +39,9 @@ export default function MyUnitsPage() {
             <div
               key={lease.id}
               className={`rounded-xl border p-6 shadow-sm flex flex-col ${
-                lease.has_active_notice
+                lease.eviction_active
+                  ? "bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-700 ring-1 ring-red-200/50 dark:ring-red-600/30"
+                  : lease.has_active_notice
                   ? "bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 ring-1 ring-amber-200/50 dark:ring-amber-600/30"
                   : "bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700"
               }`}
@@ -50,7 +52,23 @@ export default function MyUnitsPage() {
               <div className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
                 Unit {lease.unit?.unit_number ?? "—"}
               </div>
-              {lease.has_active_notice && (
+              {lease.eviction_active && (
+                <div className="mt-2 inline-flex items-center rounded-md bg-red-100 dark:bg-red-900/40 px-2 py-1 text-xs font-medium text-red-800 dark:text-red-200 ring-1 ring-red-200/50 dark:ring-red-600/30">
+                  Eviction Notice
+                </div>
+              )}
+              {lease.eviction_active && (
+                <div className="mt-2 p-3 rounded-lg bg-red-100/80 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-sm">
+                  <p className="font-medium text-red-800 dark:text-red-200">Your landlord has issued an eviction notice.</p>
+                  {lease.eviction_reason && <p className="mt-1 text-red-700 dark:text-red-300">{lease.eviction_reason}</p>}
+                  {lease.eviction_deadline && (
+                    <p className="mt-1 text-red-700 dark:text-red-300">
+                      Move-out deadline: {format(new Date(lease.eviction_deadline), "MMM d, yyyy")}
+                    </p>
+                  )}
+                </div>
+              )}
+              {lease.has_active_notice && !lease.eviction_active && (
                 <div className="mt-2 inline-flex items-center rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-1 text-xs font-medium text-amber-800 dark:text-amber-200">
                   Notice given · Moving out {lease.active_notice_move_out_date ? format(new Date(lease.active_notice_move_out_date), "MMM d, yyyy") : ""}
                 </div>
@@ -97,13 +115,14 @@ export default function MyUnitsPage() {
                 ) : (
                   <button
                     onClick={() => setPayModalLease(lease)}
-                    disabled={lease.can_pay_rent === false}
+                    disabled={lease.can_pay_rent === false || lease.eviction_active === true}
+                    title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
                     className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
                   >
                     Pay Rent
                   </button>
                 )}
-                {lease.has_active_notice && lease.active_notice_id ? (
+                {lease.has_active_notice && lease.active_notice_id && !lease.eviction_active ? (
                   <button
                     onClick={async () => {
                       try {
@@ -120,7 +139,9 @@ export default function MyUnitsPage() {
                 ) : (
                   <button
                     onClick={() => setNoticeModalLease(lease)}
-                    className="flex-1 py-2.5 px-4 border border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 font-medium rounded-lg transition"
+                    disabled={lease.eviction_active === true}
+                    title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
+                    className="flex-1 py-2.5 px-4 border border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50 disabled:cursor-not-allowed text-surface-700 dark:text-surface-200 font-medium rounded-lg transition"
                   >
                     Give Notice
                   </button>

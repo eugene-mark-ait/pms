@@ -52,6 +52,29 @@ class Lease(models.Model):
         return f"{self.unit} - {self.tenant.email}"
 
 
+class EvictionNotice(models.Model):
+    """Landlord-issued eviction notice for a lease. When active, tenant actions are restricted."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.CASCADE,
+        related_name="eviction_notices",
+    )
+    reason = models.TextField(help_text="Eviction reason shown to tenant.")
+    move_out_deadline = models.DateField(help_text="Date by which tenant must move out.")
+    optional_notes = models.TextField(blank=True, default="")
+    cancelled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "eviction_notices"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Eviction for {self.lease} (deadline {self.move_out_deadline})"
+
+
 class LeaseHistory(models.Model):
     """Historical record when a tenant's lease ends (e.g. after notice period). Preserves occupancy data."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

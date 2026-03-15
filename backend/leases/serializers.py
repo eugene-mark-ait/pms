@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Lease, TenantProfile
+from .models import Lease, TenantProfile, EvictionNotice
 from .services import (
     get_next_rent_due_date,
     get_outstanding_balance,
@@ -30,6 +30,12 @@ class LeaseSerializer(serializers.ModelSerializer):
     has_active_notice = serializers.SerializerMethodField()
     active_notice_move_out_date = serializers.SerializerMethodField()
     active_notice_id = serializers.SerializerMethodField()
+    eviction_active = serializers.SerializerMethodField()
+    eviction_reason = serializers.SerializerMethodField()
+    eviction_deadline = serializers.SerializerMethodField()
+    eviction_created_at = serializers.SerializerMethodField()
+    eviction_id = serializers.SerializerMethodField()
+    eviction_optional_notes = serializers.SerializerMethodField()
 
     class Meta:
         model = Lease
@@ -51,6 +57,12 @@ class LeaseSerializer(serializers.ModelSerializer):
             "has_active_notice",
             "active_notice_move_out_date",
             "active_notice_id",
+            "eviction_active",
+            "eviction_reason",
+            "eviction_deadline",
+            "eviction_created_at",
+            "eviction_id",
+            "eviction_optional_notes",
             "created_at",
         ]
 
@@ -78,6 +90,32 @@ class LeaseSerializer(serializers.ModelSerializer):
         from vacancies.models import VacateNotice
         notice = VacateNotice.objects.filter(lease=obj, notice_cancelled=False).order_by("-created_at").first()
         return str(notice.id) if notice else None
+
+    def _get_active_eviction(self, obj):
+        return EvictionNotice.objects.filter(lease=obj, cancelled=False).order_by("-created_at").first()
+
+    def get_eviction_active(self, obj):
+        return self._get_active_eviction(obj) is not None
+
+    def get_eviction_reason(self, obj):
+        ev = self._get_active_eviction(obj)
+        return ev.reason if ev else None
+
+    def get_eviction_deadline(self, obj):
+        ev = self._get_active_eviction(obj)
+        return ev.move_out_deadline.isoformat() if ev else None
+
+    def get_eviction_created_at(self, obj):
+        ev = self._get_active_eviction(obj)
+        return ev.created_at.isoformat() if ev else None
+
+    def get_eviction_id(self, obj):
+        ev = self._get_active_eviction(obj)
+        return str(ev.id) if ev else None
+
+    def get_eviction_optional_notes(self, obj):
+        ev = self._get_active_eviction(obj)
+        return ev.optional_notes or None if ev else None
 
     def get_next_rent_due(self, obj):
         return get_next_rent_due_date(obj)
@@ -135,3 +173,11 @@ class GiveNoticeSerializer(serializers.Serializer):
     move_out_date = serializers.DateField()
     reason = serializers.CharField(required=False, allow_blank=True)
     notice_message = serializers.CharField(required=False, allow_blank=True)
+
+
+class GiveEvictionSerializer(serializers.Serializer):
+    """Landlord issues eviction notice for a lease."""
+    lease_id = serializers.UUIDField()
+    eviction_reason = serializers.CharField()
+    eviction_date = serializers.DateField()
+    optional_notes = serializers.CharField(required=False, allow_blank=True)

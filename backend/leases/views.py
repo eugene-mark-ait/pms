@@ -4,13 +4,14 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from accounts.models import Role
-from .models import Lease, LeaseHistory, TenantProfile
+from .models import Lease, LeaseHistory, TenantProfile, EvictionNotice
 from vacancies.views import process_due_notices
 from vacancies.models import VacateNotice, VacancyListing
 from .serializers import (
     LeaseSerializer,
     LeaseCreateUpdateSerializer,
     GiveNoticeSerializer,
+    GiveEvictionSerializer,
 )
 from .services import (
     get_next_rent_due_date,
@@ -191,4 +192,68 @@ class GiveNoticeView(generics.GenericAPIView):
         return Response(
             {"success": True, "vacate_notice_id": str(notice.id)},
             status=status.HTTP_201_CREATED,
+        )
+
+
+class CreateEvictionView(generics.GenericAPIView):
+    """POST /api/leases/<lease_id>/eviction/ - landlord issues eviction notice."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    serializer_class = GiveEvictionSerializer
+
+    def get_lease(self, pk):
+        user = self.request.user
+        qs = Lease.objects.filter(is_active=True)
+        if user.has_role("landlord"):
+            qs = qs.filter(unit__property__landlord=user)
+        elif user.has_role("manager"):
+            qs = qs.filter(unit__property__manager_assignments__manager=user).distinct()
+        else:
+            return None
+        return get_object_or_404(qs, pk=pk)
+
+    def post(self, request, pk):
+        lease = self.get_lease(pk)
+        serializer = GiveEvictionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if str(lease.id) != str(data["lease_id"]):
+            return Response(
+                {"error": "lease_id does not match URL."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Deactivate any existing active eviction for this lease
+        EvictionNotice.objects.filter(lease=lease, cancelled=False).update(cancelled=True)
+        eviction = EvictionNotice.objects.create(
+            lease=lease,
+            reason=data["eviction_reason"],
+            move_out_deadline=data["eviction_date"],
+            optional_notes=data.get("optional_notes", "") or "",
+        )
+        return Response(
+            {"success": True, "eviction_id": str(eviction.id)},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CancelEvictionView(generics.GenericAPIView):
+    """POST /api/leases/<lease_id>/eviction/cancel/ - landlord cancels active eviction."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+
+    def get_lease(self, pk):
+        user = self.request.user
+        qs = Lease.objects.all()
+        if user.has_role("landlord"):
+            qs = qs.filter(unit__property__landlord=user)
+        elif user.has_role("manager"):
+            qs = qs.filter(unit__property__manager_assignments__manager=user).distinct()
+        else:
+            return None
+        return get_object_or_404(qs, pk=pk)
+
+    def post(self, request, pk):
+        lease = self.get_lease(pk)
+        updated = EvictionNotice.objects.filter(lease=lease, cancelled=False).update(cancelled=True)
+        return Response(
+            {"success": True, "cancelled": updated > 0},
+            status=status.HTTP_200_OK,
         )

@@ -110,6 +110,12 @@ export interface Lease {
   has_active_notice?: boolean;
   active_notice_move_out_date?: string | null;
   active_notice_id?: string | null;
+  eviction_active?: boolean;
+  eviction_reason?: string | null;
+  eviction_deadline?: string | null;
+  eviction_created_at?: string | null;
+  eviction_id?: string | null;
+  eviction_optional_notes?: string | null;
   created_at: string;
 }
 
