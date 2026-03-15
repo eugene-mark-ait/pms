@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { User } from "@/lib/api";
+import { getDisplayName, clearTokens } from "@/lib/api";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -12,8 +15,16 @@ const navLinks = [
   { href: "/pricing", label: "Pricing" },
 ];
 
-export default function Navbar() {
+export default function Navbar({ user = null }: { user?: User | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+
+  function handleLogout() {
+    clearTokens();
+    setMobileOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-surface-200/60">
@@ -38,18 +49,41 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
-          <Link
-            href="/login"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition shadow-sm"
-          >
-            Get Started
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+              >
+                Dashboard
+              </Link>
+              <span className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700">
+                {getDisplayName(user)}
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg bg-surface-100 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-200 transition"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition shadow-sm"
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -81,12 +115,30 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="pt-4 space-y-2 border-t border-surface-100">
-            <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
-              Login
-            </Link>
-            <Link href="/register" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>
-              Get Started
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
+                  Dashboard
+                </Link>
+                <p className="py-2 text-center text-sm text-surface-600">{getDisplayName(user)}</p>
+                <button
+                  type="button"
+                  onClick={() => { handleLogout(); }}
+                  className="block w-full rounded-lg py-2 text-center text-sm font-medium text-surface-700 bg-surface-100 hover:bg-surface-200"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
+                  Login
+                </Link>
+                <Link href="/register" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

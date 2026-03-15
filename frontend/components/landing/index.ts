@@ -1,4 +1,5 @@
 export { default as Navbar } from "./Navbar";
+export { default as WelcomeBack } from "./WelcomeBack";
 export { default as Hero } from "./Hero";
 export { default as PlatformOverview } from "./PlatformOverview";
 export { default as PropertyOwnerFeatures } from "./PropertyOwnerFeatures";

@@ -115,7 +115,7 @@ export default function MyUnitsPage() {
                 ) : (
                   <button
                     onClick={() => setPayModalLease(lease)}
-                    disabled={lease.can_pay_rent === false || lease.eviction_active === true}
+                    disabled={lease.eviction_active === true}
                     title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
                     className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
                   >
