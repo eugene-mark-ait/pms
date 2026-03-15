@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { User } from "@/lib/api";
 import { getDisplayName, clearTokens } from "@/lib/api";
 
@@ -17,13 +16,12 @@ const navLinks = [
 
 export default function Navbar({ user = null }: { user?: User | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const router = useRouter();
 
   function handleLogout() {
     clearTokens();
     setMobileOpen(false);
-    router.push("/");
-    router.refresh();
+    // Full reload so landing page remounts and re-fetches user (will be null without token)
+    window.location.href = "/";
   }
 
   return (

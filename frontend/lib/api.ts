@@ -45,6 +45,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const isPublicPath = (path: string) =>
+  path === "/" || path === "/pricing" || path === "/login" || path === "/register" || path.startsWith("/login/") || path.startsWith("/register/");
+
 api.interceptors.response.use(
   (res) => res,
   async (err: AxiosError) => {
@@ -64,9 +67,11 @@ api.interceptors.response.use(
           return api(original);
         } catch {
           clearTokens();
-          if (typeof window !== "undefined") window.location.href = "/login";
+          if (typeof window !== "undefined" && !isPublicPath(window.location.pathname)) {
+            window.location.href = "/login";
+          }
         }
-      } else if (typeof window !== "undefined") {
+      } else if (typeof window !== "undefined" && !isPublicPath(window.location.pathname)) {
         window.location.href = "/login";
       }
     }
