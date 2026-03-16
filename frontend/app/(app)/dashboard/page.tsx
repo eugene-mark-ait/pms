@@ -159,6 +159,23 @@ export default function DashboardPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (addAlertOpen) {
+      const t = requestAnimationFrame(() => setAddAlertDrawerVisible(true));
+      return () => cancelAnimationFrame(t);
+    }
+    setAddAlertDrawerVisible(false);
+  }, [addAlertOpen]);
+
+  useEffect(() => {
+    if (!isTenant || !preference?.is_looking) return;
+    setMatchesLoading(true);
+    api.get<VacancyMatchItem[] | { results?: VacancyMatchItem[] }>("/vacancies/matches/").then((res) => {
+      const data = res.data;
+      setMatches(Array.isArray(data) ? data : (data?.results ?? []));
+    }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
+  }, [isTenant, preference?.is_looking]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -214,23 +231,6 @@ export default function DashboardPage() {
   function formatUnitType(v: string) {
     return (UNIT_TYPES.find((t) => t.value === v)?.label ?? v) || "Any";
   }
-
-  useEffect(() => {
-    if (addAlertOpen) {
-      const t = requestAnimationFrame(() => setAddAlertDrawerVisible(true));
-      return () => cancelAnimationFrame(t);
-    }
-    setAddAlertDrawerVisible(false);
-  }, [addAlertOpen]);
-
-  useEffect(() => {
-    if (!isTenant || !preference?.is_looking) return;
-    setMatchesLoading(true);
-    api.get<VacancyMatchItem[] | { results?: VacancyMatchItem[] }>("/vacancies/matches/").then((res) => {
-      const data = res.data;
-      setMatches(Array.isArray(data) ? data : (data?.results ?? []));
-    }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
-  }, [isTenant, preference?.is_looking]);
 
   function savePreference(updates: Partial<VacancyPreference>) {
     if (!isTenant) return;
