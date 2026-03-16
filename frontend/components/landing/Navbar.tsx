@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { User } from "@/lib/api";
 import { getDisplayName, clearTokens } from "@/lib/api";
 
@@ -17,8 +16,6 @@ const navLinks = [
 
 export default function Navbar({ user = null }: { user?: User | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
 
   function handleLogout() {
     clearTokens();
@@ -50,26 +47,6 @@ export default function Navbar({ user = null }: { user?: User | null }) {
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
-          <div className="flex items-center rounded-lg border border-surface-200 dark:border-surface-600 p-0.5 bg-surface-50 dark:bg-surface-800" role="group" aria-label="Theme toggle">
-            <button
-              type="button"
-              onClick={() => setTheme("light")}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${!isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"}`}
-              aria-pressed={!isDark}
-              aria-label="Light theme"
-            >
-              ☀ Light
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme("dark")}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"}`}
-              aria-pressed={isDark}
-              aria-label="Dark theme"
-            >
-              🌙 Dark
-            </button>
-          </div>
           {user ? (
             <>
               <Link
@@ -136,10 +113,6 @@ export default function Navbar({ user = null }: { user?: User | null }) {
             </Link>
           ))}
           <div className="pt-4 space-y-3 border-t border-surface-100 dark:border-surface-700">
-            <div className="flex items-center rounded-lg border border-surface-200 dark:border-surface-600 p-0.5 bg-surface-50 dark:bg-surface-800 w-fit" role="group" aria-label="Theme toggle">
-              <button type="button" onClick={() => setTheme("light")} className={`rounded-md px-2 py-1 text-xs font-medium ${!isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400"}`}>☀ Light</button>
-              <button type="button" onClick={() => setTheme("dark")} className={`rounded-md px-2 py-1 text-xs font-medium ${isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400"}`}>🌙 Dark</button>
-            </div>
             {user ? (
               <>
                 <Link href="/dashboard" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700 dark:text-surface-300" onClick={() => setMobileOpen(false)}>

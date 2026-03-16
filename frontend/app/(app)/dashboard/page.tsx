@@ -185,7 +185,7 @@ export default function DashboardPage() {
   }
 
   function formatUnitType(v: string) {
-    return UNIT_TYPES.find((t) => t.value === v)?.label ?? v || "Any";
+    return (UNIT_TYPES.find((t) => t.value === v)?.label ?? v) || "Any";
   }
 
   return (
