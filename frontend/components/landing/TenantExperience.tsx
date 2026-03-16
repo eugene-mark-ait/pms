@@ -15,31 +15,31 @@ const benefits = [
   },
   {
     title: "Transparent ledger",
-    description: "See what you’ve paid and when. Disputes are easier when the data is shared and verifiable.",
+    description: "See what you've paid and when. Disputes are easier when the data is shared and verifiable.",
   },
 ];
 
 export default function TenantExperience() {
   return (
-    <section id="tenants" className="py-20 sm:py-28 bg-white dark:bg-surface-900">
+    <section id="tenants" className="py-24 sm:py-32 bg-white dark:bg-surface-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100 sm:text-4xl">
+          <h2 className="text-4xl font-semibold tracking-tight text-surface-900 dark:text-surface-100 sm:text-5xl [letter-spacing:-0.02em]">
             For tenants
           </h2>
-          <p className="mt-4 text-lg text-surface-600 dark:text-surface-400">
-            Renting shouldn’t leave you with nothing to show. Build financial identity, turn rent into credit, and move with a record that follows you.
+          <p className="mt-5 text-lg text-surface-600 dark:text-surface-400 leading-[1.7]">
+            Renting shouldn't leave you with nothing to show. Build financial identity, turn rent into credit, and move with a record that follows you.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-6 sm:grid-cols-2">
+        <div className="mt-20 grid gap-5 sm:grid-cols-2">
           {benefits.map((b) => (
             <div
               key={b.title}
-              className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm"
+              className="group rounded-2xl border border-surface-200/80 dark:border-surface-700/80 bg-white dark:bg-surface-800/50 p-6 sm:p-7 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
-              <h3 className="font-semibold text-surface-900 dark:text-surface-100">{b.title}</h3>
-              <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">{b.description}</p>
+              <h3 className="font-semibold text-surface-900 dark:text-surface-100 text-[1.0625rem]">{b.title}</h3>
+              <p className="mt-2.5 text-[0.9375rem] text-surface-600 dark:text-surface-400 leading-[1.6]">{b.description}</p>
             </div>
           ))}
         </div>

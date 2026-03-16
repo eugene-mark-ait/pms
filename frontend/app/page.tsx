@@ -28,7 +28,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-surface-900 text-surface-900 dark:text-surface-100">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-surface-950 text-surface-900 dark:text-surface-100">
       <Navbar user={user ?? undefined} />
       <main>
         <Hero />

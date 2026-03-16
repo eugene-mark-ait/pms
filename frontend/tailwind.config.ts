@@ -9,6 +9,33 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+      },
+      fontSize: {
+        "display-xl": ["3.75rem", { lineHeight: "1.1", letterSpacing: "-0.03em" }],
+        "display-lg": ["3rem", { lineHeight: "1.15", letterSpacing: "-0.025em" }],
+        "display-md": ["2.25rem", { lineHeight: "1.2", letterSpacing: "-0.02em" }],
+      },
+      animation: {
+        "fade-in": "fade-in 0.6s ease-out forwards",
+        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "gradient-shift": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.8" },
+        },
+      },
       colors: {
         primary: {
           50: "#f0f9ff",
@@ -35,19 +62,6 @@ const config: Config = {
           900: "#0f172a",
           950: "#020617",
         },
-      },
-      fontFamily: {
-        sans: [
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Roboto",
-          "Helvetica Neue",
-          "Arial",
-          "sans-serif",
-        ],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
     },
   },
