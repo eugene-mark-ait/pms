@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, User } from "@/lib/api";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -82,6 +82,9 @@ export default function DashboardPage() {
   const [prefError, setPrefError] = useState("");
   const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  const [nextSubscriptionsUrl, setNextSubscriptionsUrl] = useState<string | null>(null);
+  const [subscriptionsLoadingMore, setSubscriptionsLoadingMore] = useState(false);
+  const alertsSentinelRef = useRef<HTMLDivElement>(null);
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
@@ -136,7 +139,7 @@ export default function DashboardPage() {
           const [myUnitsRes, paymentsRes, subsRes] = await Promise.all([
             api.get("/tenant/my-units/").catch(() => ({ data: [] })),
             api.get("/payments/history/").catch(() => ({ data: [] })),
-            api.get<SubscriptionAlert[]>("/vacancies/my-subscriptions/").catch(() => ({ data: [] })),
+            api.get<{ results?: SubscriptionAlert[]; next?: string | null }>("/vacancies/my-subscriptions/?page_size=10&page=1").catch(() => ({ data: { results: [] } })),
           ]);
           const myUnits = Array.isArray(myUnitsRes.data) ? myUnitsRes.data : (myUnitsRes.data as { results?: unknown[] })?.results ?? [];
           const payments = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data as { results?: unknown[] })?.results ?? [];
@@ -146,7 +149,9 @@ export default function DashboardPage() {
             myUnitsCount: (myUnits as unknown[]).length,
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
-          setSubscriptions(Array.isArray(subsRes.data) ? subsRes.data : []);
+          const subsData = subsRes.data as { results?: SubscriptionAlert[]; next?: string | null };
+          setSubscriptions(Array.isArray(subsData?.results) ? subsData.results : []);
+          setNextSubscriptionsUrl(subsData?.next ?? null);
         }
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
@@ -176,6 +181,20 @@ export default function DashboardPage() {
     }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
   }, [isTenant, preference?.is_looking]);
 
+  useEffect(() => {
+    if (!isTenant) return;
+    const sentinel = alertsSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && nextSubscriptionsUrl && !subscriptionsLoadingMore && !subscriptionsLoading) loadMoreSubscriptions();
+      },
+      { rootMargin: "120px", threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isTenant, nextSubscriptionsUrl, subscriptionsLoadingMore, subscriptionsLoading]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -201,7 +220,23 @@ export default function DashboardPage() {
   function refreshSubscriptions() {
     if (!isTenant) return;
     setSubscriptionsLoading(true);
-    api.get<SubscriptionAlert[]>("/vacancies/my-subscriptions/").then((r) => setSubscriptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSubscriptions([])).finally(() => setSubscriptionsLoading(false));
+    setSubscriptions([]);
+    setNextSubscriptionsUrl(null);
+    api.get<{ results?: SubscriptionAlert[]; next?: string | null }>("/vacancies/my-subscriptions/?page_size=10&page=1").then((r) => {
+      const d = r.data as { results?: SubscriptionAlert[]; next?: string | null };
+      setSubscriptions(Array.isArray(d?.results) ? d.results : []);
+      setNextSubscriptionsUrl(d?.next ?? null);
+    }).catch(() => setSubscriptions([])).finally(() => setSubscriptionsLoading(false));
+  }
+
+  function loadMoreSubscriptions() {
+    if (!nextSubscriptionsUrl || subscriptionsLoadingMore || subscriptionsLoading) return;
+    setSubscriptionsLoadingMore(true);
+    api.get<{ results?: SubscriptionAlert[]; next?: string | null }>(nextSubscriptionsUrl).then((r) => {
+      const d = r.data as { results?: SubscriptionAlert[]; next?: string | null };
+      setSubscriptions((prev) => [...prev, ...(Array.isArray(d?.results) ? d.results : [])]);
+      setNextSubscriptionsUrl(d?.next ?? null);
+    }).catch(() => setNextSubscriptionsUrl(null)).finally(() => setSubscriptionsLoadingMore(false));
   }
 
   function submitAddAlert(e: React.FormEvent) {
@@ -411,43 +446,51 @@ export default function DashboardPage() {
               <Link href="/find-units" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Browse Find Units →</Link>
             </div>
           ) : (
-            <div className="space-y-4">
-              {subscriptions.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Location: {sub.search_filters?.location || "Any"} · Budget: {sub.search_filters?.min_rent != null && String(sub.search_filters.min_rent).trim() ? `KES ${Number(sub.search_filters.min_rent).toLocaleString("en-KE")}` : "—"} – {sub.search_filters?.max_rent != null && String(sub.search_filters.max_rent).trim() ? `KES ${Number(sub.search_filters.max_rent).toLocaleString("en-KE")}` : "—"}
-                      </p>
-                      <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Type: {formatUnitType(sub.search_filters?.unit_type ?? "")}</p>
-                      <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">Subscribed {format(new Date(sub.created_at), "MMM d, yyyy")}</p>
-                      <p className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">
-                        {sub.match_count} unit{sub.match_count !== 1 ? "s" : ""} currently match{sub.match_count === 1 ? "es" : ""} this alert
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Link
-                        href={`/find-units?${buildFindUnitsQuery(sub.search_filters ?? {})}`}
-                        className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
-                      >
-                        View Matches
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => deleteSubscription(sub.id)}
-                        disabled={deletingId === sub.id}
-                        className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                      >
-                        {deletingId === sub.id ? "Deleting…" : "Delete"}
-                      </button>
+            <>
+              <div className="space-y-4">
+                {subscriptions.map((sub) => (
+                  <div
+                    key={sub.id}
+                    className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Location: {sub.search_filters?.location || "Any"} · Budget: {sub.search_filters?.min_rent != null && String(sub.search_filters.min_rent).trim() ? `KES ${Number(sub.search_filters.min_rent).toLocaleString("en-KE")}` : "—"} – {sub.search_filters?.max_rent != null && String(sub.search_filters.max_rent).trim() ? `KES ${Number(sub.search_filters.max_rent).toLocaleString("en-KE")}` : "—"}
+                        </p>
+                        <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Type: {formatUnitType(sub.search_filters?.unit_type ?? "")}</p>
+                        <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">Subscribed {format(new Date(sub.created_at), "MMM d, yyyy")}</p>
+                        <p className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+                          {sub.match_count} unit{sub.match_count !== 1 ? "s" : ""} currently match{sub.match_count === 1 ? "es" : ""} this alert
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={`/find-units?${buildFindUnitsQuery(sub.search_filters ?? {})}`}
+                          className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+                        >
+                          View Matches
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => deleteSubscription(sub.id)}
+                          disabled={deletingId === sub.id}
+                          className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                        >
+                          {deletingId === sub.id ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+              <div ref={alertsSentinelRef} className="min-h-[16px]" aria-hidden />
+              {subscriptionsLoadingMore && (
+                <div className="flex justify-center py-4">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
           {addAlertOpen && (

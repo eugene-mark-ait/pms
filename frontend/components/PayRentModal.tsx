@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { api, Lease, formatKSH } from "@/lib/api";
 import { format } from "date-fns";
 
-const MODAL_OVERLAY_CLASS =
-  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center p-4 bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm z-[100]";
+const DRAWER_OVERLAY_CLASS =
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end bg-surface-900/40 dark:bg-surface-950/50 backdrop-blur-sm z-[100] transition-opacity";
 
 export default function PayRentModal({
   lease,
@@ -52,71 +52,83 @@ export default function PayRentModal({
   useEffect(() => setMounted(true), []);
 
   const content = (
-    <div className={MODAL_OVERLAY_CLASS} onClick={onClose}>
-      <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Pay Rent</h2>
-        <p className="text-surface-600 dark:text-surface-400 text-sm mb-2">
-          {lease.unit?.property?.name} – Unit {lease.unit?.unit_number}
-        </p>
-        <dl className="space-y-1 text-sm mb-6 text-surface-700 dark:text-surface-300">
-          <div className="flex justify-between">
-            <dt className="text-surface-500 dark:text-surface-400">Monthly rent</dt>
-            <dd>{formatKSH(lease.monthly_rent)}</dd>
-          </div>
-          {depositToAdd > 0 && (
-            <div className="flex justify-between text-amber-700 dark:text-amber-400">
-              <dt className="text-surface-500 dark:text-surface-400">Deposit (included in first payment)</dt>
-              <dd>{formatKSH(depositToAdd)}</dd>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <dt className="text-surface-500 dark:text-surface-400">Last payment</dt>
-            <dd>{lease.last_payment_date ? format(new Date(lease.last_payment_date), "MMM d, yyyy") : "—"}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-surface-500 dark:text-surface-400">Outstanding balance</dt>
-            <dd>{formatKSH(lease.outstanding_balance ?? "0")}</dd>
-          </div>
-        </dl>
-
-        {!canPay && (
-          <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
-            Current period is already paid.
+    <div
+      className={DRAWER_OVERLAY_CLASS}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pay-rent-title"
+    >
+      <div
+        className="w-full max-w-md h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 overflow-y-auto animate-slide-in-right"
+        onClick={(e) => e.stopPropagation()}
+        style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
+      >
+        <div className="p-6 pt-4">
+          <h2 id="pay-rent-title" className="text-xl font-bold text-surface-900 dark:text-surface-100 mb-4">Pay Rent</h2>
+          <p className="text-surface-600 dark:text-surface-400 text-sm mb-2">
+            {lease.unit?.property?.name} – Unit {lease.unit?.unit_number}
           </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <div>
-            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Months to pay</label>
-            <div className="flex gap-2">
-              {([1, 2, 3] as const).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setMonths(n)}
-                  className={`flex-1 py-2 rounded-lg border font-medium transition ${
-                    months === n
-                      ? "bg-primary-600 text-white border-primary-600"
-                      : "border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-900 dark:text-surface-200"
-                  }`}
-                >
-                  {n} {n === 1 ? "month" : "months"}
-                </button>
-              ))}
+          <dl className="space-y-1 text-sm mb-6 text-surface-700 dark:text-surface-300">
+            <div className="flex justify-between">
+              <dt className="text-surface-500 dark:text-surface-400">Monthly rent</dt>
+              <dd>{formatKSH(lease.monthly_rent)}</dd>
             </div>
-          </div>
-          <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Payment method: M-Pesa</p>
-          <p className="text-lg font-semibold text-surface-900 dark:text-surface-100">Total: {formatKSH(total)}</p>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 min-h-[44px]">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading || !canPay} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 min-h-[44px]">
-              {loading ? "Processing…" : "Confirm payment"}
-            </button>
-          </div>
-        </form>
+            {depositToAdd > 0 && (
+              <div className="flex justify-between text-amber-700 dark:text-amber-400">
+                <dt className="text-surface-500 dark:text-surface-400">Deposit (included in first payment)</dt>
+                <dd>{formatKSH(depositToAdd)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-surface-500 dark:text-surface-400">Last payment</dt>
+              <dd>{lease.last_payment_date ? format(new Date(lease.last_payment_date), "MMM d, yyyy") : "—"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-surface-500 dark:text-surface-400">Outstanding balance</dt>
+              <dd>{formatKSH(lease.outstanding_balance ?? "0")}</dd>
+            </div>
+          </dl>
+
+          {!canPay && (
+            <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+              Current period is already paid.
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Months to pay</label>
+              <div className="flex gap-2">
+                {([1, 2, 3] as const).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setMonths(n)}
+                    className={`flex-1 py-2 rounded-lg border font-medium transition ${
+                      months === n
+                        ? "bg-primary-600 text-white border-primary-600"
+                        : "border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-900 dark:text-surface-200"
+                    }`}
+                  >
+                    {n} {n === 1 ? "month" : "months"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Payment method: M-Pesa</p>
+            <p className="text-lg font-semibold text-surface-900 dark:text-surface-100">Total: {formatKSH(total)}</p>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 min-h-[44px]">
+                Cancel
+              </button>
+              <button type="submit" disabled={loading || !canPay} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 min-h-[44px]">
+                {loading ? "Processing…" : "Confirm payment"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

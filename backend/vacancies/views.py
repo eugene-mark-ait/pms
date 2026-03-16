@@ -18,6 +18,7 @@ from .serializers import (
     UnitApplicationSerializer,
 )
 from .notification_service import count_subscriptions_matching_filters
+from config.pagination import OptionalPageSizePagination
 from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
 from properties.models import Unit, Property
 
@@ -85,14 +86,13 @@ class VacancyListingListView(generics.ListAPIView):
 
 
 class VacancySearchView(generics.ListAPIView):
-    """GET /api/vacancies/search/?unit_type=&location=&min_rent=&max_rent= - discoverable vacancies (tenant or public). Only units with is_vacant=True, is_reserved=False."""
+    """GET /api/vacancies/search/?unit_type=&location=&min_rent=&max_rent=&page=&page_size= - discoverable vacancies (paginated)."""
     permission_classes = [AllowAny]
     serializer_class = VacancyDiscoverySerializer
-    pagination_class = None
+    pagination_class = OptionalPageSizePagination
 
     def get_queryset(self):
         from django.db.models import Q
-        today = timezone.now().date()
         qs = (
             Unit.objects.filter(
                 is_vacant=True,
@@ -126,14 +126,22 @@ class VacancySearchView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
         unit_type = (request.query_params.get("unit_type") or "").strip()
         location = (request.query_params.get("location") or "").strip()
         min_rent = (request.query_params.get("min_rent") or "").strip()
         max_rent = (request.query_params.get("max_rent") or "").strip()
         subscribers_waiting = count_subscriptions_matching_filters(unit_type, location, min_rent, max_rent)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = self.get_paginated_response(serializer.data).data
+            data["units_found"] = data.get("count", len(serializer.data))
+            data["subscribers_waiting"] = subscribers_waiting
+            return Response(data)
+        serializer = self.get_serializer(queryset, many=True)
         return Response({
             "results": serializer.data,
+            "count": len(serializer.data),
             "units_found": len(serializer.data),
             "subscribers_waiting": subscribers_waiting,
         })
@@ -218,14 +226,14 @@ class NotifySubscribeView(APIView):
         return Response(out_serializer.data, status=status.HTTP_201_CREATED)
 
 
-class MySubscriptionsView(APIView):
-    """GET /api/vacancies/my-subscriptions/ - list current user's vacancy notification subscriptions (tenant). Each includes match_count."""
+class MySubscriptionsView(generics.ListAPIView):
+    """GET /api/vacancies/my-subscriptions/?page=&page_size= - list current user's vacancy notification subscriptions (tenant), paginated."""
     permission_classes = [IsAuthenticated, IsTenant]
+    serializer_class = MySubscriptionSerializer
+    pagination_class = OptionalPageSizePagination
 
-    def get(self, request):
-        qs = UnitNotificationSubscription.objects.filter(user=request.user).order_by("-created_at")
-        serializer = MySubscriptionSerializer(qs, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return UnitNotificationSubscription.objects.filter(user=self.request.user).order_by("-created_at")
 
 
 class DeleteSubscriptionView(APIView):
