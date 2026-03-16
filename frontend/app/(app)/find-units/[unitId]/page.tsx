@@ -16,6 +16,12 @@ interface VacancyDetail {
   property_name: string;
   address: string;
   location: string;
+  public_description?: string;
+  amenities?: string;
+  parking_info?: string;
+  nearby_landmarks?: string;
+  house_rules?: string;
+  contact_preference?: string;
   contact: {
     landlord_phone?: string | null;
     manager_phone?: string | null;
@@ -63,6 +69,39 @@ export default function VacancyDetailPage() {
         <div className="flex justify-between"><dt className="text-surface-500 dark:text-surface-400">Address</dt><dd className="text-surface-900 dark:text-surface-100">{item.address || "—"}</dd></div>
         {item.location && <div className="flex justify-between"><dt className="text-surface-500 dark:text-surface-400">Location</dt><dd className="text-surface-900 dark:text-surface-100">{item.location}</dd></div>}
       </dl>
+      {item.public_description && (
+        <div>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">Description</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{item.public_description}</p>
+        </div>
+      )}
+      {item.amenities && (
+        <div>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">Amenities</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400">{item.amenities}</p>
+        </div>
+      )}
+      {item.parking_info && (
+        <div>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">Parking</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400">{item.parking_info}</p>
+        </div>
+      )}
+      {item.nearby_landmarks && (
+        <div>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">Nearby landmarks</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400">{item.nearby_landmarks}</p>
+        </div>
+      )}
+      {item.house_rules && (
+        <div>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">House rules</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{item.house_rules}</p>
+        </div>
+      )}
+      {item.contact_preference && (
+        <p className="text-sm text-surface-500 dark:text-surface-400">Preferred contact: {item.contact_preference}</p>
+      )}
       <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
         <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-2">Contact</h2>
         {hasContact ? (

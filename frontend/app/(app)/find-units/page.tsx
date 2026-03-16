@@ -29,12 +29,31 @@ interface VacancyDiscoveryItem {
   property_name: string;
   address: string;
   location: string;
+  public_description?: string;
+  amenities?: string;
+  parking_info?: string;
+  nearby_landmarks?: string;
+  house_rules?: string;
+  contact_preference?: string;
   contact: {
     landlord_phone?: string | null;
     manager_phone?: string | null;
     caretaker_phone?: string | null;
   };
   first_image: string | null;
+}
+
+interface VacancySearchResponse {
+  results: VacancyDiscoveryItem[];
+  units_found: number;
+  subscribers_waiting: number;
+}
+
+interface SearchFilters {
+  unit_type?: string;
+  location?: string;
+  min_rent?: string;
+  max_rent?: string;
 }
 
 interface VacancyPreference {
@@ -51,8 +70,15 @@ export default function FindUnitsPage() {
   const [minRent, setMinRent] = useState("");
   const [maxRent, setMaxRent] = useState("");
   const [list, setList] = useState<VacancyDiscoveryItem[]>([]);
+  const [unitsFound, setUnitsFound] = useState(0);
+  const [subscribersWaiting, setSubscribersWaiting] = useState(0);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [subscribePhone, setSubscribePhone] = useState("");
+  const [subscribeSubmitting, setSubscribeSubmitting] = useState(false);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+  const [subscribeError, setSubscribeError] = useState("");
   const [preference, setPreference] = useState<VacancyPreference | null>(null);
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefError, setPrefError] = useState("");
@@ -63,16 +89,64 @@ export default function FindUnitsPage() {
   function search() {
     setLoading(true);
     setSearched(true);
+    setSubscribeSuccess(false);
+    setSubscribeError("");
     const params = new URLSearchParams();
     if (unitType) params.set("unit_type", unitType);
     if (location.trim()) params.set("location", location.trim());
     if (minRent.trim()) params.set("min_rent", minRent.trim());
     if (maxRent.trim()) params.set("max_rent", maxRent.trim());
     api
-      .get<VacancyDiscoveryItem[]>(`/vacancies/search/?${params.toString()}`)
-      .then((res) => setList(Array.isArray(res.data) ? res.data : (res.data as { results?: VacancyDiscoveryItem[] })?.results ?? []))
-      .catch(() => setList([]))
+      .get<VacancySearchResponse>(`/vacancies/search/?${params.toString()}`)
+      .then((res) => {
+        const d = res.data as VacancySearchResponse;
+        setList(d.results ?? []);
+        setUnitsFound(d.units_found ?? d.results?.length ?? 0);
+        setSubscribersWaiting(d.subscribers_waiting ?? 0);
+      })
+      .catch(() => {
+        setList([]);
+        setUnitsFound(0);
+        setSubscribersWaiting(0);
+      })
       .finally(() => setLoading(false));
+  }
+
+  function getCurrentSearchFilters(): SearchFilters {
+    const f: SearchFilters = {};
+    if (unitType) f.unit_type = unitType;
+    if (location.trim()) f.location = location.trim();
+    if (minRent.trim()) f.min_rent = minRent.trim();
+    if (maxRent.trim()) f.max_rent = maxRent.trim();
+    return f;
+  }
+
+  function submitSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    const email = subscribeEmail.trim();
+    if (!email) {
+      setSubscribeError("Email is required.");
+      return;
+    }
+    setSubscribeError("");
+    setSubscribeSubmitting(true);
+    api
+      .post("/vacancies/notify-subscribe/", {
+        email,
+        phone: subscribePhone.trim() || undefined,
+        search_filters: getCurrentSearchFilters(),
+      })
+      .then(() => {
+        setSubscribeSuccess(true);
+        setSubscribeEmail("");
+        setSubscribePhone("");
+        search();
+      })
+      .catch((err: { response?: { data?: { email?: string[]; detail?: string } } }) => {
+        const msg = err?.response?.data?.email?.[0] ?? err?.response?.data?.detail ?? "Failed to subscribe.";
+        setSubscribeError(msg);
+      })
+      .finally(() => setSubscribeSubmitting(false));
   }
 
   useEffect(() => {
@@ -226,10 +300,50 @@ export default function FindUnitsPage() {
       </div>
 
       {loading && <p className="text-surface-500 dark:text-surface-400">Loading…</p>}
-      {!loading && searched && list.length === 0 && (
-        <p className="text-surface-600 dark:text-surface-400">No vacancies match your filters. Try different criteria.</p>
+
+      {!loading && searched && (
+        <div className="flex flex-wrap items-center gap-4 text-sm text-surface-600 dark:text-surface-400">
+          <span className="font-medium text-surface-800 dark:text-surface-200">Units Found: {unitsFound}</span>
+          <span>Users waiting for notification: {subscribersWaiting}</span>
+        </div>
       )}
+
+      {!loading && searched && list.length === 0 && (
+        <div className="space-y-4 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700">
+          <p className="text-surface-700 dark:text-surface-300 font-medium">No units currently available. Get notified when a unit becomes available.</p>
+          <form onSubmit={submitSubscribe} className="flex flex-wrap gap-4 items-end max-w-lg">
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Email *</label>
+              <input
+                type="email"
+                value={subscribeEmail}
+                onChange={(e) => setSubscribeEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-56"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Phone (optional)</label>
+              <input
+                type="tel"
+                value={subscribePhone}
+                onChange={(e) => setSubscribePhone(e.target.value)}
+                placeholder="+254..."
+                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-44"
+              />
+            </div>
+            <button type="submit" disabled={subscribeSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
+              {subscribeSubmitting ? "Subscribing…" : "Notify me"}
+            </button>
+          </form>
+          {subscribeError && <p className="text-sm text-red-600 dark:text-red-400">{subscribeError}</p>}
+          {subscribeSuccess && <p className="text-sm text-green-600 dark:text-green-400">You’re subscribed. We’ll notify you when a matching unit is available.</p>}
+        </div>
+      )}
+
       {!loading && list.length > 0 && (
+        <>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((item) => (
             <div
@@ -257,6 +371,8 @@ export default function FindUnitsPage() {
               <div className="p-4">
                 <h2 className="font-semibold text-surface-900 dark:text-surface-100">{item.property_name} – Unit {item.unit_number}</h2>
                 <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{item.location || item.address}</p>
+                {item.public_description && <p className="text-sm text-surface-500 dark:text-surface-400 mt-1 line-clamp-2">{item.public_description}</p>}
+                {item.amenities && <p className="text-xs text-surface-500 dark:text-surface-500 mt-0.5">Amenities: {item.amenities}</p>}
                 <p className="text-xs text-surface-500 dark:text-surface-500 mt-1">Available from {new Date(item.available_from).toLocaleDateString()}</p>
                 <Link
                   href={`/find-units/${item.unit_id}`}
@@ -268,6 +384,38 @@ export default function FindUnitsPage() {
             </div>
           ))}
         </div>
+        <div className="p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 space-y-4">
+          <h3 className="font-medium text-surface-800 dark:text-surface-200">Get notified when new units match your search</h3>
+          <form onSubmit={submitSubscribe} className="flex flex-wrap gap-4 items-end max-w-lg">
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Email *</label>
+              <input
+                type="email"
+                value={subscribeEmail}
+                onChange={(e) => setSubscribeEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-56"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Phone (optional)</label>
+              <input
+                type="tel"
+                value={subscribePhone}
+                onChange={(e) => setSubscribePhone(e.target.value)}
+                placeholder="+254..."
+                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-44"
+              />
+            </div>
+            <button type="submit" disabled={subscribeSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
+              {subscribeSubmitting ? "Subscribing…" : "Notify me"}
+            </button>
+          </form>
+          {subscribeError && <p className="text-sm text-red-600 dark:text-red-400">{subscribeError}</p>}
+          {subscribeSuccess && <p className="text-sm text-green-600 dark:text-green-400">You’re subscribed. We’ll notify you when a matching unit is available.</p>}
+        </div>
+        </>
       )}
     </div>
   );

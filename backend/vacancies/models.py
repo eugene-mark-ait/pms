@@ -27,6 +27,25 @@ class UnitVacancyInfo(models.Model):
         return f"{self.unit} vacancy info"
 
 
+class UnitNotificationSubscription(models.Model):
+    """User subscription to be notified when a vacancy matches their search filters."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True)
+    search_filters = models.JSONField(
+        default=dict,
+        help_text="Saved filters: unit_type, location, min_rent, max_rent (optional keys).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "unit_notification_subscriptions"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.email} subscription"
+
+
 class TenantVacancyPreference(models.Model):
     """Tenant's search preferences for finding a unit (unit type, location)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

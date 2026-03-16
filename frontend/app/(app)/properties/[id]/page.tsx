@@ -51,6 +51,12 @@ interface PropertyDetail {
   rules: { id: string; title: string; description?: string }[];
   manager_assignments?: ManagerAssignment[];
   caretaker_assignments?: CaretakerAssignment[];
+  public_description?: string;
+  amenities?: string;
+  parking_info?: string;
+  nearby_landmarks?: string;
+  house_rules?: string;
+  contact_preference?: string;
 }
 
 type AssignMode = "manager" | "caretaker" | null;
@@ -71,6 +77,23 @@ export default function PropertyDetailPage() {
   const [ruleForm, setRuleForm] = useState<{ open: boolean; id: string | null; title: string; description: string }>({ open: false, id: null, title: "", description: "" });
   const [ruleSubmitting, setRuleSubmitting] = useState(false);
   const [ruleError, setRuleError] = useState("");
+  const [publicListing, setPublicListing] = useState<{
+    public_description: string;
+    amenities: string;
+    parking_info: string;
+    nearby_landmarks: string;
+    house_rules: string;
+    contact_preference: string;
+  }>({
+    public_description: "",
+    amenities: "",
+    parking_info: "",
+    nearby_landmarks: "",
+    house_rules: "",
+    contact_preference: "",
+  });
+  const [publicListingSaving, setPublicListingSaving] = useState(false);
+  const [publicListingError, setPublicListingError] = useState("");
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
@@ -91,6 +114,18 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     refresh();
   }, [id]);
+
+  useEffect(() => {
+    if (!property) return;
+    setPublicListing({
+      public_description: property.public_description ?? "",
+      amenities: property.amenities ?? "",
+      parking_info: property.parking_info ?? "",
+      nearby_landmarks: property.nearby_landmarks ?? "",
+      house_rules: property.house_rules ?? "",
+      contact_preference: property.contact_preference ?? "",
+    });
+  }, [property]);
 
   async function handleDelete() {
     if (!property || !confirm(`Delete property "${property.name}"? This cannot be undone.`)) return;
@@ -213,6 +248,23 @@ export default function PropertyDetailPage() {
     }
   }
 
+  async function savePublicListing(e: React.FormEvent) {
+    e.preventDefault();
+    setPublicListingError("");
+    setPublicListingSaving(true);
+    try {
+      await api.patch(`/properties/${id}/`, publicListing);
+      refresh();
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "response" in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : "Failed to save.";
+      setPublicListingError(typeof msg === "string" ? msg : "Failed to save.");
+    } finally {
+      setPublicListingSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -327,6 +379,85 @@ export default function PropertyDetailPage() {
           </ul>
         </section>
       )}
+
+      <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">Public Listing Information</h2>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">This information is shown on the Find Units listing for tenants. Edit and save to update.</p>
+        <form onSubmit={savePublicListing} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Description</label>
+            <textarea
+              value={publicListing.public_description}
+              onChange={(e) => setPublicListing((p) => ({ ...p, public_description: e.target.value }))}
+              disabled={!canEdit}
+              rows={3}
+              placeholder="Short description for the public listing"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Amenities</label>
+            <input
+              type="text"
+              value={publicListing.amenities}
+              onChange={(e) => setPublicListing((p) => ({ ...p, amenities: e.target.value }))}
+              disabled={!canEdit}
+              placeholder="e.g. Water, security, gym"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Parking</label>
+            <input
+              type="text"
+              value={publicListing.parking_info}
+              onChange={(e) => setPublicListing((p) => ({ ...p, parking_info: e.target.value }))}
+              disabled={!canEdit}
+              placeholder="Parking information"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Nearby landmarks</label>
+            <input
+              type="text"
+              value={publicListing.nearby_landmarks}
+              onChange={(e) => setPublicListing((p) => ({ ...p, nearby_landmarks: e.target.value }))}
+              disabled={!canEdit}
+              placeholder="e.g. Near mall, school"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">House rules</label>
+            <textarea
+              value={publicListing.house_rules}
+              onChange={(e) => setPublicListing((p) => ({ ...p, house_rules: e.target.value }))}
+              disabled={!canEdit}
+              rows={2}
+              placeholder="Rules for tenants"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Contact preference</label>
+            <input
+              type="text"
+              value={publicListing.contact_preference}
+              onChange={(e) => setPublicListing((p) => ({ ...p, contact_preference: e.target.value }))}
+              disabled={!canEdit}
+              placeholder="e.g. Call preferred, WhatsApp, email"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 disabled:opacity-70"
+            />
+          </div>
+          {publicListingError && <p className="text-sm text-red-600 dark:text-red-400">{publicListingError}</p>}
+          {canEdit && (
+            <button type="submit" disabled={publicListingSaving} className="rounded-lg bg-primary-600 text-white px-4 py-2 text-sm hover:bg-primary-700 disabled:opacity-50">
+              {publicListingSaving ? "Saving…" : "Save public listing"}
+            </button>
+          )}
+        </form>
+      </section>
 
       {canManageAssignments && (
         <>

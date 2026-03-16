@@ -140,10 +140,13 @@ class PropertyOptionsSerializer(serializers.ModelSerializer):
 
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create/update: name, address, location, is_closed (landlord set in view). Only landlord/manager can set is_closed."""
+    """Create/update: name, address, location, is_closed + public listing fields. Only landlord/manager can set is_closed."""
     class Meta:
         model = Property
-        fields = ["id", "name", "address", "location", "is_closed"]
+        fields = [
+            "id", "name", "address", "location", "is_closed",
+            "public_description", "amenities", "parking_info", "nearby_landmarks", "house_rules", "contact_preference",
+        ]
         read_only_fields = ["id"]
 
 
@@ -168,6 +171,12 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "location",
             "landlord",
             "is_closed",
+            "public_description",
+            "amenities",
+            "parking_info",
+            "nearby_landmarks",
+            "house_rules",
+            "contact_preference",
             "images",
             "unit_count",
             "occupied_count",

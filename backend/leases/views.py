@@ -189,6 +189,9 @@ class GiveNoticeView(generics.GenericAPIView):
             available_from=move_out_date,
         )
 
+        from vacancies.notification_service import notify_subscribers
+        notify_subscribers(lease.unit, available_from=move_out_date)
+
         # If notice end date is today or in the past, create history, mark unit vacant and close lease
         from datetime import date as date_type
         if move_out_date <= date_type.today():

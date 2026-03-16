@@ -13,7 +13,9 @@ from .serializers import (
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
     VacancyDiscoverySerializer,
+    VacancyNotifySubscribeSerializer,
 )
+from .notification_service import count_subscriptions_matching_filters
 from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
 from properties.models import Unit
 
@@ -50,6 +52,8 @@ def process_due_notices():
         lease.save(update_fields=["is_active", "updated_at"])
         listing.is_filled = True
         listing.save(update_fields=["is_filled", "updated_at"])
+        from .notification_service import notify_subscribers
+        notify_subscribers(unit, available_from=move_out)
 
 
 class VacancyListingListView(generics.ListAPIView):
@@ -118,6 +122,20 @@ class VacancySearchView(generics.ListAPIView):
                 pass
         return qs.order_by("monthly_rent", "property__name", "unit_number")
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        unit_type = (request.query_params.get("unit_type") or "").strip()
+        location = (request.query_params.get("location") or "").strip()
+        min_rent = (request.query_params.get("min_rent") or "").strip()
+        max_rent = (request.query_params.get("max_rent") or "").strip()
+        subscribers_waiting = count_subscriptions_matching_filters(unit_type, location, min_rent, max_rent)
+        return Response({
+            "results": serializer.data,
+            "units_found": len(serializer.data),
+            "subscribers_waiting": subscribers_waiting,
+        })
+
 
 class VacancyDiscoveryDetailView(generics.GenericAPIView):
     """GET /api/vacancies/discovery/<unit_id>/ - single discoverable vacancy with contact (respects visibility)."""
@@ -180,6 +198,17 @@ class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         pref, _ = TenantVacancyPreference.objects.get_or_create(user=self.request.user)
         return pref
+
+
+class NotifySubscribeView(APIView):
+    """POST /api/vacancies/notify-subscribe/ - subscribe to vacancy notifications (email, optional phone, search_filters). AllowAny."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VacancyNotifySubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CancelNoticeView(APIView):

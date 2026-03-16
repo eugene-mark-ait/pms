@@ -18,6 +18,17 @@ class Property(models.Model):
         default=False,
         help_text="When True, property is ended/closed (e.g. by manager). No new leases; existing data retained.",
     )
+    # Public listing information (shown on Find Units)
+    public_description = models.TextField(blank=True, help_text="Description shown on public vacancy listings.")
+    amenities = models.TextField(blank=True, help_text="e.g. Water, security, gym.")
+    parking_info = models.CharField(max_length=500, blank=True)
+    nearby_landmarks = models.CharField(max_length=500, blank=True)
+    house_rules = models.TextField(blank=True)
+    contact_preference = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="e.g. Call preferred, WhatsApp, email.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

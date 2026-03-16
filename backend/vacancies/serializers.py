@@ -1,7 +1,7 @@
 from datetime import date as date_type
 
 from rest_framework import serializers
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription
 from properties.serializers import UnitSerializer, PropertyListSerializer
 from properties.models import Unit
 
@@ -69,6 +69,22 @@ class TenantVacancyPreferenceSerializer(serializers.ModelSerializer):
         fields = ["id", "is_looking", "preferred_unit_type", "preferred_location", "created_at", "updated_at"]
 
 
+class VacancyNotifySubscribeSerializer(serializers.ModelSerializer):
+    """Subscribe to vacancy notifications with email, optional phone, and saved search filters."""
+    class Meta:
+        model = UnitNotificationSubscription
+        fields = ["id", "email", "phone", "search_filters", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def validate_search_filters(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("search_filters must be a JSON object.")
+        allowed = {"unit_type", "location", "min_rent", "max_rent"}
+        if any(k not in allowed for k in value):
+            pass  # allow extra keys for future use; only use allowed in matching
+        return value
+
+
 def _get_available_from(unit):
     """Available date: from UnitVacancyInfo, or VacancyListing, or today."""
     try:
@@ -107,7 +123,7 @@ def _build_contact(unit, show_landlord, show_manager, show_caretaker):
 
 
 class VacancyDiscoverySerializer(serializers.Serializer):
-    """One discoverable vacancy for tenant search/detail. Contact fields only if landlord allowed."""
+    """One discoverable vacancy for tenant search/detail. Contact fields only if landlord allowed. Includes property public listing info."""
     id = serializers.SerializerMethodField()
     unit_id = serializers.SerializerMethodField()
     unit_number = serializers.SerializerMethodField()
@@ -118,6 +134,12 @@ class VacancyDiscoverySerializer(serializers.Serializer):
     property_name = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    public_description = serializers.SerializerMethodField()
+    amenities = serializers.SerializerMethodField()
+    parking_info = serializers.SerializerMethodField()
+    nearby_landmarks = serializers.SerializerMethodField()
+    house_rules = serializers.SerializerMethodField()
+    contact_preference = serializers.SerializerMethodField()
     contact = serializers.SerializerMethodField()
     first_image = serializers.SerializerMethodField()
 
@@ -150,6 +172,24 @@ class VacancyDiscoverySerializer(serializers.Serializer):
 
     def get_location(self, obj):
         return (obj.property.location or "") if obj.property_id else ""
+
+    def get_public_description(self, obj):
+        return (obj.property.public_description or "") if obj.property_id else ""
+
+    def get_amenities(self, obj):
+        return (obj.property.amenities or "") if obj.property_id else ""
+
+    def get_parking_info(self, obj):
+        return (obj.property.parking_info or "") if obj.property_id else ""
+
+    def get_nearby_landmarks(self, obj):
+        return (obj.property.nearby_landmarks or "") if obj.property_id else ""
+
+    def get_house_rules(self, obj):
+        return (obj.property.house_rules or "") if obj.property_id else ""
+
+    def get_contact_preference(self, obj):
+        return (obj.property.contact_preference or "") if obj.property_id else ""
 
     def get_contact(self, obj):
         show_landlord, show_manager, show_caretaker = _get_contact_visibility(obj)

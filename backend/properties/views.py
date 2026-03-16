@@ -141,7 +141,10 @@ class UnitListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         if self.request.user.has_role("caretaker"):
             raise PermissionDenied("Caretakers cannot create units.")
-        serializer.save()
+        unit = serializer.save()
+        if getattr(unit, "is_vacant", True) and not getattr(unit, "is_reserved", False):
+            from vacancies.notification_service import notify_subscribers
+            notify_subscribers(unit)
 
 
 class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -226,6 +229,8 @@ class UnitVacancyStatusView(APIView):
         info.show_manager_phone = bool(show_manager)
         info.show_caretaker_phone = bool(show_caretaker)
         info.save(update_fields=["available_from", "show_landlord_phone", "show_manager_phone", "show_caretaker_phone", "updated_at"])
+        from vacancies.notification_service import notify_subscribers
+        notify_subscribers(unit, available_from=available_from)
         return Response({"success": True, "status": "vacant"})
 
 
@@ -452,8 +457,11 @@ class UnitBulkCreateView(APIView):
             }
             serializer = UnitSerializer(data=data)
             if serializer.is_valid():
-                serializer.save()
+                unit = serializer.save()
                 created.append(serializer.data)
+                if getattr(unit, "is_vacant", True) and not getattr(unit, "is_reserved", False):
+                    from vacancies.notification_service import notify_subscribers
+                    notify_subscribers(unit)
             else:
                 errors.append({i: serializer.errors})
         return Response({"created": len(created), "units": created, "errors": errors}, status=status.HTTP_201_CREATED)
