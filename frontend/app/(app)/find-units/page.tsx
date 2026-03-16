@@ -56,13 +56,6 @@ interface SearchFilters {
   max_rent?: string;
 }
 
-interface VacancyPreference {
-  id: string;
-  is_looking: boolean;
-  preferred_unit_type: string;
-  preferred_location: string;
-}
-
 export default function FindUnitsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [unitType, setUnitType] = useState("");
@@ -79,12 +72,6 @@ export default function FindUnitsPage() {
   const [subscribeSubmitting, setSubscribeSubmitting] = useState(false);
   const [subscribeSuccess, setSubscribeSuccess] = useState(false);
   const [subscribeError, setSubscribeError] = useState("");
-  const [preference, setPreference] = useState<VacancyPreference | null>(null);
-  const [prefSaving, setPrefSaving] = useState(false);
-  const [prefError, setPrefError] = useState("");
-  const [matches, setMatches] = useState<VacancyDiscoveryItem[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState(false);
-  const isTenant = user?.role_names?.includes("tenant");
 
   function search() {
     setLoading(true);
@@ -157,92 +144,10 @@ export default function FindUnitsPage() {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
-  useEffect(() => {
-    if (!isTenant) return;
-    api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
-  }, [isTenant]);
-
-  useEffect(() => {
-    if (!isTenant || !preference?.is_looking) return;
-    setMatchesLoading(true);
-    api.get<VacancyDiscoveryItem[]>(`/vacancies/matches/`).then((res) => setMatches(Array.isArray(res.data) ? res.data : (res.data as { results?: VacancyDiscoveryItem[] })?.results ?? [])).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
-  }, [isTenant, preference?.is_looking]);
-
-  function savePreference(updates: Partial<VacancyPreference>) {
-    if (!isTenant) return;
-    setPrefError("");
-    setPrefSaving(true);
-    api.patch<VacancyPreference>("/vacancies/my-preference/", updates).then((res) => setPreference(res.data)).catch((err) => setPrefError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Failed to save")).finally(() => setPrefSaving(false));
-  }
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Find a unit</h1>
       <p className="text-surface-600 dark:text-surface-400">Search available vacancies by unit type, location, and price.</p>
-
-      {isTenant && (
-        <div className="p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 space-y-4">
-          <h2 className="font-semibold text-surface-900 dark:text-surface-100">Currently looking for a vacancy</h2>
-          {prefError && <p className="text-sm text-red-600 dark:text-red-400">{prefError}</p>}
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preference?.is_looking ?? false}
-                onChange={(e) => savePreference({ is_looking: e.target.checked })}
-                disabled={prefSaving}
-                className="rounded border-surface-300 dark:border-surface-600"
-              />
-              <span className="text-sm font-medium text-surface-700 dark:text-surface-300">I am currently looking</span>
-            </label>
-            {preference?.is_looking && (
-              <>
-                <div>
-                  <label className="block text-xs text-surface-500 dark:text-surface-400 mb-0.5">Preferred type (optional)</label>
-                  <select
-                    value={preference.preferred_unit_type || ""}
-                    onChange={(e) => savePreference({ preferred_unit_type: e.target.value })}
-                    disabled={prefSaving}
-                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
-                  >
-                    {UNIT_TYPES.map((o) => (
-                      <option key={o.value || "any"} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-surface-500 dark:text-surface-400 mb-0.5">Preferred location (optional)</label>
-                  <input
-                    type="text"
-                    value={preference.preferred_location || ""}
-                    onChange={(e) => setPreference((p) => p ? { ...p, preferred_location: e.target.value } : null)}
-                    onBlur={(e) => savePreference({ preferred_location: e.target.value.trim() })}
-                    disabled={prefSaving}
-                    placeholder="City or area"
-                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-40"
-                  />
-                </div>
-                <Link href="#matches" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">View my matches ↓</Link>
-              </>
-            )}
-          </div>
-          {preference?.is_looking && (
-            <div id="matches" className="pt-2 border-t border-surface-200 dark:border-surface-600">
-              <h3 className="font-medium text-surface-800 dark:text-surface-200 mb-2">Matches for you</h3>
-              {matchesLoading ? <p className="text-sm text-surface-500">Loading…</p> : matches.length === 0 ? <p className="text-sm text-surface-500">No matching vacancies right now. Try the search below.</p> : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {matches.slice(0, 6).map((item) => (
-                    <Link key={item.id} href={`/find-units/${item.unit_id}`} className="block p-3 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700/50 text-sm">
-                      <span className="font-medium text-surface-900 dark:text-surface-100">{item.property_name} – Unit {item.unit_number}</span>
-                      <span className="text-surface-500 dark:text-surface-400 ml-1">KSh {Number(item.monthly_rent).toLocaleString("en-KE")}/mo</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="flex flex-wrap gap-4 items-end p-4 bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700">
         <div>

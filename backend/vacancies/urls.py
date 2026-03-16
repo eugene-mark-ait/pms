@@ -11,4 +11,8 @@ urlpatterns = [
     path("vacancies/discovery/<uuid:unit_id>/", views.VacancyDiscoveryDetailView.as_view(), name="vacancy-discovery-detail"),
     path("vacancies/my-preference/", views.TenantVacancyPreferenceView.as_view(), name="vacancy-my-preference"),
     path("vacancies/matches/", views.VacancyMatchesView.as_view(), name="vacancy-matches"),
+    path("vacancies/units/<uuid:unit_id>/apply/", views.UnitApplyView.as_view(), name="unit-apply"),
+    path("vacancies/units/<uuid:unit_id>/applications/", views.UnitApplicationListView.as_view(), name="unit-application-list"),
+    path("vacancies/applications/<uuid:pk>/approve/", views.ApplicationApproveView.as_view(), name="application-approve"),
+    path("vacancies/applications/<uuid:pk>/decline/", views.ApplicationDeclineView.as_view(), name="application-decline"),
 ]

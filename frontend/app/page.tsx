@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import {
   Navbar,
   Hero,
-  PlatformOverview,
+  Problem,
+  Solution,
+  PlatformCapabilities,
   PropertyOwnerFeatures,
   TenantExperience,
   EmbeddedFinancialServices,
-  PlatformValue,
+  HowItWorks,
+  Vision,
   FinalCTA,
   Footer,
 } from "@/components/landing";
@@ -29,11 +32,14 @@ export default function LandingPage() {
       <Navbar user={user ?? undefined} />
       <main>
         <Hero />
-        <PlatformOverview />
+        <Problem />
+        <Solution />
+        <PlatformCapabilities />
         <PropertyOwnerFeatures />
         <TenantExperience />
         <EmbeddedFinancialServices />
-        <PlatformValue />
+        <HowItWorks />
+        <Vision />
         <FinalCTA />
         <Footer />
       </main>

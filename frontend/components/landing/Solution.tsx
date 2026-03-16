@@ -1,57 +1,33 @@
 "use client";
 
-const solutions = [
-  {
-    title: "Verified property listings",
-    description: "Every listing is validated so tenants find real homes, not scams.",
-  },
-  {
-    title: "Property management tools",
-    description: "One place to manage units, leases, and occupancy.",
-  },
-  {
-    title: "Asset tracking",
-    description: "Monitor condition, maintenance, and inventory per property.",
-  },
-  {
-    title: "Financial reporting",
-    description: "Income, expenses, and reports for landlords and managers.",
-  },
-  {
-    title: "Tenant–landlord communication",
-    description: "In-app messaging and complaint handling in one place.",
-  },
+const points = [
+  "One system for leases, payments, and occupancy — not a patchwork of tools.",
+  "Rent flows into a verifiable ledger so every payment can support identity and credit.",
+  "Financial products (financing, deposits, insurance) plug into the same data layer.",
+  "Property owners get real-time visibility; tenants get a portable rental record.",
 ];
 
 export default function Solution() {
   return (
-    <section id="solution" className="py-20 sm:py-28 bg-surface-50">
+    <section id="solution" className="py-20 sm:py-28 bg-surface-50 dark:bg-surface-800/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">
-            Our Solution
+          <h2 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100 sm:text-4xl">
+            One operating system for rental housing
           </h2>
-          <p className="mt-4 text-lg text-surface-600">
-            An all-in-one rental and property management platform that works for tenants, landlords, and property managers.
+          <p className="mt-4 text-lg text-surface-600 dark:text-surface-400">
+            We don’t replace your bank or your lease. We’re the layer that connects property operations, tenant identity, and housing finance so they work together.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {solutions.map((s) => (
-            <div
-              key={s.title}
-              className="group rounded-xl border border-surface-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-primary-200 transition"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100 transition">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="mt-4 font-semibold text-surface-900">{s.title}</h3>
-              <p className="mt-2 text-sm text-surface-600">{s.description}</p>
-            </div>
+        <ul className="mt-12 max-w-2xl mx-auto space-y-4">
+          {points.map((point) => (
+            <li key={point} className="flex items-start gap-3 text-surface-700 dark:text-surface-300">
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-500" />
+              <span>{point}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );

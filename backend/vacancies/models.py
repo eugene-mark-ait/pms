@@ -78,6 +78,37 @@ class TenantVacancyPreference(models.Model):
         return f"{self.user.email} preference"
 
 
+class UnitApplication(models.Model):
+    """Queue: tenant applies for a unit; landlord/manager approve or decline in order."""
+    class Status(models.TextChoices):
+        WAITING = "waiting", "Waiting"
+        APPROVED = "approved", "Approved"
+        DECLINED = "declined", "Declined"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    applicant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="unit_applications",
+    )
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="applications",
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "unit_applications"
+        ordering = ["created_at"]
+        unique_together = [["unit", "applicant"]]
+
+    def __str__(self):
+        return f"{self.applicant.email} -> {self.unit} ({self.status})"
+
+
 class VacateNotice(models.Model):
     """Notice submitted by tenant; triggers vacancy listing. notice_due_date = move_out_date; notice_given_date from created_at."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

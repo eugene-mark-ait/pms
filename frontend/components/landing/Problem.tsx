@@ -1,100 +1,47 @@
 "use client";
 
-const houseHuntingProblems = [
+const problems = [
   {
-    title: "Fake listings",
-    description: "Scammers post non-existent or misleading properties, wasting time and money.",
-    icon: "⚠️",
+    title: "Rent is invisible to the financial system",
+    description: "Payments happen in cash or bank transfer. No ledger, no proof, no way for tenants to turn rent into a financial asset.",
   },
   {
-    title: "Time-consuming search",
-    description: "Endless browsing across multiple sites with no unified filters or verification.",
-    icon: "⏱️",
+    title: "Property owners run on spreadsheets and guesswork",
+    description: "Collections, occupancy, and cash flow are manual. One missed payment can break the month with no early signal.",
   },
   {
-    title: "Poor communication",
-    description: "Tenants and landlords struggle with scattered messages and delayed responses.",
-    icon: "💬",
-  },
-];
-
-const managementProblems = [
-  {
-    title: "Manual rent tracking",
-    description: "Spreadsheets and paper records that are error-prone and hard to maintain.",
-    icon: "📋",
+    title: "Housing finance is bolted on, not built in",
+    description: "Deposits, rent financing, and insurance are separate products. They don’t share data or integrate with the lease.",
   },
   {
-    title: "No centralized system",
-    description: "Properties, tenants, and documents scattered across tools and emails.",
-    icon: "📂",
-  },
-  {
-    title: "Difficulty tracking assets",
-    description: "No clear view of property condition, maintenance history, or inventory.",
-    icon: "🏠",
-  },
-  {
-    title: "Lack of financial insights",
-    description: "Missing reports on income, expenses, and profitability per property.",
-    icon: "📊",
+    title: "Tenants have no portable identity",
+    description: "Rental history lives in a landlord’s inbox. Moving means starting from zero with the next landlord or lender.",
   },
 ];
-
-function ProblemCard({
-  title,
-  description,
-  icon,
-}: {
-  title: string;
-  description: string;
-  icon: string;
-}) {
-  return (
-    <div className="rounded-xl border border-surface-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-      <span className="text-2xl">{icon}</span>
-      <h3 className="mt-3 font-semibold text-surface-900">{title}</h3>
-      <p className="mt-1.5 text-sm text-surface-600">{description}</p>
-    </div>
-  );
-}
 
 export default function Problem() {
   return (
-    <section id="problem" className="py-20 sm:py-28 bg-white">
+    <section id="problem" className="py-20 sm:py-28 bg-white dark:bg-surface-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">
-            The Problem
+          <h2 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100 sm:text-4xl">
+            Renting is fragmented
           </h2>
-          <p className="mt-4 text-lg text-surface-600">
-            The rental ecosystem is broken for everyone. Here’s what we’re fixing.
+          <p className="mt-4 text-lg text-surface-600 dark:text-surface-400">
+            Landlords, tenants, and financial services operate in silos. Rent doesn’t flow into identity or credit. The system wasn’t built for the way people live and pay today.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-12 lg:grid-cols-2">
-          <div>
-            <h3 className="text-lg font-semibold text-surface-900 mb-4 flex items-center gap-2">
-              <span className="rounded-lg bg-amber-100 p-1.5 text-amber-700">🏠</span>
-              House Hunting Problems
-            </h3>
-            <div className="space-y-4">
-              {houseHuntingProblems.map((p) => (
-                <ProblemCard key={p.title} {...p} />
-              ))}
+        <div className="mt-16 grid gap-6 sm:grid-cols-2">
+          {problems.map((p) => (
+            <div
+              key={p.title}
+              className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-800/50 p-6"
+            >
+              <h3 className="font-semibold text-surface-900 dark:text-surface-100">{p.title}</h3>
+              <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">{p.description}</p>
             </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-surface-900 mb-4 flex items-center gap-2">
-              <span className="rounded-lg bg-blue-100 p-1.5 text-blue-700">📈</span>
-              Property Management Problems
-            </h3>
-            <div className="space-y-4">
-              {managementProblems.map((p) => (
-                <ProblemCard key={p.title} {...p} />
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>

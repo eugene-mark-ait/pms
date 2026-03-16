@@ -459,41 +459,49 @@ export default function PropertyDetailPage() {
         </form>
       </section>
 
-      {canManageAssignments && (
-        <>
-          <section>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Managers</h2>
+      <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">Staff</h2>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Managers</h3>
             <ul className="space-y-1">
               {managers.map((ma) => (
                 <li key={ma.id} className="flex items-center justify-between gap-2 text-surface-900 dark:text-surface-100">
-                  <span>{ma.manager?.email ?? "—"}</span>
-                  <button type="button" onClick={() => removeManager(ma.manager.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
+                  <span>{[ma.manager?.first_name, ma.manager?.last_name].filter(Boolean).join(" ") || ma.manager?.email || "—"}</span>
+                  {canManageAssignments && (
+                    <button type="button" onClick={() => removeManager(ma.manager.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
+                  )}
                 </li>
               ))}
               {managers.length === 0 && <li className="text-surface-500 dark:text-surface-400">No managers assigned</li>}
             </ul>
-            <button type="button" onClick={() => setAssignMode("manager")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
-              Assign manager
-            </button>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Caretakers</h2>
+            {canManageAssignments && (
+              <button type="button" onClick={() => setAssignMode("manager")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
+                Assign manager
+              </button>
+            )}
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Caretakers</h3>
             <ul className="space-y-1">
               {caretakers.map((ca) => (
                 <li key={ca.id} className="flex items-center justify-between gap-2 text-surface-900 dark:text-surface-100">
-                  <span>{ca.caretaker?.email ?? "—"}</span>
-                  <button type="button" onClick={() => removeCaretaker(ca.caretaker.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
+                  <span>{[ca.caretaker?.first_name, ca.caretaker?.last_name].filter(Boolean).join(" ") || ca.caretaker?.email || "—"}</span>
+                  {canManageAssignments && (
+                    <button type="button" onClick={() => removeCaretaker(ca.caretaker.id)} className="text-red-600 dark:text-red-400 hover:underline text-sm">Remove</button>
+                  )}
                 </li>
               ))}
               {caretakers.length === 0 && <li className="text-surface-500 dark:text-surface-400">No caretakers assigned</li>}
             </ul>
-            <button type="button" onClick={() => setAssignMode("caretaker")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
-              Assign caretaker
-            </button>
-          </section>
-        </>
-      )}
+            {canManageAssignments && (
+              <button type="button" onClick={() => setAssignMode("caretaker")} className="mt-2 rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
+                Assign caretaker
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">

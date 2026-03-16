@@ -31,7 +31,7 @@ export default function Hero() {
                 Get Started
               </Link>
               <Link
-                href="/#overview"
+                href="/#problem"
                 className="inline-flex items-center justify-center rounded-xl border-2 border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-6 py-3.5 text-base font-semibold text-surface-900 dark:text-surface-100 hover:border-surface-400 dark:hover:border-surface-500 hover:bg-surface-50 dark:hover:bg-surface-700 transition"
               >
                 Explore the Platform

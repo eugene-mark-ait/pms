@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from leases.models import LeaseHistory
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
@@ -15,10 +15,11 @@ from .serializers import (
     VacancyDiscoverySerializer,
     VacancyNotifySubscribeSerializer,
     MySubscriptionSerializer,
+    UnitApplicationSerializer,
 )
 from .notification_service import count_subscriptions_matching_filters
 from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
-from properties.models import Unit
+from properties.models import Unit, Property
 
 
 def process_due_notices():
@@ -99,7 +100,7 @@ class VacancySearchView(generics.ListAPIView):
                 property__is_closed=False,
             )
             .select_related("property")
-            .prefetch_related("images", "property__images")
+            .prefetch_related("images", "property__images", "property__rules")
         )
         unit_type = self.request.query_params.get("unit_type", "").strip()
         location = self.request.query_params.get("location", "").strip()
@@ -150,7 +151,7 @@ class VacancyDiscoveryDetailView(generics.GenericAPIView):
                 is_vacant=True,
                 is_reserved=False,
                 property__is_closed=False,
-            ).select_related("property").prefetch_related("images", "property__images"),
+            ).select_related("property").prefetch_related("images", "property__images", "property__rules"),
             id=unit_id,
         )
 
@@ -168,10 +169,10 @@ class VacancyMatchesView(generics.ListAPIView):
 
     def get_queryset(self):
         from django.db.models import Q
+        process_due_notices()
         pref = TenantVacancyPreference.objects.filter(user=self.request.user).first()
         if not pref or not pref.is_looking:
             return Unit.objects.none()
-        today = timezone.now().date()
         qs = (
             Unit.objects.filter(
                 is_vacant=True,
@@ -179,7 +180,7 @@ class VacancyMatchesView(generics.ListAPIView):
                 property__is_closed=False,
             )
             .select_related("property")
-            .prefetch_related("images", "property__images")
+            .prefetch_related("images", "property__images", "property__rules")
         )
         if pref.preferred_unit_type:
             qs = qs.filter(unit_type=pref.preferred_unit_type)
@@ -269,3 +270,87 @@ class CancelNoticeView(APIView):
             listing.is_filled = True
             listing.save(update_fields=["is_filled", "updated_at"])
         return Response({"success": True})
+
+
+def _unit_queryset_landlord_or_manager(request):
+    """Units the user can manage (landlord or manager)."""
+    user = request.user
+    if user.has_role("landlord"):
+        return Unit.objects.filter(property__landlord=user)
+    if user.has_role("manager"):
+        return Unit.objects.filter(property__manager_assignments__manager=user).distinct()
+    return Unit.objects.none()
+
+
+class UnitApplyView(APIView):
+    """POST /api/vacancies/units/<unit_id>/apply/ - tenant applies for a unit (joins queue)."""
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def post(self, request, unit_id):
+        unit = get_object_or_404(
+            Unit.objects.filter(
+                is_vacant=True,
+                is_reserved=False,
+                property__is_closed=False,
+            ),
+            pk=unit_id,
+        )
+        app, created = UnitApplication.objects.get_or_create(
+            unit=unit,
+            applicant=request.user,
+            defaults={"status": UnitApplication.Status.WAITING},
+        )
+        if not created:
+            if app.status == UnitApplication.Status.WAITING:
+                return Response(UnitApplicationSerializer(app).data, status=status.HTTP_200_OK)
+            return Response(
+                {"detail": "You already have an application for this unit."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(UnitApplicationSerializer(app).data, status=status.HTTP_201_CREATED)
+
+
+class UnitApplicationListView(generics.ListAPIView):
+    """GET /api/vacancies/units/<unit_id>/applications/ - list queue for unit (landlord/manager)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    serializer_class = UnitApplicationSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        unit_id = self.kwargs["unit_id"]
+        qs = _unit_queryset_landlord_or_manager(self.request).filter(pk=unit_id)
+        if not qs.exists():
+            return UnitApplication.objects.none()
+        return UnitApplication.objects.filter(unit_id=unit_id).select_related("applicant", "unit", "unit__property").order_by("created_at")
+
+
+class ApplicationApproveView(APIView):
+    """POST /api/vacancies/applications/<id>/approve/ - landlord/manager approve application; unit becomes reserved."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+
+    def post(self, request, pk):
+        app = get_object_or_404(UnitApplication, pk=pk, status=UnitApplication.Status.WAITING)
+        if not _unit_queryset_landlord_or_manager(request).filter(pk=app.unit_id).exists():
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        app.status = UnitApplication.Status.APPROVED
+        app.save(update_fields=["status", "updated_at"])
+        app.unit.is_reserved = True
+        app.unit.save(update_fields=["is_reserved", "updated_at"])
+        # Notify others in queue that unit is no longer available (stub: could send email/notification)
+        waiting = UnitApplication.objects.filter(unit=app.unit, status=UnitApplication.Status.WAITING).exclude(pk=app.pk)
+        for w in waiting:
+            pass  # TODO: notify w.applicant
+        return Response(UnitApplicationSerializer(app).data)
+
+
+class ApplicationDeclineView(APIView):
+    """POST /api/vacancies/applications/<id>/decline/ - landlord/manager decline application."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+
+    def post(self, request, pk):
+        app = get_object_or_404(UnitApplication, pk=pk, status=UnitApplication.Status.WAITING)
+        if not _unit_queryset_landlord_or_manager(request).filter(pk=app.unit_id).exists():
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        app.status = UnitApplication.Status.DECLINED
+        app.save(update_fields=["status", "updated_at"])
+        return Response(UnitApplicationSerializer(app).data)

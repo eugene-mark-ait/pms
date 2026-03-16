@@ -1,7 +1,7 @@
 from datetime import date as date_type
 
 from rest_framework import serializers
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication
 from properties.serializers import UnitSerializer, PropertyListSerializer
 from properties.models import Unit
 
@@ -85,6 +85,33 @@ class VacancyNotifySubscribeSerializer(serializers.ModelSerializer):
         return value
 
 
+class UnitApplicationSerializer(serializers.ModelSerializer):
+    applicant_email = serializers.SerializerMethodField()
+    applicant_name = serializers.SerializerMethodField()
+    unit_number = serializers.SerializerMethodField()
+    property_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UnitApplication
+        fields = ["id", "applicant", "applicant_email", "applicant_name", "unit", "unit_number", "property_name", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "applicant", "unit", "created_at", "updated_at"]
+
+    def get_applicant_email(self, obj):
+        return obj.applicant.email if obj.applicant_id else ""
+
+    def get_applicant_name(self, obj):
+        if not obj.applicant_id:
+            return ""
+        name = f"{obj.applicant.first_name or ''} {obj.applicant.last_name or ''}".strip()
+        return name or obj.applicant.email
+
+    def get_unit_number(self, obj):
+        return obj.unit.unit_number if obj.unit_id else ""
+
+    def get_property_name(self, obj):
+        return obj.unit.property.name if obj.unit_id and obj.unit.property_id else ""
+
+
 class MySubscriptionSerializer(serializers.ModelSerializer):
     """Subscription with match_count for tenant dashboard."""
     match_count = serializers.SerializerMethodField()
@@ -154,6 +181,7 @@ class VacancyDiscoverySerializer(serializers.Serializer):
     nearby_landmarks = serializers.SerializerMethodField()
     house_rules = serializers.SerializerMethodField()
     contact_preference = serializers.SerializerMethodField()
+    rules = serializers.SerializerMethodField()
     contact = serializers.SerializerMethodField()
     first_image = serializers.SerializerMethodField()
 
@@ -204,6 +232,15 @@ class VacancyDiscoverySerializer(serializers.Serializer):
 
     def get_contact_preference(self, obj):
         return (obj.property.contact_preference or "") if obj.property_id else ""
+
+    def get_rules(self, obj):
+        """Property rules from configuration (same as property settings)."""
+        if not obj.property_id:
+            return []
+        return [
+            {"id": str(r.id), "title": r.title, "description": r.description or ""}
+            for r in obj.property.rules.order_by("created_at")
+        ]
 
     def get_contact(self, obj):
         show_landlord, show_manager, show_caretaker = _get_contact_visibility(obj)

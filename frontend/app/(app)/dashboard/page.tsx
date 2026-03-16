@@ -36,6 +36,24 @@ interface SubscriptionAlert {
   match_count: number;
 }
 
+interface VacancyPreference {
+  id: string;
+  is_looking: boolean;
+  preferred_unit_type: string;
+  preferred_location: string;
+}
+
+interface VacancyMatchItem {
+  id: string;
+  unit_id: string;
+  unit_number: string;
+  unit_type: string;
+  monthly_rent: string;
+  property_name: string;
+  address?: string;
+  location?: string;
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<{
@@ -58,6 +76,12 @@ export default function DashboardPage() {
   const [addAlertError, setAddAlertError] = useState("");
   const [addAlertForm, setAddAlertForm] = useState({ location: "", unit_type: "", min_rent: "", max_rent: "" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [addAlertDrawerVisible, setAddAlertDrawerVisible] = useState(false);
+  const [preference, setPreference] = useState<VacancyPreference | null>(null);
+  const [prefSaving, setPrefSaving] = useState(false);
+  const [prefError, setPrefError] = useState("");
+  const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
@@ -124,6 +148,9 @@ export default function DashboardPage() {
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
           setSubscriptions(Array.isArray(subsRes.data) ? subsRes.data : []);
         }
+        if (roles.includes("tenant")) {
+          api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
+        }
       } catch {
         setStats({});
       } finally {
@@ -186,6 +213,30 @@ export default function DashboardPage() {
 
   function formatUnitType(v: string) {
     return (UNIT_TYPES.find((t) => t.value === v)?.label ?? v) || "Any";
+  }
+
+  useEffect(() => {
+    if (addAlertOpen) {
+      const t = requestAnimationFrame(() => setAddAlertDrawerVisible(true));
+      return () => cancelAnimationFrame(t);
+    }
+    setAddAlertDrawerVisible(false);
+  }, [addAlertOpen]);
+
+  useEffect(() => {
+    if (!isTenant || !preference?.is_looking) return;
+    setMatchesLoading(true);
+    api.get<VacancyMatchItem[] | { results?: VacancyMatchItem[] }>("/vacancies/matches/").then((res) => {
+      const data = res.data;
+      setMatches(Array.isArray(data) ? data : (data?.results ?? []));
+    }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
+  }, [isTenant, preference?.is_looking]);
+
+  function savePreference(updates: Partial<VacancyPreference>) {
+    if (!isTenant) return;
+    setPrefError("");
+    setPrefSaving(true);
+    api.patch<VacancyPreference>("/vacancies/my-preference/", updates).then((res) => setPreference(res.data)).catch((err: { response?: { data?: { detail?: string } } }) => setPrefError(err?.response?.data?.detail ?? "Failed to save")).finally(() => setPrefSaving(false));
   }
 
   return (
@@ -276,6 +327,70 @@ export default function DashboardPage() {
       )}
 
       {isTenant && (
+        <div className="p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 space-y-4">
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100">Currently looking for a vacancy</h2>
+          {prefError && <p className="text-sm text-red-600 dark:text-red-400">{prefError}</p>}
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preference?.is_looking ?? false}
+                onChange={(e) => savePreference({ is_looking: e.target.checked })}
+                disabled={prefSaving}
+                className="rounded border-surface-300 dark:border-surface-600"
+              />
+              <span className="text-sm font-medium text-surface-700 dark:text-surface-300">I am currently looking</span>
+            </label>
+            {preference?.is_looking && (
+              <>
+                <div>
+                  <label className="block text-xs text-surface-500 dark:text-surface-400 mb-0.5">Preferred type (optional)</label>
+                  <select
+                    value={preference.preferred_unit_type || ""}
+                    onChange={(e) => savePreference({ preferred_unit_type: e.target.value })}
+                    disabled={prefSaving}
+                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                  >
+                    {UNIT_TYPES.map((o) => (
+                      <option key={o.value || "any"} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-surface-500 dark:text-surface-400 mb-0.5">Preferred location (optional)</label>
+                  <input
+                    type="text"
+                    value={preference.preferred_location || ""}
+                    onChange={(e) => setPreference((p) => p ? { ...p, preferred_location: e.target.value } : null)}
+                    onBlur={(e) => savePreference({ preferred_location: e.target.value.trim() })}
+                    disabled={prefSaving}
+                    placeholder="City or area"
+                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-40"
+                  />
+                </div>
+                <Link href="#dashboard-matches" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">View my matches ↓</Link>
+              </>
+            )}
+          </div>
+          {preference?.is_looking && (
+            <div id="dashboard-matches" className="pt-2 border-t border-surface-200 dark:border-surface-600">
+              <h3 className="font-medium text-surface-800 dark:text-surface-200 mb-2">Matches for you</h3>
+              {matchesLoading ? <p className="text-sm text-surface-500">Loading…</p> : matches.length === 0 ? <p className="text-sm text-surface-500">No matching vacancies right now. Try <Link href="/find-units" className="text-primary-600 dark:text-primary-400 hover:underline">Find Units</Link> to search.</p> : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {matches.slice(0, 6).map((item) => (
+                    <Link key={item.id} href={`/find-units/${item.unit_id}`} className="block p-3 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700/50 text-sm">
+                      <span className="font-medium text-surface-900 dark:text-surface-100">{item.property_name} – Unit {item.unit_number}</span>
+                      <span className="text-surface-500 dark:text-surface-400 ml-1">KSh {Number(item.monthly_rent).toLocaleString("en-KE")}/mo</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isTenant && (
         <section>
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider">Unit Alerts</h2>
@@ -336,11 +451,13 @@ export default function DashboardPage() {
           )}
 
           {addAlertOpen && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !addAlertSubmitting && setAddAlertOpen(false)}>
-              <div className="bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Add vacancy alert</h3>
-                <p className="text-sm text-surface-600 dark:text-surface-400">Get notified when new units match your criteria.</p>
-                <form onSubmit={submitAddAlert} className="space-y-4">
+            <>
+              <div className="fixed inset-0 bg-black/50 z-50 transition-opacity" onClick={() => !addAlertSubmitting && setAddAlertOpen(false)} aria-hidden />
+              <div className={`fixed top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-surface-800 shadow-xl border-l border-surface-200 dark:border-surface-700 z-50 flex flex-col transition-transform duration-300 ease-out ${addAlertDrawerVisible ? "translate-x-0" : "translate-x-full"}`} onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 space-y-4 overflow-y-auto">
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Add vacancy alert</h3>
+                  <p className="text-sm text-surface-600 dark:text-surface-400">Get notified when new units match your criteria.</p>
+                  <form onSubmit={submitAddAlert} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Location</label>
                     <input
@@ -397,8 +514,9 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </form>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </section>
       )}

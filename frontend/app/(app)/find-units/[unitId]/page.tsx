@@ -22,6 +22,7 @@ interface VacancyDetail {
   nearby_landmarks?: string;
   house_rules?: string;
   contact_preference?: string;
+  rules?: { id: string; title: string; description: string }[];
   contact: {
     landlord_phone?: string | null;
     manager_phone?: string | null;
@@ -90,10 +91,17 @@ export default function VacancyDetailPage() {
           <p className="text-sm text-surface-600 dark:text-surface-400">{item.nearby_landmarks}</p>
         </div>
       )}
-      {item.house_rules && (
+      {item.rules && item.rules.length > 0 && (
         <div>
-          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-1">House rules</h2>
-          <p className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{item.house_rules}</p>
+          <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-2">Property rules</h2>
+          <ul className="space-y-2">
+            {item.rules.map((r) => (
+              <li key={r.id} className="border-l-2 border-surface-200 dark:border-surface-600 pl-3">
+                <p className="font-medium text-surface-900 dark:text-surface-100 text-sm">{r.title}</p>
+                {r.description && <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5 whitespace-pre-wrap">{r.description}</p>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {item.contact_preference && (
