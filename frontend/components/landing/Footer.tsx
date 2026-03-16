@@ -29,7 +29,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-surface-200/80 dark:border-surface-800/80 bg-white dark:bg-surface-900 py-16 sm:py-20">
+    <footer className="border-t border-white/40 dark:border-surface-800/60 bg-white/50 dark:bg-surface-900/70 backdrop-blur-xl py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">

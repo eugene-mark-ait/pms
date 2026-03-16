@@ -25,7 +25,7 @@ export default function Navbar({ user = null }: { user?: User | null }) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-surface-950/70 backdrop-blur-xl border-b border-surface-200/50 dark:border-surface-800/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/50 dark:bg-surface-950/50 backdrop-blur-2xl border-b border-white/40 dark:border-surface-800/60">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight text-surface-900 dark:text-surface-100">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Navbar,
   Hero,
+  PartnersMarquee,
   Problem,
   Solution,
   PlatformCapabilities,
@@ -32,6 +33,7 @@ export default function LandingPage() {
       <Navbar user={user ?? undefined} />
       <main>
         <Hero />
+        <PartnersMarquee />
         <Problem />
         <Solution />
         <PlatformCapabilities />

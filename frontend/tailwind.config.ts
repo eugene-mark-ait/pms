@@ -21,6 +21,7 @@ const config: Config = {
       animation: {
         "fade-in": "fade-in 0.6s ease-out forwards",
         "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+        marquee: "marquee 40s linear infinite",
       },
       keyframes: {
         "fade-in": {
@@ -34,6 +35,10 @@ const config: Config = {
         "gradient-shift": {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.8" },
+        },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
       },
       colors: {

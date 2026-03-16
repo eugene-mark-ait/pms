@@ -4,9 +4,9 @@ import Link from "next/link";
 
 export default function FinalCTA() {
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden bg-surface-900 dark:bg-surface-950">
+    <section className="relative py-24 sm:py-32 overflow-hidden bg-surface-900/90 dark:bg-surface-950/90 backdrop-blur-xl border-t border-white/10">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-surface-800/50 to-surface-900 dark:from-surface-800/30 dark:to-surface-950" />
+        <div className="absolute inset-0 bg-gradient-to-b from-surface-800/60 to-surface-900 dark:from-surface-800/40 dark:to-surface-950" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-primary-500/10 blur-[120px]" />
       </div>
       <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">

@@ -44,8 +44,8 @@ export default function Hero() {
           </div>
 
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[420px] rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-white dark:bg-surface-800/90 p-2 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_4px_rgba(0,0,0,0.05),0_12px_24px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_2px_4px_rgba(0,0,0,0.3),0_12px_24px_rgba(0,0,0,0.4)]">
-              <div className="rounded-xl bg-surface-50/80 dark:bg-surface-800 overflow-hidden">
+            <div className="relative w-full max-w-[420px] rounded-2xl border border-white/40 dark:border-surface-600/40 bg-white/60 dark:bg-surface-800/60 backdrop-blur-xl p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.5),0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_8px_32px_rgba(0,0,0,0.3)]">
+              <div className="rounded-xl bg-white/40 dark:bg-surface-800/60 backdrop-blur-sm overflow-hidden">
                 <div className="flex items-center gap-2 border-b border-surface-200/80 dark:border-surface-700/80 bg-white dark:bg-surface-800 px-4 py-3">
                   <div className="flex gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-surface-300 dark:bg-surface-600" />

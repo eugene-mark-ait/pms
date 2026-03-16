@@ -20,7 +20,7 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 sm:py-32 bg-white dark:bg-surface-900">
+    <section id="how-it-works" className="py-24 sm:py-32 bg-white/50 dark:bg-surface-900/50 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-4xl font-semibold tracking-tight text-surface-900 dark:text-surface-100 sm:text-5xl [letter-spacing:-0.02em]">
@@ -33,8 +33,11 @@ export default function HowItWorks() {
 
         <div className="mt-20 max-w-2xl mx-auto space-y-10">
           {steps.map((s) => (
-            <div key={s.step} className="flex gap-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-900 dark:bg-white text-lg font-semibold text-white dark:text-surface-900">
+            <div
+              key={s.step}
+              className="flex gap-6 rounded-2xl border border-white/60 dark:border-surface-700/60 bg-white/70 dark:bg-surface-800/70 backdrop-blur-xl p-6 shadow-lg shadow-surface-900/5"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-900 dark:bg-white text-lg font-semibold text-white dark:text-surface-900 ring-4 ring-white/50 dark:ring-surface-800/50">
                 {s.step}
               </div>
               <div>
