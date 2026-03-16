@@ -17,9 +17,8 @@ from .serializers import (
     MySubscriptionSerializer,
     UnitApplicationSerializer,
 )
-from .notification_service import count_subscriptions_matching_filters
 from config.pagination import OptionalPageSizePagination
-from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
+from accounts.permissions import IsPropertyOwnerOrManagerOrCaretaker, IsTenant
 from properties.models import Unit, Property
 
 
@@ -60,8 +59,8 @@ def process_due_notices():
 
 
 class VacancyListingListView(generics.ListAPIView):
-    """GET /api/vacancies/ - list upcoming vacancies (landlord/manager/caretaker). ?property=<uuid> filters by property."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """GET /api/vacancies/ - list upcoming vacancies (property owner/manager/caretaker). ?property=<uuid> filters by property."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = VacancyListingSerializer
 
     def get_queryset(self):
@@ -71,8 +70,8 @@ class VacancyListingListView(generics.ListAPIView):
             VacancyListing.objects.filter(is_filled=False)
             .select_related("property", "unit", "vacate_notice", "vacate_notice__lease", "vacate_notice__lease__tenant")
         )
-        if user.has_role("landlord"):
-            qs = qs.filter(property__landlord=user)
+        if user.has_role("property_owner"):
+            qs = qs.filter(property__property_owner=user)
         elif user.has_role("manager"):
             qs = qs.filter(property__manager_assignments__manager=user).distinct()
         elif user.has_role("caretaker"):
@@ -126,24 +125,17 @@ class VacancySearchView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        unit_type = (request.query_params.get("unit_type") or "").strip()
-        location = (request.query_params.get("location") or "").strip()
-        min_rent = (request.query_params.get("min_rent") or "").strip()
-        max_rent = (request.query_params.get("max_rent") or "").strip()
-        subscribers_waiting = count_subscriptions_matching_filters(unit_type, location, min_rent, max_rent)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             data = self.get_paginated_response(serializer.data).data
             data["units_found"] = data.get("count", len(serializer.data))
-            data["subscribers_waiting"] = subscribers_waiting
             return Response(data)
         serializer = self.get_serializer(queryset, many=True)
         return Response({
             "results": serializer.data,
             "count": len(serializer.data),
             "units_found": len(serializer.data),
-            "subscribers_waiting": subscribers_waiting,
         })
 
 
@@ -280,11 +272,11 @@ class CancelNoticeView(APIView):
         return Response({"success": True})
 
 
-def _unit_queryset_landlord_or_manager(request):
-    """Units the user can manage (landlord or manager)."""
+def _unit_queryset_property_owner_or_manager(request):
+    """Units the user can manage (property owner or manager)."""
     user = request.user
-    if user.has_role("landlord"):
-        return Unit.objects.filter(property__landlord=user)
+    if user.has_role("property_owner"):
+        return Unit.objects.filter(property__property_owner=user)
     if user.has_role("manager"):
         return Unit.objects.filter(property__manager_assignments__manager=user).distinct()
     return Unit.objects.none()
@@ -319,26 +311,26 @@ class UnitApplyView(APIView):
 
 
 class UnitApplicationListView(generics.ListAPIView):
-    """GET /api/vacancies/units/<unit_id>/applications/ - list queue for unit (landlord/manager)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """GET /api/vacancies/units/<unit_id>/applications/ - list queue for unit (property owner/manager)."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = UnitApplicationSerializer
     pagination_class = None
 
     def get_queryset(self):
         unit_id = self.kwargs["unit_id"]
-        qs = _unit_queryset_landlord_or_manager(self.request).filter(pk=unit_id)
+        qs = _unit_queryset_property_owner_or_manager(self.request).filter(pk=unit_id)
         if not qs.exists():
             return UnitApplication.objects.none()
         return UnitApplication.objects.filter(unit_id=unit_id).select_related("applicant", "unit", "unit__property").order_by("created_at")
 
 
 class ApplicationApproveView(APIView):
-    """POST /api/vacancies/applications/<id>/approve/ - landlord/manager approve application; unit becomes reserved."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """POST /api/vacancies/applications/<id>/approve/ - property owner/manager approve application; unit becomes reserved."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
 
     def post(self, request, pk):
         app = get_object_or_404(UnitApplication, pk=pk, status=UnitApplication.Status.WAITING)
-        if not _unit_queryset_landlord_or_manager(request).filter(pk=app.unit_id).exists():
+        if not _unit_queryset_property_owner_or_manager(request).filter(pk=app.unit_id).exists():
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         app.status = UnitApplication.Status.APPROVED
         app.save(update_fields=["status", "updated_at"])
@@ -352,12 +344,12 @@ class ApplicationApproveView(APIView):
 
 
 class ApplicationDeclineView(APIView):
-    """POST /api/vacancies/applications/<id>/decline/ - landlord/manager decline application."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """POST /api/vacancies/applications/<id>/decline/ - property owner/manager decline application."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
 
     def post(self, request, pk):
         app = get_object_or_404(UnitApplication, pk=pk, status=UnitApplication.Status.WAITING)
-        if not _unit_queryset_landlord_or_manager(request).filter(pk=app.unit_id).exists():
+        if not _unit_queryset_property_owner_or_manager(request).filter(pk=app.unit_id).exists():
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         app.status = UnitApplication.Status.DECLINED
         app.save(update_fields=["status", "updated_at"])

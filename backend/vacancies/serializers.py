@@ -140,20 +140,20 @@ def _get_available_from(unit):
 
 
 def _get_contact_visibility(unit):
-    """Return (show_landlord, show_manager, show_caretaker) from UnitVacancyInfo or (False, False, False)."""
+    """Return (show_property_owner, show_manager, show_caretaker) from UnitVacancyInfo or (False, False, False)."""
     try:
         info = unit.vacancy_info
-        return (info.show_landlord_phone, info.show_manager_phone, info.show_caretaker_phone)
+        return (info.show_property_owner_phone, info.show_manager_phone, info.show_caretaker_phone)
     except UnitVacancyInfo.DoesNotExist:
         return (False, False, False)
 
 
-def _build_contact(unit, show_landlord, show_manager, show_caretaker):
+def _build_contact(unit, show_property_owner, show_manager, show_caretaker):
     """Build contact dict with only visible phones."""
     prop = unit.property
     out = {}
-    if show_landlord and prop.landlord_id:
-        out["landlord_phone"] = (getattr(prop.landlord, "phone", None) or "").strip() or None
+    if show_property_owner and prop.property_owner_id:
+        out["property_owner_phone"] = (getattr(prop.property_owner, "phone", None) or "").strip() or None
     if show_manager:
         ma = prop.manager_assignments.order_by("assigned_at").first()
         out["manager_phone"] = (ma.contact_phone if ma else "").strip() or None
@@ -243,8 +243,8 @@ class VacancyDiscoverySerializer(serializers.Serializer):
         ]
 
     def get_contact(self, obj):
-        show_landlord, show_manager, show_caretaker = _get_contact_visibility(obj)
-        return _build_contact(obj, show_landlord, show_manager, show_caretaker)
+        show_owner, show_manager, show_caretaker = _get_contact_visibility(obj)
+        return _build_contact(obj, show_owner, show_manager, show_caretaker)
 
     def get_first_image(self, obj):
         img = obj.images.order_by("sort_order", "created_at").first()

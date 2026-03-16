@@ -53,7 +53,7 @@ class Lease(models.Model):
 
 
 class EvictionNotice(models.Model):
-    """Landlord-issued eviction notice for a lease. When active, tenant actions are restricted."""
+    """Property owner-issued eviction notice for a lease. When active, tenant actions are restricted."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lease = models.ForeignKey(
         Lease,

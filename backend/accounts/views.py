@@ -73,19 +73,19 @@ class ChooseRoleView(APIView):
 class UserSearchView(APIView):
     """
     GET /api/auth/users/?email= or ?search= - list users (id, email, role_names).
-    Landlords and staff only; for assigning manager/caretaker/tenant.
+    Property owners and staff only; for assigning manager/caretaker/tenant.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not (
             request.user.is_staff
-            or request.user.has_role("landlord")
+            or request.user.has_role("property_owner")
             or request.user.has_role("manager")
             or request.user.has_role("caretaker")
         ):
             return Response(
-                {"detail": "Only landlords, managers, caretakers or staff can search users."},
+                {"detail": "Only property owners, managers, caretakers or staff can search users."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         email = request.query_params.get("email", "").strip()
@@ -130,7 +130,7 @@ class AssignRolesView(APIView):
     """
     POST /api/auth/assign-roles/ - assign roles to a user.
     Body: { "user_id": "<uuid>", "role_names": ["manager", "caretaker", ...] }.
-    Only staff can assign roles; landlords cannot assign roles.
+    Only staff can assign roles; property owners cannot assign roles.
     """
     permission_classes = [IsAuthenticated]
 

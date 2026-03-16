@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { api, User } from "@/lib/api";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -25,15 +25,6 @@ interface PaymentRow {
   payment_date: string;
   payment_status: string;
   lease?: { unit?: { unit_number?: string }; tenant?: { first_name?: string; last_name?: string } };
-}
-
-interface SubscriptionAlert {
-  id: string;
-  email: string;
-  phone: string;
-  search_filters: { unit_type?: string; location?: string; min_rent?: string | number; max_rent?: string | number };
-  created_at: string;
-  match_count: number;
 }
 
 interface VacancyPreference {
@@ -69,31 +60,20 @@ export default function DashboardPage() {
   }>({});
   const [recentPayments, setRecentPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<SubscriptionAlert[]>([]);
-  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
-  const [addAlertOpen, setAddAlertOpen] = useState(false);
-  const [addAlertSubmitting, setAddAlertSubmitting] = useState(false);
-  const [addAlertError, setAddAlertError] = useState("");
-  const [addAlertForm, setAddAlertForm] = useState({ location: "", unit_type: "", min_rent: "", max_rent: "" });
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [addAlertDrawerVisible, setAddAlertDrawerVisible] = useState(false);
   const [preference, setPreference] = useState<VacancyPreference | null>(null);
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefError, setPrefError] = useState("");
   const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
-  const [nextSubscriptionsUrl, setNextSubscriptionsUrl] = useState<string | null>(null);
-  const [subscriptionsLoadingMore, setSubscriptionsLoadingMore] = useState(false);
-  const alertsSentinelRef = useRef<HTMLDivElement>(null);
 
-  const isLandlord = user?.role_names?.includes("landlord");
+  const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
   const isTenant = user?.role_names?.includes("tenant");
-  const canSeeOverview = isLandlord || isManager || isCaretaker;
-  const canAddProperty = isLandlord;
-  const canAddUnit = isLandlord || isManager;
-  const canAddTenant = isLandlord || isManager;
+  const canSeeOverview = isPropertyOwner || isManager || isCaretaker;
+  const canAddProperty = isPropertyOwner;
+  const canAddUnit = isPropertyOwner || isManager;
+  const canAddTenant = isPropertyOwner || isManager;
 
   useEffect(() => {
     (async () => {
@@ -102,7 +82,7 @@ export default function DashboardPage() {
         setUser(userRes.data);
         const roles = userRes.data.role_names || [];
 
-        if (roles.includes("landlord") || roles.includes("manager") || roles.includes("caretaker")) {
+        if (roles.includes("property_owner") || roles.includes("manager") || roles.includes("caretaker")) {
           const [propsRes, unitsRes, leasesRes, paymentsRes, compRes] = await Promise.all([
             api.get("/properties/").catch(() => ({ data: [] })),
             api.get("/units/").catch(() => ({ data: [] })),
@@ -136,10 +116,9 @@ export default function DashboardPage() {
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
         } else if (roles.includes("tenant")) {
-          const [myUnitsRes, paymentsRes, subsRes] = await Promise.all([
+          const [myUnitsRes, paymentsRes] = await Promise.all([
             api.get("/tenant/my-units/").catch(() => ({ data: [] })),
             api.get("/payments/history/").catch(() => ({ data: [] })),
-            api.get<{ results?: SubscriptionAlert[]; next?: string | null }>("/vacancies/my-subscriptions/?page_size=10&page=1").catch(() => ({ data: { results: [] } })),
           ]);
           const myUnits = Array.isArray(myUnitsRes.data) ? myUnitsRes.data : (myUnitsRes.data as { results?: unknown[] })?.results ?? [];
           const payments = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data as { results?: unknown[] })?.results ?? [];
@@ -149,9 +128,6 @@ export default function DashboardPage() {
             myUnitsCount: (myUnits as unknown[]).length,
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
-          const subsData = subsRes.data as { results?: SubscriptionAlert[]; next?: string | null };
-          setSubscriptions(Array.isArray(subsData?.results) ? subsData.results : []);
-          setNextSubscriptionsUrl(subsData?.next ?? null);
         }
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
@@ -165,14 +141,6 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (addAlertOpen) {
-      const t = requestAnimationFrame(() => setAddAlertDrawerVisible(true));
-      return () => cancelAnimationFrame(t);
-    }
-    setAddAlertDrawerVisible(false);
-  }, [addAlertOpen]);
-
-  useEffect(() => {
     if (!isTenant || !preference?.is_looking) return;
     setMatchesLoading(true);
     api.get<VacancyMatchItem[] | { results?: VacancyMatchItem[] }>("/vacancies/matches/").then((res) => {
@@ -180,20 +148,6 @@ export default function DashboardPage() {
       setMatches(Array.isArray(data) ? data : (data?.results ?? []));
     }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
   }, [isTenant, preference?.is_looking]);
-
-  useEffect(() => {
-    if (!isTenant) return;
-    const sentinel = alertsSentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && nextSubscriptionsUrl && !subscriptionsLoadingMore && !subscriptionsLoading) loadMoreSubscriptions();
-      },
-      { rootMargin: "120px", threshold: 0.1 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isTenant, nextSubscriptionsUrl, subscriptionsLoadingMore, subscriptionsLoading]);
 
   if (loading) {
     return (
@@ -207,65 +161,6 @@ export default function DashboardPage() {
   }
 
   const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "there";
-
-  function buildFindUnitsQuery(filters: SubscriptionAlert["search_filters"]) {
-    const p = new URLSearchParams();
-    if (filters?.unit_type) p.set("unit_type", String(filters.unit_type));
-    if (filters?.location) p.set("location", String(filters.location));
-    if (filters?.min_rent != null && String(filters.min_rent).trim()) p.set("min_rent", String(filters.min_rent));
-    if (filters?.max_rent != null && String(filters.max_rent).trim()) p.set("max_rent", String(filters.max_rent));
-    return p.toString();
-  }
-
-  function refreshSubscriptions() {
-    if (!isTenant) return;
-    setSubscriptionsLoading(true);
-    setSubscriptions([]);
-    setNextSubscriptionsUrl(null);
-    api.get<{ results?: SubscriptionAlert[]; next?: string | null }>("/vacancies/my-subscriptions/?page_size=10&page=1").then((r) => {
-      const d = r.data as { results?: SubscriptionAlert[]; next?: string | null };
-      setSubscriptions(Array.isArray(d?.results) ? d.results : []);
-      setNextSubscriptionsUrl(d?.next ?? null);
-    }).catch(() => setSubscriptions([])).finally(() => setSubscriptionsLoading(false));
-  }
-
-  function loadMoreSubscriptions() {
-    if (!nextSubscriptionsUrl || subscriptionsLoadingMore || subscriptionsLoading) return;
-    setSubscriptionsLoadingMore(true);
-    api.get<{ results?: SubscriptionAlert[]; next?: string | null }>(nextSubscriptionsUrl).then((r) => {
-      const d = r.data as { results?: SubscriptionAlert[]; next?: string | null };
-      setSubscriptions((prev) => [...prev, ...(Array.isArray(d?.results) ? d.results : [])]);
-      setNextSubscriptionsUrl(d?.next ?? null);
-    }).catch(() => setNextSubscriptionsUrl(null)).finally(() => setSubscriptionsLoadingMore(false));
-  }
-
-  function submitAddAlert(e: React.FormEvent) {
-    e.preventDefault();
-    setAddAlertError("");
-    setAddAlertSubmitting(true);
-    const filters: SubscriptionAlert["search_filters"] = {};
-    if (addAlertForm.unit_type) filters.unit_type = addAlertForm.unit_type;
-    if (addAlertForm.location.trim()) filters.location = addAlertForm.location.trim();
-    if (addAlertForm.min_rent.trim()) filters.min_rent = addAlertForm.min_rent.trim();
-    if (addAlertForm.max_rent.trim()) filters.max_rent = addAlertForm.max_rent.trim();
-    api.post("/vacancies/notify-subscribe/", { email: user?.email ?? "", search_filters: filters }).then(() => {
-      setAddAlertOpen(false);
-      setAddAlertForm({ location: "", unit_type: "", min_rent: "", max_rent: "" });
-      refreshSubscriptions();
-    }).catch((err: { response?: { data?: { detail?: string } } }) => {
-      setAddAlertError(err?.response?.data?.detail ?? "Failed to add alert.");
-    }).finally(() => setAddAlertSubmitting(false));
-  }
-
-  function deleteSubscription(id: string) {
-    if (!confirm("Remove this alert?")) return;
-    setDeletingId(id);
-    api.delete(`/vacancies/notify-subscribe/${id}/`).then(() => refreshSubscriptions()).finally(() => setDeletingId(null));
-  }
-
-  function formatUnitType(v: string) {
-    return (UNIT_TYPES.find((t) => t.value === v)?.label ?? v) || "Any";
-  }
 
   function savePreference(updates: Partial<VacancyPreference>) {
     if (!isTenant) return;
@@ -281,7 +176,7 @@ export default function DashboardPage() {
         <p className="text-surface-600 dark:text-surface-400 text-base">
           Welcome back, {displayName}
           {user?.role_names?.length ? (
-            <span className="ml-1 text-surface-500 dark:text-surface-500">· {user.role_names.map((r) => r === "landlord" ? "Property Owner" : r).join(", ")}</span>
+            <span className="ml-1 text-surface-500 dark:text-surface-500">· {user.role_names.map((r) => (r === "landlord" || r === "property_owner") ? "Property Owner" : r).join(", ")}</span>
           ) : null}
         </p>
       </div>
@@ -425,146 +320,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {isTenant && (
-        <section>
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider">Unit Alerts</h2>
-            <button
-              type="button"
-              onClick={() => { setAddAlertOpen(true); setAddAlertError(""); }}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-            >
-              Add Alert
-            </button>
-          </div>
-          {subscriptionsLoading ? (
-            <p className="text-sm text-surface-500 dark:text-surface-400">Loading alerts…</p>
-          ) : subscriptions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-6 text-center">
-              <p className="text-surface-600 dark:text-surface-400 text-sm">No vacancy alerts yet.</p>
-              <p className="text-surface-500 dark:text-surface-500 text-sm mt-1">Add an alert to get notified when units match your criteria.</p>
-              <Link href="/find-units" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Browse Find Units →</Link>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {subscriptions.map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Location: {sub.search_filters?.location || "Any"} · Budget: {sub.search_filters?.min_rent != null && String(sub.search_filters.min_rent).trim() ? `KES ${Number(sub.search_filters.min_rent).toLocaleString("en-KE")}` : "—"} – {sub.search_filters?.max_rent != null && String(sub.search_filters.max_rent).trim() ? `KES ${Number(sub.search_filters.max_rent).toLocaleString("en-KE")}` : "—"}
-                        </p>
-                        <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Type: {formatUnitType(sub.search_filters?.unit_type ?? "")}</p>
-                        <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">Subscribed {format(new Date(sub.created_at), "MMM d, yyyy")}</p>
-                        <p className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">
-                          {sub.match_count} unit{sub.match_count !== 1 ? "s" : ""} currently match{sub.match_count === 1 ? "es" : ""} this alert
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Link
-                          href={`/find-units?${buildFindUnitsQuery(sub.search_filters ?? {})}`}
-                          className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
-                        >
-                          View Matches
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => deleteSubscription(sub.id)}
-                          disabled={deletingId === sub.id}
-                          className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                        >
-                          {deletingId === sub.id ? "Deleting…" : "Delete"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div ref={alertsSentinelRef} className="min-h-[16px]" aria-hidden />
-              {subscriptionsLoadingMore && (
-                <div className="flex justify-center py-4">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
-                </div>
-              )}
-            </>
-          )}
-
-          {addAlertOpen && (
-            <>
-              <div className="fixed inset-0 bg-black/50 z-50 transition-opacity" onClick={() => !addAlertSubmitting && setAddAlertOpen(false)} aria-hidden />
-              <div className={`fixed top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-surface-800 shadow-xl border-l border-surface-200 dark:border-surface-700 z-50 flex flex-col transition-transform duration-300 ease-out ${addAlertDrawerVisible ? "translate-x-0" : "translate-x-full"}`} onClick={(e) => e.stopPropagation()}>
-                <div className="p-6 space-y-4 overflow-y-auto">
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Add vacancy alert</h3>
-                  <p className="text-sm text-surface-600 dark:text-surface-400">Get notified when new units match your criteria.</p>
-                  <form onSubmit={submitAddAlert} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={addAlertForm.location}
-                      onChange={(e) => setAddAlertForm((f) => ({ ...f, location: e.target.value }))}
-                      placeholder="e.g. Westlands"
-                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Unit type</label>
-                    <select
-                      value={addAlertForm.unit_type}
-                      onChange={(e) => setAddAlertForm((f) => ({ ...f, unit_type: e.target.value }))}
-                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
-                    >
-                      {UNIT_TYPES.map((o) => (
-                        <option key={o.value || "any"} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Min rent (KSh)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={addAlertForm.min_rent}
-                        onChange={(e) => setAddAlertForm((f) => ({ ...f, min_rent: e.target.value }))}
-                        placeholder="Optional"
-                        className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Max rent (KSh)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={addAlertForm.max_rent}
-                        onChange={(e) => setAddAlertForm((f) => ({ ...f, max_rent: e.target.value }))}
-                        placeholder="Optional"
-                        className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
-                      />
-                    </div>
-                  </div>
-                  {addAlertError && <p className="text-sm text-red-600 dark:text-red-400">{addAlertError}</p>}
-                  <div className="flex gap-2 justify-end">
-                    <button type="button" onClick={() => setAddAlertOpen(false)} disabled={addAlertSubmitting} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
-                      Cancel
-                    </button>
-                    <button type="submit" disabled={addAlertSubmitting} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50">
-                      {addAlertSubmitting ? "Adding…" : "Save alert"}
-                    </button>
-                  </div>
-                </form>
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {!isLandlord && !isTenant && !isManager && !isCaretaker && (
+      {!isPropertyOwner && !isTenant && !isManager && !isCaretaker && (
         <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
           <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Role</p>
           <p className="mt-1 text-lg font-semibold text-surface-900 dark:text-surface-100">{user?.role_names?.join(", ") || "—"}</p>

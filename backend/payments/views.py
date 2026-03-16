@@ -91,7 +91,7 @@ class PayRentView(generics.GenericAPIView):
             lease.save(update_fields=["deposit_paid", "updated_at"])
 
         Notification.objects.create(
-            user=lease.unit.property.landlord,
+            user=lease.unit.property.property_owner,
             notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
             title="Rent payment received",
             body=f"Tenant paid {amount} for {lease.unit.unit_number} ({months} month(s)).",
@@ -113,7 +113,7 @@ class PaymentHistoryView(generics.ListAPIView):
 
 
 class PaymentListView(generics.ListAPIView):
-    """GET /api/payments/ - list payments (landlord/manager filter by property/lease)."""
+    """GET /api/payments/ - list payments (property owner/manager filter by property/lease)."""
     permission_classes = [IsAuthenticated]
     serializer_class = PaymentSerializer
 
@@ -122,8 +122,8 @@ class PaymentListView(generics.ListAPIView):
         qs = Payment.objects.select_related("lease", "lease__unit", "lease__unit__property", "lease__tenant").order_by("-payment_date")
         if user.has_role("tenant"):
             return qs.filter(lease__tenant=user)
-        if user.has_role("landlord"):
-            return qs.filter(lease__unit__property__landlord=user)
+        if user.has_role("property_owner"):
+            return qs.filter(lease__unit__property__property_owner=user)
         if user.has_role("manager"):
             return qs.filter(lease__unit__property__manager_assignments__manager=user).distinct()
         if user.has_role("caretaker"):
@@ -135,8 +135,8 @@ def _payments_queryset_for_user(user):
     qs = Payment.objects.select_related("lease", "lease__unit", "lease__unit__property", "lease__tenant").order_by("-payment_date")
     if user.has_role("tenant"):
         return qs.filter(lease__tenant=user)
-    if user.has_role("landlord"):
-        return qs.filter(lease__unit__property__landlord=user)
+    if user.has_role("property_owner"):
+        return qs.filter(lease__unit__property__property_owner=user)
     if user.has_role("manager"):
         return qs.filter(lease__unit__property__manager_assignments__manager=user).distinct()
     if user.has_role("caretaker"):

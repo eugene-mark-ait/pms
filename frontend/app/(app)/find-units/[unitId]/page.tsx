@@ -24,7 +24,7 @@ interface VacancyDetail {
   contact_preference?: string;
   rules?: { id: string; title: string; description: string }[];
   contact: {
-    landlord_phone?: string | null;
+    property_owner_phone?: string | null;
     manager_phone?: string | null;
     caretaker_phone?: string | null;
   };

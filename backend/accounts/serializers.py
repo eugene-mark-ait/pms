@@ -78,7 +78,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class ChooseRoleSerializer(serializers.Serializer):
     """Payload for POST /auth/choose-role/ - select role after signup or OAuth."""
-    role = serializers.ChoiceField(choices=["tenant", "landlord", "manager", "caretaker"])
+    role = serializers.ChoiceField(choices=["tenant", "property_owner", "manager", "caretaker", "service_provider"])
 
     def validate_role(self, value):
         from .models import Role

@@ -6,15 +6,15 @@ from django.db.models import Q
 
 from .models import Complaint
 from .serializers import ComplaintSerializer, ComplaintCreateSerializer
-from accounts.permissions import IsLandlordOrManager
+from accounts.permissions import IsPropertyOwnerOrManager
 
 
 def _complaints_queryset(user):
-    """Same visibility as list: tenant sees own; landlord/manager/caretaker see property-related."""
+    """Same visibility as list: tenant sees own; property owner/manager/caretaker see property-related."""
     if user.has_role("tenant"):
         return Complaint.objects.filter(tenant=user)
     return Complaint.objects.filter(
-        Q(property__landlord=user)
+        Q(property__property_owner=user)
         | Q(property__manager_assignments__manager=user)
         | Q(property__caretaker_assignments__caretaker=user)
     ).distinct()
@@ -30,7 +30,7 @@ class ComplaintOpenCountView(APIView):
 
 
 class ComplaintListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/complaints/ - list or create complaints. Tenant chooses assignee (caretaker/manager/landlord)."""
+    """GET/POST /api/complaints/ - list or create complaints. Tenant chooses assignee (caretaker/manager/property owner)."""
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):

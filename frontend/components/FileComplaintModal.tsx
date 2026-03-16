@@ -119,7 +119,7 @@ export default function FileComplaintModal({
             </button>
           </div>
           <p className="text-surface-600 dark:text-surface-400 text-sm mb-6">
-            Choose the unit and who should receive this (Landlord, Caretaker, or Manager). The complaint will be linked to your unit.
+            Choose the unit and who should receive this (Property Owner, Caretaker, or Manager). The complaint will be linked to your unit.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -150,7 +150,7 @@ export default function FileComplaintModal({
               className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 px-3 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
               disabled={loadingRecipients || !propertyId}
             >
-              <option value="">Select recipient (Landlord / Caretaker / Manager)</option>
+              <option value="">Select recipient (Property Owner / Caretaker / Manager)</option>
               {recipients.map((r) => (
                 <option key={r.id} value={r.id}>
                   {[r.first_name, r.last_name].filter(Boolean).join(" ") || r.email} ({r.role})

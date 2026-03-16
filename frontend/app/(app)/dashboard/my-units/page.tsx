@@ -59,7 +59,7 @@ export default function MyUnitsPage() {
               )}
               {lease.eviction_active && (
                 <div className="mt-2 p-3 rounded-lg bg-red-100/80 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-sm">
-                  <p className="font-medium text-red-800 dark:text-red-200">Your landlord has issued an eviction notice.</p>
+                  <p className="font-medium text-red-800 dark:text-red-200">Your property owner has issued an eviction notice.</p>
                   {lease.eviction_reason && <p className="mt-1 text-red-700 dark:text-red-300">{lease.eviction_reason}</p>}
                   {lease.eviction_deadline && (
                     <p className="mt-1 text-red-700 dark:text-red-300">

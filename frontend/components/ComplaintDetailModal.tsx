@@ -112,7 +112,7 @@ export default function ComplaintDetailModal({
               <dt className="text-surface-500 dark:text-surface-400 font-medium">Description</dt>
               <dd className="text-surface-900 dark:text-surface-100 mt-0.5 whitespace-pre-wrap">{complaint.description || "—"}</dd>
             </div>
-            {/* Submitted by (tenant): name, email, phone — visible to landlords/managers/caretakers */}
+            {/* Submitted by (tenant): name, email, phone — visible to property owners/managers/caretakers */}
             {canManage && complaint.tenant && (
               <div>
                 <dt className="text-surface-500 dark:text-surface-400 font-medium">Submitted by</dt>

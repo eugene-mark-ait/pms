@@ -24,7 +24,7 @@ export default function ComplaintsPage() {
   }, []);
 
   const isTenant = user?.role_names?.includes("tenant");
-  const canManageComplaints = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
+  const canManageComplaints = user?.role_names?.includes("property_owner") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
 
   async function closeComplaint(id: string) {
     try {

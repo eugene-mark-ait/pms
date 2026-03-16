@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 
 interface VacancyInfo {
   available_from: string;
-  show_landlord_phone: boolean;
+  show_property_owner_phone: boolean;
   show_manager_phone: boolean;
   show_caretaker_phone: boolean;
 }
@@ -33,7 +33,7 @@ export default function EditUnitPage() {
   const [error, setError] = useState("");
   const [vacancyStatus, setVacancyStatus] = useState<"vacant" | "occupied" | "reserved">("occupied");
   const [availableFrom, setAvailableFrom] = useState("");
-  const [showLandlordPhone, setShowLandlordPhone] = useState(false);
+  const [showPropertyOwnerPhone, setShowPropertyOwnerPhone] = useState(false);
   const [showManagerPhone, setShowManagerPhone] = useState(false);
   const [showCaretakerPhone, setShowCaretakerPhone] = useState(false);
   const [vacancySubmitting, setVacancySubmitting] = useState(false);
@@ -51,7 +51,7 @@ export default function EditUnitPage() {
       else setVacancyStatus("occupied");
       if (d.vacancy_info) {
         setAvailableFrom(d.vacancy_info.available_from?.slice(0, 10) || "");
-        setShowLandlordPhone(d.vacancy_info.show_landlord_phone ?? false);
+        setShowPropertyOwnerPhone(d.vacancy_info.show_property_owner_phone ?? false);
         setShowManagerPhone(d.vacancy_info.show_manager_phone ?? false);
         setShowCaretakerPhone(d.vacancy_info.show_caretaker_phone ?? false);
       } else {
@@ -88,7 +88,7 @@ export default function EditUnitPage() {
       await api.patch(`/units/${id}/vacancy/`, {
         status: vacancyStatus,
         available_from: vacancyStatus === "vacant" ? availableFrom || undefined : undefined,
-        show_landlord_phone: vacancyStatus === "vacant" ? showLandlordPhone : undefined,
+        show_property_owner_phone: vacancyStatus === "vacant" ? showPropertyOwnerPhone : undefined,
         show_manager_phone: vacancyStatus === "vacant" ? showManagerPhone : undefined,
         show_caretaker_phone: vacancyStatus === "vacant" ? showCaretakerPhone : undefined,
       });
@@ -167,8 +167,8 @@ export default function EditUnitPage() {
               <span className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Contact visibility (for tenants viewing this listing)</span>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={showLandlordPhone} onChange={(e) => setShowLandlordPhone(e.target.checked)} className="rounded border-surface-300 dark:border-surface-600" />
-                  <span className="text-sm text-surface-700 dark:text-surface-300">Show landlord phone</span>
+                  <input type="checkbox" checked={showPropertyOwnerPhone} onChange={(e) => setShowPropertyOwnerPhone(e.target.checked)} className="rounded border-surface-300 dark:border-surface-600" />
+                  <span className="text-sm text-surface-700 dark:text-surface-300">Show property owner phone</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={showManagerPhone} onChange={(e) => setShowManagerPhone(e.target.checked)} className="rounded border-surface-300 dark:border-surface-600" />

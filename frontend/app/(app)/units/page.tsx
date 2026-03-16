@@ -50,8 +50,8 @@ export default function UnitsPage() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
 
-  const canView = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
-  const canManage = user?.role_names?.includes("landlord") || user?.role_names?.includes("manager");
+  const canView = user?.role_names?.includes("property_owner") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
+  const canManage = user?.role_names?.includes("property_owner") || user?.role_names?.includes("manager");
   const enabled = !!user && !!canView;
 
   useEffect(() => {

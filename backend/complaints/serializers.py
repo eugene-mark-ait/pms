@@ -39,7 +39,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
 
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
-    """Create: tenant sets assigned_to and optionally lease (caretaker/manager/landlord for this property)."""
+    """Create: tenant sets assigned_to and optionally lease (caretaker/manager/property owner for this property)."""
     class Meta:
         model = Complaint
         fields = [
@@ -58,11 +58,11 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
         prop = attrs.get("property")
         assigned_to = attrs.get("assigned_to")
         if not assigned_to:
-            raise serializers.ValidationError({"assigned_to": "You must choose who this complaint goes to (caretaker, manager, or landlord)."})
+            raise serializers.ValidationError({"assigned_to": "You must choose who this complaint goes to (caretaker, manager, or property owner)."})
         if prop and assigned_to:
-            is_landlord = prop.landlord_id == assigned_to.id
+            is_owner = prop.property_owner_id == assigned_to.id
             is_manager = prop.manager_assignments.filter(manager=assigned_to).exists()
             is_caretaker = prop.caretaker_assignments.filter(caretaker=assigned_to).exists()
-            if not (is_landlord or is_manager or is_caretaker):
-                raise serializers.ValidationError({"assigned_to": "Chosen user must be the landlord, a manager, or a caretaker of this property."})
+            if not (is_owner or is_manager or is_caretaker):
+                raise serializers.ValidationError({"assigned_to": "Chosen user must be the property owner, a manager, or a caretaker of this property."})
         return attrs

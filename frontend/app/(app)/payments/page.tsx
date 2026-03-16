@@ -12,7 +12,7 @@ export default function PaymentsPage() {
   const isTenant =
     user != null
     && user.role_names?.includes("tenant")
-    && !user.role_names?.includes("landlord")
+    && !user.role_names?.includes("property_owner")
     && !user.role_names?.includes("manager");
   const enabled = user != null;
   const endpoint = isTenant ? "/payments/history/" : "/payments/";

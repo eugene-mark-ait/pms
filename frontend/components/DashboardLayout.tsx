@@ -8,18 +8,18 @@ import { clsx } from "clsx";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems: { href: string; label: string; roles: string[]; icon: React.ReactNode }[] = [
-  { href: "/dashboard", label: "Dashboard", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <DashboardIcon /> },
+  { href: "/dashboard", label: "Dashboard", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <DashboardIcon /> },
   { href: "/choose-role", label: "Choose role", roles: [], icon: <SettingsIcon /> },
   { href: "/dashboard/my-units", label: "My Units", roles: ["tenant"], icon: <HomeIcon /> },
   { href: "/find-units", label: "Find units", roles: ["tenant"], icon: <SearchIcon /> },
-  { href: "/properties", label: "Properties", roles: ["landlord", "manager", "caretaker"], icon: <BuildingIcon /> },
-  { href: "/units", label: "Units", roles: ["landlord", "manager", "caretaker"], icon: <GridIcon /> },
-  { href: "/tenants", label: "Tenants", roles: ["landlord", "manager", "caretaker"], icon: <UsersIcon /> },
-  { href: "/payments", label: "Payments", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <PaymentIcon /> },
-  { href: "/vacancies", label: "Vacancies", roles: ["landlord", "manager", "caretaker"], icon: <VacancyIcon /> },
-  { href: "/complaints", label: "Complaints", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <AlertIcon /> },
-  { href: "/messages", label: "Messages", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <MessageIcon /> },
-  { href: "/settings", label: "Settings", roles: ["landlord", "manager", "tenant", "caretaker"], icon: <SettingsIcon /> },
+  { href: "/properties", label: "Properties", roles: ["property_owner", "manager", "caretaker"], icon: <BuildingIcon /> },
+  { href: "/units", label: "Units", roles: ["property_owner", "manager", "caretaker"], icon: <GridIcon /> },
+  { href: "/tenants", label: "Tenants", roles: ["property_owner", "manager", "caretaker"], icon: <UsersIcon /> },
+  { href: "/payments", label: "Payments", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <PaymentIcon /> },
+  { href: "/vacancies", label: "Vacancies", roles: ["property_owner", "manager", "caretaker"], icon: <VacancyIcon /> },
+  { href: "/complaints", label: "Complaints", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <AlertIcon /> },
+  { href: "/messages", label: "Messages", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <MessageIcon /> },
+  { href: "/settings", label: "Settings", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <SettingsIcon /> },
 ];
 
 function DashboardIcon() { return <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>; }
@@ -57,7 +57,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!user?.role_names?.length || pathname === "/choose-role") return;
-    if (!user.role_names.some((r) => ["landlord", "manager", "tenant", "caretaker"].includes(r))) return;
+    if (!user.role_names.some((r) => ["property_owner", "manager", "tenant", "caretaker", "service_provider"].includes(r))) return;
     const fetchCount = () => {
       api.get<{ count: number }>("/complaints/open_count/").then((res) => setOpenComplaintsCount(res.data.count)).catch(() => {});
     };

@@ -30,7 +30,7 @@ export default function VacanciesPage() {
   const [propertyFilter, setPropertyFilter] = useState<string>("");
 
   const canView =
-    user?.role_names?.includes("landlord") ||
+    user?.role_names?.includes("property_owner") ||
     user?.role_names?.includes("manager") ||
     user?.role_names?.includes("caretaker");
   const enabled = !!user && !!canView;

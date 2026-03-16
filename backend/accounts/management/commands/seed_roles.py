@@ -3,10 +3,10 @@ from accounts.models import Role
 
 
 class Command(BaseCommand):
-    help = "Create default roles (landlord, manager, tenant, caretaker)"
+    help = "Create default roles (property_owner, manager, tenant, caretaker, service_provider)"
 
     def handle(self, *args, **options):
-        for name in ["landlord", "manager", "tenant", "caretaker"]:
+        for name in ["property_owner", "manager", "tenant", "caretaker", "service_provider"]:
             _, created = Role.objects.get_or_create(name=name)
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Created role: {name}"))

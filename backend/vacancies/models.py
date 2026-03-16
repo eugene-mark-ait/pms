@@ -14,7 +14,7 @@ class UnitVacancyInfo(models.Model):
         related_name="vacancy_info",
     )
     available_from = models.DateField(help_text="Date from which the unit is available.")
-    show_landlord_phone = models.BooleanField(default=False)
+    show_property_owner_phone = models.BooleanField(default=False)
     show_manager_phone = models.BooleanField(default=False)
     show_caretaker_phone = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -79,7 +79,7 @@ class TenantVacancyPreference(models.Model):
 
 
 class UnitApplication(models.Model):
-    """Queue: tenant applies for a unit; landlord/manager approve or decline in order."""
+    """Queue: tenant applies for a unit; property owner/manager approve or decline in order."""
     class Status(models.TextChoices):
         WAITING = "waiting", "Waiting"
         APPROVED = "approved", "Approved"

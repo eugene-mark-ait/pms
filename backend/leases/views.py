@@ -21,7 +21,7 @@ from .services import (
     get_payment_status,
     get_last_payment_end,
 )
-from accounts.permissions import IsLandlordOrManager, IsLandlordOrManagerOrCaretaker, IsTenant
+from accounts.permissions import IsPropertyOwnerOrManager, IsPropertyOwnerOrManagerOrCaretaker, IsTenant
 from notifications.models import Notification
 
 
@@ -69,8 +69,8 @@ class LeaseListCreateView(generics.ListCreateAPIView):
         process_due_notices()
         process_due_evictions()
         user = self.request.user
-        if user.has_role("landlord"):
-            qs = Lease.objects.filter(unit__property__landlord=user).select_related("unit", "unit__property", "tenant")
+        if user.has_role("property_owner"):
+            qs = Lease.objects.filter(unit__property__property_owner=user).select_related("unit", "unit__property", "tenant")
         elif user.has_role("manager"):
             qs = Lease.objects.filter(unit__property__manager_assignments__manager=user).select_related("unit", "unit__property", "tenant").distinct()
         elif user.has_role("caretaker"):
@@ -116,14 +116,14 @@ class LeaseListCreateView(generics.ListCreateAPIView):
 
 class LeaseDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PUT/PATCH/DELETE /api/leases/<id>/ - caretaker can view and update, not delete."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = LeaseSerializer
 
     def get_queryset(self):
         process_due_evictions()
         user = self.request.user
-        if user.has_role("landlord"):
-            return Lease.objects.filter(unit__property__landlord=user)
+        if user.has_role("property_owner"):
+            return Lease.objects.filter(unit__property__property_owner=user)
         if user.has_role("manager"):
             return Lease.objects.filter(unit__property__manager_assignments__manager=user)
         if user.has_role("caretaker"):
@@ -211,8 +211,8 @@ class GiveNoticeView(generics.GenericAPIView):
             lease.is_active = False
             lease.save(update_fields=["is_active", "updated_at"])
 
-        # Notify landlord and managers
-        for u in [lease.unit.property.landlord]:
+        # Notify property owner and managers
+        for u in [lease.unit.property.property_owner]:
             Notification.objects.create(
                 user=u,
                 notification_type=Notification.NotificationType.VACATE_NOTICE,
@@ -241,8 +241,8 @@ class CreateEvictionView(generics.GenericAPIView):
     def get_lease(self, pk):
         user = self.request.user
         qs = Lease.objects.filter(is_active=True)
-        if user.has_role("landlord"):
-            qs = qs.filter(unit__property__landlord=user)
+        if user.has_role("property_owner"):
+            qs = qs.filter(unit__property__property_owner=user)
         elif user.has_role("manager"):
             qs = qs.filter(unit__property__manager_assignments__manager=user).distinct()
         else:
@@ -274,14 +274,14 @@ class CreateEvictionView(generics.GenericAPIView):
 
 
 class CancelEvictionView(generics.GenericAPIView):
-    """POST /api/leases/<lease_id>/eviction/cancel/ - landlord cancels active eviction."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """POST /api/leases/<lease_id>/eviction/cancel/ - property owner cancels active eviction."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
 
     def get_lease(self, pk):
         user = self.request.user
         qs = Lease.objects.all()
-        if user.has_role("landlord"):
-            qs = qs.filter(unit__property__landlord=user)
+        if user.has_role("property_owner"):
+            qs = qs.filter(unit__property__property_owner=user)
         elif user.has_role("manager"):
             qs = qs.filter(unit__property__manager_assignments__manager=user).distinct()
         else:

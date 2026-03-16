@@ -25,7 +25,7 @@ class UnitImageSerializer(serializers.ModelSerializer):
 
 class UnitVacancyInfoSerializer(serializers.Serializer):
     available_from = serializers.DateField()
-    show_landlord_phone = serializers.BooleanField()
+    show_property_owner_phone = serializers.BooleanField()
     show_manager_phone = serializers.BooleanField()
     show_caretaker_phone = serializers.BooleanField()
 
@@ -72,7 +72,7 @@ class UnitSerializer(serializers.ModelSerializer):
             info = obj.vacancy_info
             return {
                 "available_from": info.available_from.isoformat(),
-                "show_landlord_phone": info.show_landlord_phone,
+                "show_property_owner_phone": info.show_property_owner_phone,
                 "show_manager_phone": info.show_manager_phone,
                 "show_caretaker_phone": info.show_caretaker_phone,
             }
@@ -116,8 +116,8 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Property
-        fields = ["id", "name", "address", "location", "landlord", "unit_count", "first_image", "is_closed", "created_at"]
-        read_only_fields = ["id", "landlord", "unit_count", "created_at"]
+        fields = ["id", "name", "address", "location", "property_owner", "unit_count", "first_image", "is_closed", "created_at"]
+        read_only_fields = ["id", "property_owner", "unit_count", "created_at"]
 
     def get_unit_count(self, obj):
         return obj.units.count()
@@ -140,7 +140,7 @@ class PropertyOptionsSerializer(serializers.ModelSerializer):
 
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create/update: name, address, location, is_closed + public listing fields. Only landlord/manager can set is_closed."""
+    """Create/update: name, address, location, is_closed + public listing fields. Only property owner/manager can set is_closed."""
     class Meta:
         model = Property
         fields = [
@@ -155,7 +155,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)
     manager_assignments = ManagerAssignmentSerializer(many=True, read_only=True)
     caretaker_assignments = CaretakerAssignmentSerializer(many=True, read_only=True)
-    landlord = UserSerializer(read_only=True)
+    property_owner = UserSerializer(read_only=True)
     unit_count = serializers.SerializerMethodField()
     occupied_count = serializers.SerializerMethodField()
     vacant_count = serializers.SerializerMethodField()
@@ -169,7 +169,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "name",
             "address",
             "location",
-            "landlord",
+            "property_owner",
             "is_closed",
             "public_description",
             "amenities",

@@ -50,7 +50,7 @@ class Complaint(models.Model):
         null=True,
         blank=True,
         related_name="assigned_complaints",
-        help_text="Caretaker, manager, or landlord who handles this complaint.",
+        help_text="Caretaker, manager, or property owner who handles this complaint.",
     )
     title = models.CharField(max_length=255)
     description = models.TextField()

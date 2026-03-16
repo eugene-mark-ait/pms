@@ -41,7 +41,7 @@ interface PropertyDetail {
   address: string;
   location?: string;
   is_closed?: boolean;
-  landlord?: { id: string; email: string; first_name?: string; last_name?: string };
+  property_owner?: { id: string; email: string; first_name?: string; last_name?: string };
   unit_count?: number;
   occupied_count?: number;
   vacant_count?: number;
@@ -303,7 +303,7 @@ export default function PropertyDetailPage() {
                 Close property
               </button>
             )}
-            {isLandlord && (
+            {isPropertyOwner && (
               <button type="button" onClick={handleDelete} className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
             )}
           </div>
@@ -333,7 +333,7 @@ export default function PropertyDetailPage() {
           <div>
             <dt className="text-surface-500 dark:text-surface-400">Owner</dt>
             <dd className="font-medium text-surface-900 dark:text-surface-100">
-              {property.landlord ? `${property.landlord.first_name || ""} ${property.landlord.last_name || ""}`.trim() || property.landlord.email : "—"}
+              {property.property_owner ? `${property.property_owner.first_name || ""} ${property.property_owner.last_name || ""}`.trim() || property.property_owner.email : "—"}
             </dd>
           </div>
           <div>

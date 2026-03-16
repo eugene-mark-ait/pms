@@ -4,7 +4,7 @@ from django.db import models
 
 
 class Role(models.Model):
-    """Role for multi-role users (landlord, manager, tenant, caretaker)."""
+    """Role for multi-role users (property_owner, manager, tenant, caretaker, service_provider)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, unique=True)
 

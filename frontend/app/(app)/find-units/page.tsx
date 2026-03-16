@@ -38,7 +38,7 @@ interface VacancyDiscoveryItem {
   house_rules?: string;
   contact_preference?: string;
   contact: {
-    landlord_phone?: string | null;
+    property_owner_phone?: string | null;
     manager_phone?: string | null;
     caretaker_phone?: string | null;
   };
@@ -49,16 +49,8 @@ interface VacancySearchResponse {
   results: VacancyDiscoveryItem[];
   count?: number;
   units_found?: number;
-  subscribers_waiting?: number;
   next?: string | null;
   previous?: string | null;
-}
-
-interface SearchFilters {
-  unit_type?: string;
-  location?: string;
-  min_rent?: string;
-  max_rent?: string;
 }
 
 export default function FindUnitsPage() {
@@ -69,16 +61,10 @@ export default function FindUnitsPage() {
   const [maxRent, setMaxRent] = useState("");
   const [list, setList] = useState<VacancyDiscoveryItem[]>([]);
   const [unitsFound, setUnitsFound] = useState(0);
-  const [subscribersWaiting, setSubscribersWaiting] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
-  const [subscribeEmail, setSubscribeEmail] = useState("");
-  const [subscribePhone, setSubscribePhone] = useState("");
-  const [subscribeSubmitting, setSubscribeSubmitting] = useState(false);
-  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
-  const [subscribeError, setSubscribeError] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   function getBaseSearchParams(): URLSearchParams {
@@ -92,8 +78,6 @@ export default function FindUnitsPage() {
 
   const search = useCallback(() => {
     setSearched(true);
-    setSubscribeSuccess(false);
-    setSubscribeError("");
     setNextPageUrl(null);
     setList([]);
     setLoading(true);
@@ -106,13 +90,11 @@ export default function FindUnitsPage() {
         const d = res.data as VacancySearchResponse;
         setList(d.results ?? []);
         setUnitsFound(d.units_found ?? d.count ?? d.results?.length ?? 0);
-        setSubscribersWaiting(d.subscribers_waiting ?? 0);
         setNextPageUrl(d.next ?? null);
       })
       .catch(() => {
         setList([]);
         setUnitsFound(0);
-        setSubscribersWaiting(0);
         setNextPageUrl(null);
       })
       .finally(() => setLoading(false));
@@ -145,43 +127,6 @@ export default function FindUnitsPage() {
     return () => observer.disconnect();
   }, [nextPageUrl, loadingMore, loading]);
 
-  function getCurrentSearchFilters(): SearchFilters {
-    const f: SearchFilters = {};
-    if (unitType) f.unit_type = unitType;
-    if (location.trim()) f.location = location.trim();
-    if (minRent.trim()) f.min_rent = minRent.trim();
-    if (maxRent.trim()) f.max_rent = maxRent.trim();
-    return f;
-  }
-
-  function submitSubscribe(e: React.FormEvent) {
-    e.preventDefault();
-    const email = subscribeEmail.trim();
-    if (!email) {
-      setSubscribeError("Email is required.");
-      return;
-    }
-    setSubscribeError("");
-    setSubscribeSubmitting(true);
-    api
-      .post("/vacancies/notify-subscribe/", {
-        email,
-        phone: subscribePhone.trim() || undefined,
-        search_filters: getCurrentSearchFilters(),
-      })
-      .then(() => {
-        setSubscribeSuccess(true);
-        setSubscribeEmail("");
-        setSubscribePhone("");
-        search();
-      })
-      .catch((err: { response?: { data?: { email?: string[]; detail?: string } } }) => {
-        const msg = err?.response?.data?.email?.[0] ?? err?.response?.data?.detail ?? "Failed to subscribe.";
-        setSubscribeError(msg);
-      })
-      .finally(() => setSubscribeSubmitting(false));
-  }
-
   useEffect(() => {
     const params = getBaseSearchParams();
     params.set("page_size", String(PAGE_SIZE));
@@ -194,13 +139,11 @@ export default function FindUnitsPage() {
         const d = res.data as VacancySearchResponse;
         setList(d.results ?? []);
         setUnitsFound(d.units_found ?? d.count ?? d.results?.length ?? 0);
-        setSubscribersWaiting(d.subscribers_waiting ?? 0);
         setNextPageUrl(d.next ?? null);
       })
       .catch(() => {
         setList([]);
         setUnitsFound(0);
-        setSubscribersWaiting(0);
         setNextPageUrl(null);
       })
       .finally(() => setLoading(false));
@@ -287,40 +230,9 @@ export default function FindUnitsPage() {
       )}
 
       {!loading && searched && list.length === 0 && (
-        <div className="space-y-4 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-surface-600 dark:text-surface-400">
-            <span className="font-medium text-surface-800 dark:text-surface-200">Units Found: 0</span>
-            <span>Users waiting for notification: {subscribersWaiting}</span>
-          </div>
-          <p className="text-surface-700 dark:text-surface-300 font-medium">No units currently available. Get notified when a unit becomes available.</p>
-          <form onSubmit={submitSubscribe} className="flex flex-wrap gap-4 items-end max-w-lg">
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Email *</label>
-              <input
-                type="email"
-                value={subscribeEmail}
-                onChange={(e) => setSubscribeEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-56"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Phone (optional)</label>
-              <input
-                type="tel"
-                value={subscribePhone}
-                onChange={(e) => setSubscribePhone(e.target.value)}
-                placeholder="+254..."
-                className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 w-44"
-              />
-            </div>
-            <button type="submit" disabled={subscribeSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">
-              {subscribeSubmitting ? "Subscribing…" : "Notify me"}
-            </button>
-          </form>
-          {subscribeError && <p className="text-sm text-red-600 dark:text-red-400">{subscribeError}</p>}
-          {subscribeSuccess && <p className="text-sm text-green-600 dark:text-green-400">You're subscribed. We'll notify you when a matching unit is available.</p>}
+        <div className="space-y-2 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700">
+          <p className="font-medium text-surface-800 dark:text-surface-200">Units Found: 0</p>
+          <p className="text-surface-600 dark:text-surface-400">No units currently match your search. Try adjusting filters or check back later.</p>
         </div>
       )}
 
@@ -330,7 +242,6 @@ export default function FindUnitsPage() {
             <div className="flex flex-wrap items-center gap-4 text-sm text-surface-600 dark:text-surface-400">
               <span className="font-medium text-surface-800 dark:text-surface-200">Units Found: {unitsFound}</span>
               <span>Showing {list.length}{list.length < unitsFound ? ` of ${unitsFound}` : ""}</span>
-              <span>Users waiting for notification: {subscribersWaiting}</span>
             </div>
           )}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

@@ -143,7 +143,7 @@ class LeaseSerializer(serializers.ModelSerializer):
 
 
 class LeaseCreateUpdateSerializer(serializers.ModelSerializer):
-    """Create lease: rent and deposit are always taken from the unit (not editable by landlord)."""
+    """Create lease: rent and deposit are always taken from the unit (not editable by property owner)."""
     monthly_rent = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     deposit_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
 
@@ -176,7 +176,7 @@ class GiveNoticeSerializer(serializers.Serializer):
 
 
 class GiveEvictionSerializer(serializers.Serializer):
-    """Landlord issues eviction notice for a lease."""
+    """Property owner issues eviction notice for a lease."""
     lease_id = serializers.UUIDField()
     eviction_reason = serializers.CharField()
     eviction_date = serializers.DateField()

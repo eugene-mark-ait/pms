@@ -85,7 +85,7 @@ export default function GiveNoticeModal({
               value={noticeMessage}
               onChange={(e) => setNoticeMessage(e.target.value)}
               rows={3}
-              placeholder="Additional details for landlord/manager"
+              placeholder="Additional details for property owner/manager"
               className="w-full px-4 py-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 placeholder:text-surface-400 dark:placeholder:text-surface-500"
             />
           </div>

@@ -19,11 +19,11 @@ export default function PropertiesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [propertySearch, setPropertySearch] = useState("");
   const [propertySearchDebounced, setPropertySearchDebounced] = useState("");
-  const isLandlord = user?.role_names?.includes("landlord");
+  const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
-  const canEditDelete = isLandlord || isManager;
-  const enabled = user !== null && (isLandlord || isManager || isCaretaker);
+  const canEditDelete = isPropertyOwner || isManager;
+  const enabled = user !== null && (isPropertyOwner || isManager || isCaretaker);
 
   useEffect(() => {
     const t = setTimeout(() => setPropertySearchDebounced(propertySearch.trim()), 300);
@@ -57,7 +57,7 @@ export default function PropertiesPage() {
     }
   }
 
-  if (user && !isLandlord && !isManager && !isCaretaker) {
+  if (user && !isPropertyOwner && !isManager && !isCaretaker) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Properties</h1>
@@ -85,7 +85,7 @@ export default function PropertiesPage() {
             />
           </div>
         )}
-        {isLandlord && (
+        {isPropertyOwner && (
           <Link
             href="/properties/new"
             className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center"
@@ -137,7 +137,7 @@ export default function PropertiesPage() {
                     {canEditDelete && !p.is_closed && (
                       <>
                         <Link href={`/properties/${p.id}/edit`} className="text-surface-600 dark:text-surface-400 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
-                        {isLandlord && (
+                        {isPropertyOwner && (
                           <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 dark:text-red-400 hover:underline text-sm min-h-[44px] sm:min-h-0">Delete</button>
                         )}
                       </>

@@ -4,12 +4,12 @@ from django.conf import settings
 
 
 class Property(models.Model):
-    """Property owned by a landlord; has units, managers, rules, images."""
+    """Property owned by a property owner; has units, managers, rules, images."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     address = models.TextField()
     location = models.CharField(max_length=255, blank=True, help_text="Short location label for search/display")
-    landlord = models.ForeignKey(
+    property_owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="owned_properties",
@@ -198,7 +198,7 @@ class ManagerAssignment(models.Model):
 
 
 class CaretakerAssignment(models.Model):
-    """Assignment of a caretaker to a property (by landlord); optional contact phone."""
+    """Assignment of a caretaker to a property (by property owner); optional contact phone."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
         Property,

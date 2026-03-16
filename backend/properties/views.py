@@ -22,22 +22,22 @@ from .serializers import (
     AssignManagerSerializer,
     AssignCaretakerSerializer,
 )
-from accounts.permissions import IsLandlord, IsLandlordOrManager, IsLandlordOrManagerOrCaretaker
+from accounts.permissions import IsPropertyOwner, IsPropertyOwnerOrManager, IsPropertyOwnerOrManagerOrCaretaker
 from leases.models import Lease
 
 User = get_user_model()
 
 
 class PropertyListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/properties/ - list (filtered by role) or create properties. Managers/caretakers can list assigned properties; only landlords can create."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """GET/POST /api/properties/ - list (filtered by role) or create properties. Managers/caretakers can list assigned properties; only property owners can create."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = PropertyListSerializer
 
     def get_queryset(self):
         from django.db.models import Q
         user = self.request.user
-        if user.has_role("landlord"):
-            qs = Property.objects.filter(landlord=user)
+        if user.has_role("property_owner"):
+            qs = Property.objects.filter(property_owner=user)
         elif user.has_role("manager"):
             qs = Property.objects.filter(manager_assignments__manager=user).distinct()
         elif user.has_role("caretaker"):
@@ -61,22 +61,22 @@ class PropertyListCreateView(generics.ListCreateAPIView):
         return PropertyListSerializer
 
     def perform_create(self, serializer):
-        if not self.request.user.has_role("landlord"):
+        if not self.request.user.has_role("property_owner"):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only property owners can create properties.")
-        serializer.save(landlord=self.request.user)
+        serializer.save(property_owner=self.request.user)
 
 
 class PropertyOptionsView(generics.ListAPIView):
     """GET /api/properties/options/ - id and name only for dropdowns. No pagination; same permission as list."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = PropertyOptionsSerializer
     pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
-        if user.has_role("landlord"):
-            return Property.objects.filter(landlord=user, is_closed=False).order_by("name")
+        if user.has_role("property_owner"):
+            return Property.objects.filter(property_owner=user, is_closed=False).order_by("name")
         if user.has_role("manager"):
             return Property.objects.filter(manager_assignments__manager=user, is_closed=False).distinct().order_by("name")
         if user.has_role("caretaker"):
@@ -85,14 +85,14 @@ class PropertyOptionsView(generics.ListAPIView):
 
 
 class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PUT/PATCH/DELETE /api/properties/<id>/ - caretaker can view only. Landlord/manager can PATCH is_closed to close property."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    """GET/PUT/PATCH/DELETE /api/properties/<id>/ - caretaker can view only. Property owner/manager can PATCH is_closed to close property."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = PropertyDetailSerializer
 
     def get_queryset(self):
         user = self.request.user
-        if user.has_role("landlord"):
-            return Property.objects.filter(landlord=user)
+        if user.has_role("property_owner"):
+            return Property.objects.filter(property_owner=user)
         if user.has_role("manager"):
             return Property.objects.filter(manager_assignments__manager=user)
         if user.has_role("caretaker"):
@@ -103,7 +103,7 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
         if request.user.has_role("caretaker"):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Caretakers cannot edit property details.")
-        # Only landlord and manager can set is_closed (handled by serializer + same update path)
+        # Only property owner and manager can set is_closed (handled by serializer + same update path)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -115,7 +115,7 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class UnitListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/units/ - list or create units (query: ?property=<id>)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = UnitSerializer
 
     def get_queryset(self):
@@ -149,13 +149,13 @@ class UnitListCreateView(generics.ListCreateAPIView):
 
 class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PUT/PATCH/DELETE /api/units/<id>/"""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = UnitSerializer
 
     def get_queryset(self):
         user = self.request.user
-        if user.has_role("landlord"):
-            return Unit.objects.filter(property__landlord=user)
+        if user.has_role("property_owner"):
+            return Unit.objects.filter(property__property_owner=user)
         if user.has_role("manager"):
             return Unit.objects.filter(property__manager_assignments__manager=user)
         if user.has_role("caretaker"):
@@ -173,10 +173,10 @@ class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().destroy(request, *args, **kwargs)
 
 
-def _unit_queryset_for_landlord_or_manager(request):
+def _unit_queryset_for_property_owner_or_manager(request):
     user = request.user
-    if user.has_role("landlord"):
-        return Unit.objects.filter(property__landlord=user)
+    if user.has_role("property_owner"):
+        return Unit.objects.filter(property__property_owner=user)
     if user.has_role("manager"):
         return Unit.objects.filter(property__manager_assignments__manager=user).distinct()
     return Unit.objects.none()
@@ -184,12 +184,12 @@ def _unit_queryset_for_landlord_or_manager(request):
 
 class UnitVacancyStatusView(APIView):
     """PATCH /api/units/<id>/vacancy/ - set unit status (vacant | occupied | reserved) and vacancy details (availability, contact visibility)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
 
     def patch(self, request, pk):
         if request.user.has_role("caretaker"):
             raise PermissionDenied("Caretakers cannot change unit vacancy status.")
-        unit = get_object_or_404(_unit_queryset_for_landlord_or_manager(request), pk=pk)
+        unit = get_object_or_404(_unit_queryset_for_property_owner_or_manager(request), pk=pk)
         status_val = (request.data.get("status") or "").strip().lower()
         if status_val not in ("vacant", "occupied", "reserved"):
             return Response(
@@ -220,31 +220,31 @@ class UnitVacancyStatusView(APIView):
                 available_from = date_type.today()
         else:
             available_from = date_type.today()
-        show_landlord = request.data.get("show_landlord_phone", False)
+        show_owner = request.data.get("show_property_owner_phone", False)
         show_manager = request.data.get("show_manager_phone", False)
         show_caretaker = request.data.get("show_caretaker_phone", False)
         info, _ = UnitVacancyInfo.objects.get_or_create(unit=unit, defaults={"available_from": available_from})
         info.available_from = available_from
-        info.show_landlord_phone = bool(show_landlord)
+        info.show_property_owner_phone = bool(show_owner)
         info.show_manager_phone = bool(show_manager)
         info.show_caretaker_phone = bool(show_caretaker)
-        info.save(update_fields=["available_from", "show_landlord_phone", "show_manager_phone", "show_caretaker_phone", "updated_at"])
+        info.save(update_fields=["available_from", "show_property_owner_phone", "show_manager_phone", "show_caretaker_phone", "updated_at"])
         from vacancies.notification_service import notify_subscribers
         notify_subscribers(unit, available_from=available_from)
         return Response({"success": True, "status": "vacant"})
 
 
-def _property_for_landlord(request, pk):
-    """Return property if current user is the landlord."""
-    return get_object_or_404(Property, pk=pk, landlord=request.user)
+def _property_for_property_owner(request, pk):
+    """Return property if current user is the property owner."""
+    return get_object_or_404(Property, pk=pk, property_owner=request.user)
 
 
 class PropertyManagerAddView(APIView):
-    """POST /api/properties/<id>/managers/ - landlord adds a manager to the property."""
-    permission_classes = [IsAuthenticated, IsLandlord]
+    """POST /api/properties/<id>/managers/ - property owner adds a manager to the property."""
+    permission_classes = [IsAuthenticated, IsPropertyOwner]
 
     def post(self, request, pk):
-        property_obj = _property_for_landlord(request, pk)
+        property_obj = _property_for_property_owner(request, pk)
         serializer = AssignManagerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_id = serializer.validated_data["user_id"]
@@ -267,11 +267,11 @@ class PropertyManagerAddView(APIView):
 
 
 class PropertyManagerRemoveView(APIView):
-    """DELETE /api/properties/<id>/managers/<user_id>/ - landlord removes a manager."""
-    permission_classes = [IsAuthenticated, IsLandlord]
+    """DELETE /api/properties/<id>/managers/<user_id>/ - property owner removes a manager."""
+    permission_classes = [IsAuthenticated, IsPropertyOwner]
 
     def delete(self, request, pk, user_id):
-        property_obj = _property_for_landlord(request, pk)
+        property_obj = _property_for_property_owner(request, pk)
         deleted, _ = ManagerAssignment.objects.filter(property=property_obj, manager_id=user_id).delete()
         if not deleted:
             return Response({"detail": "Manager assignment not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -279,11 +279,11 @@ class PropertyManagerRemoveView(APIView):
 
 
 class PropertyCaretakerAddView(APIView):
-    """POST /api/properties/<id>/caretakers/ - landlord adds a caretaker to the property."""
-    permission_classes = [IsAuthenticated, IsLandlord]
+    """POST /api/properties/<id>/caretakers/ - property owner adds a caretaker to the property."""
+    permission_classes = [IsAuthenticated, IsPropertyOwner]
 
     def post(self, request, pk):
-        property_obj = _property_for_landlord(request, pk)
+        property_obj = _property_for_property_owner(request, pk)
         serializer = AssignCaretakerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_id = serializer.validated_data["user_id"]
@@ -306,11 +306,11 @@ class PropertyCaretakerAddView(APIView):
 
 
 class PropertyCaretakerRemoveView(APIView):
-    """DELETE /api/properties/<id>/caretakers/<user_id>/ - landlord removes a caretaker."""
-    permission_classes = [IsAuthenticated, IsLandlord]
+    """DELETE /api/properties/<id>/caretakers/<user_id>/ - property owner removes a caretaker."""
+    permission_classes = [IsAuthenticated, IsPropertyOwner]
 
     def delete(self, request, pk, user_id):
-        property_obj = _property_for_landlord(request, pk)
+        property_obj = _property_for_property_owner(request, pk)
         deleted, _ = CaretakerAssignment.objects.filter(property=property_obj, caretaker_id=user_id).delete()
         if not deleted:
             return Response({"detail": "Caretaker assignment not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -318,11 +318,11 @@ class PropertyCaretakerRemoveView(APIView):
 
 
 def _property_for_user(request, pk):
-    """Return property if user is landlord, manager, or caretaker of it."""
+    """Return property if user is property owner, manager, or caretaker of it."""
     user = request.user
     qs = Property.objects.filter(pk=pk)
-    if user.has_role("landlord"):
-        qs = qs.filter(landlord=user)
+    if user.has_role("property_owner"):
+        qs = qs.filter(property_owner=user)
     elif user.has_role("manager"):
         qs = qs.filter(manager_assignments__manager=user)
     elif user.has_role("caretaker"):
@@ -333,8 +333,8 @@ def _property_for_user(request, pk):
 
 
 class PropertyRuleListCreateView(APIView):
-    """GET/POST /api/properties/<pk>/rules/ - list or create rules (landlord/manager only)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """GET/POST /api/properties/<pk>/rules/ - list or create rules (property owner/manager only)."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
 
     def get(self, request, pk):
         property_obj = _property_for_user(request, pk)
@@ -353,8 +353,8 @@ class PropertyRuleListCreateView(APIView):
 
 
 class PropertyRuleDetailView(APIView):
-    """PUT/PATCH/DELETE /api/properties/<pk>/rules/<rule_id>/ - update or delete a rule (landlord/manager only)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """PUT/PATCH/DELETE /api/properties/<pk>/rules/<rule_id>/ - update or delete a rule (property owner/manager only)."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
 
     def put(self, request, pk, rule_id):
         return self._update(request, pk, rule_id, partial=False)
@@ -384,8 +384,8 @@ class PropertyRuleDetailView(APIView):
 
 
 class PropertyImageUploadView(APIView):
-    """POST /api/properties/<id>/images/ - upload image (multipart). Landlord/manager only."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    """POST /api/properties/<id>/images/ - upload image (multipart). Property owner/manager only."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
 
     def post(self, request, pk):
         property_obj = _property_for_user(request, pk)
@@ -414,7 +414,7 @@ class PropertyImageUploadView(APIView):
 
 class PropertyImageDeleteView(APIView):
     """DELETE /api/properties/<id>/images/<image_id>/"""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
 
     def delete(self, request, pk, image_id):
         property_obj = _property_for_user(request, pk)
@@ -428,7 +428,7 @@ class PropertyImageDeleteView(APIView):
 
 class UnitBulkCreateView(APIView):
     """POST /api/units/bulk/ - create multiple units. Body: { property: "<uuid>", units: [{ unit_number, unit_type, monthly_rent, ... }] }."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
 
     def post(self, request):
         property_id = request.data.get("property")
@@ -468,7 +468,7 @@ class UnitBulkCreateView(APIView):
 
 
 class PropertyComplaintRecipientsView(APIView):
-    """GET /api/properties/<id>/complaint-recipients/ - list users who can receive complaints (landlord, managers, caretakers) with role label. Tenant must have lease in this property; landlord/manager/caretaker must be assigned."""
+    """GET /api/properties/<id>/complaint-recipients/ - list users who can receive complaints (property owner, managers, caretakers) with role label. Tenant must have lease in this property; property owner/manager/caretaker must be assigned."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
@@ -480,8 +480,8 @@ class PropertyComplaintRecipientsView(APIView):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You can only file complaints for properties you rent in.")
         else:
-            # Landlord / manager / caretaker: must be assigned to this property
-            if user.has_role("landlord") and prop.landlord_id != user.id:
+            # Property owner / manager / caretaker: must be assigned to this property
+            if user.has_role("property_owner") and prop.property_owner_id != user.id:
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have access to this property.")
             if user.has_role("manager") and not prop.manager_assignments.filter(manager=user).exists():
@@ -490,18 +490,18 @@ class PropertyComplaintRecipientsView(APIView):
             if user.has_role("caretaker") and not prop.caretaker_assignments.filter(caretaker=user).exists():
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have access to this property.")
-            if not (user.has_role("landlord") or user.has_role("manager") or user.has_role("caretaker")):
+            if not (user.has_role("property_owner") or user.has_role("manager") or user.has_role("caretaker")):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have access to this property.")
 
         out = []
-        landlord = prop.landlord
+        owner = prop.property_owner
         out.append({
-            "id": str(landlord.id),
-            "email": landlord.email,
-            "first_name": landlord.first_name or "",
-            "last_name": landlord.last_name or "",
-            "role": "Landlord",
+            "id": str(owner.id),
+            "email": owner.email,
+            "first_name": owner.first_name or "",
+            "last_name": owner.last_name or "",
+            "role": "Property Owner",
         })
         for ma in prop.manager_assignments.select_related("manager").all():
             m = ma.manager

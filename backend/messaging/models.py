@@ -5,7 +5,7 @@ from properties.models import Property
 
 
 class Message(models.Model):
-    """Chat message between tenant and landlord/manager."""
+    """Chat message between tenant and property owner/manager."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property = models.ForeignKey(
         Property,
