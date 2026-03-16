@@ -7,13 +7,15 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from leases.models import LeaseHistory
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
+    VacancyDiscoverySerializer,
 )
 from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
+from properties.models import Unit
 
 
 def process_due_notices():
@@ -77,29 +79,97 @@ class VacancyListingListView(generics.ListAPIView):
 
 
 class VacancySearchView(generics.ListAPIView):
-    """GET /api/vacancies/search/?unit_type=&location= - search vacancies (tenant or public). Match by unit type and location."""
+    """GET /api/vacancies/search/?unit_type=&location=&min_rent=&max_rent= - discoverable vacancies (tenant or public). Only units with is_vacant=True, is_reserved=False."""
     permission_classes = [AllowAny]
-    serializer_class = VacancySearchSerializer
+    serializer_class = VacancyDiscoverySerializer
+    pagination_class = None
 
     def get_queryset(self):
         from django.db.models import Q
+        today = timezone.now().date()
         qs = (
-            VacancyListing.objects.filter(
-                is_filled=False,
-                available_from__gte=timezone.now().date(),
+            Unit.objects.filter(
+                is_vacant=True,
+                is_reserved=False,
+                property__is_closed=False,
             )
-            .select_related("property", "unit__property")
-            .prefetch_related("unit__images", "property__images")
+            .select_related("property")
+            .prefetch_related("images", "property__images")
         )
         unit_type = self.request.query_params.get("unit_type", "").strip()
         location = self.request.query_params.get("location", "").strip()
+        min_rent = self.request.query_params.get("min_rent", "").strip()
+        max_rent = self.request.query_params.get("max_rent", "").strip()
         if unit_type:
-            qs = qs.filter(unit__unit_type=unit_type)
+            qs = qs.filter(unit_type=unit_type)
         if location:
             qs = qs.filter(
                 Q(property__location__icontains=location) | Q(property__address__icontains=location)
             )
-        return qs.order_by("available_from")
+        if min_rent:
+            try:
+                qs = qs.filter(monthly_rent__gte=float(min_rent))
+            except ValueError:
+                pass
+        if max_rent:
+            try:
+                qs = qs.filter(monthly_rent__lte=float(max_rent))
+            except ValueError:
+                pass
+        return qs.order_by("monthly_rent", "property__name", "unit_number")
+
+
+class VacancyDiscoveryDetailView(generics.GenericAPIView):
+    """GET /api/vacancies/discovery/<unit_id>/ - single discoverable vacancy with contact (respects visibility)."""
+    permission_classes = [AllowAny]
+    serializer_class = VacancyDiscoverySerializer
+
+    def get_object(self):
+        unit_id = self.kwargs["unit_id"]
+        return get_object_or_404(
+            Unit.objects.filter(
+                is_vacant=True,
+                is_reserved=False,
+                property__is_closed=False,
+            ).select_related("property").prefetch_related("images", "property__images"),
+            id=unit_id,
+        )
+
+    def get(self, request, *args, **kwargs):
+        unit = self.get_object()
+        serializer = VacancyDiscoverySerializer(unit, context={"request": request})
+        return Response(serializer.data)
+
+
+class VacancyMatchesView(generics.ListAPIView):
+    """GET /api/vacancies/matches/ - for tenants with is_looking=True, return vacancies matching preferred_unit_type and optional preferred_location."""
+    permission_classes = [IsAuthenticated, IsTenant]
+    serializer_class = VacancyDiscoverySerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        from django.db.models import Q
+        pref = TenantVacancyPreference.objects.filter(user=self.request.user).first()
+        if not pref or not pref.is_looking:
+            return Unit.objects.none()
+        today = timezone.now().date()
+        qs = (
+            Unit.objects.filter(
+                is_vacant=True,
+                is_reserved=False,
+                property__is_closed=False,
+            )
+            .select_related("property")
+            .prefetch_related("images", "property__images")
+        )
+        if pref.preferred_unit_type:
+            qs = qs.filter(unit_type=pref.preferred_unit_type)
+        if pref.preferred_location and pref.preferred_location.strip():
+            loc = pref.preferred_location.strip()
+            qs = qs.filter(
+                Q(property__location__icontains=loc) | Q(property__address__icontains=loc)
+            )
+        return qs.order_by("monthly_rent", "property__name", "unit_number")[:50]
 
 
 class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):

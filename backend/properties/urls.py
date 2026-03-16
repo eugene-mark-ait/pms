@@ -17,4 +17,5 @@ urlpatterns = [
     path("units/", views.UnitListCreateView.as_view(), name="unit-list"),
     path("units/bulk/", views.UnitBulkCreateView.as_view(), name="unit-bulk-create"),
     path("units/<uuid:pk>/", views.UnitDetailView.as_view(), name="unit-detail"),
+    path("units/<uuid:pk>/vacancy/", views.UnitVacancyStatusView.as_view(), name="unit-vacancy-status"),
 ]

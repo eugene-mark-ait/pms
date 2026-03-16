@@ -23,18 +23,26 @@ class UnitImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "caption", "sort_order"]
 
 
+class UnitVacancyInfoSerializer(serializers.Serializer):
+    available_from = serializers.DateField()
+    show_landlord_phone = serializers.BooleanField()
+    show_manager_phone = serializers.BooleanField()
+    show_caretaker_phone = serializers.BooleanField()
+
+
 class UnitSerializer(serializers.ModelSerializer):
     images = UnitImageSerializer(many=True, read_only=True)
     current_tenant_name = serializers.SerializerMethodField()
     property_name = serializers.SerializerMethodField()
     has_active_notice = serializers.SerializerMethodField()
+    vacancy_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Unit
         fields = [
             "id", "property", "property_name", "unit_number", "unit_type", "monthly_rent",
             "security_deposit", "service_charge", "extra_costs", "payment_frequency",
-            "is_vacant", "current_tenant_name", "has_active_notice", "images", "created_at", "updated_at",
+            "is_vacant", "is_reserved", "current_tenant_name", "has_active_notice", "vacancy_info", "images", "created_at", "updated_at",
         ]
 
     def get_property_name(self, obj):
@@ -57,6 +65,19 @@ class UnitSerializer(serializers.ModelSerializer):
         t = active.tenant
         name = f"{t.first_name or ''} {t.last_name or ''}".strip()
         return name or t.email
+
+    def get_vacancy_info(self, obj):
+        from vacancies.models import UnitVacancyInfo
+        try:
+            info = obj.vacancy_info
+            return {
+                "available_from": info.available_from.isoformat(),
+                "show_landlord_phone": info.show_landlord_phone,
+                "show_manager_phone": info.show_manager_phone,
+                "show_caretaker_phone": info.show_caretaker_phone,
+            }
+        except UnitVacancyInfo.DoesNotExist:
+            return None
 
 
 class PropertyRuleSerializer(serializers.ModelSerializer):

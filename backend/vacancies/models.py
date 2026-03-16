@@ -5,6 +5,28 @@ from properties.models import Property, Unit
 from leases.models import Lease
 
 
+class UnitVacancyInfo(models.Model):
+    """Per-unit vacancy display settings when unit is vacant: availability date and which contacts to show to tenants."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    unit = models.OneToOneField(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="vacancy_info",
+    )
+    available_from = models.DateField(help_text="Date from which the unit is available.")
+    show_landlord_phone = models.BooleanField(default=False)
+    show_manager_phone = models.BooleanField(default=False)
+    show_caretaker_phone = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "unit_vacancy_info"
+
+    def __str__(self):
+        return f"{self.unit} vacancy info"
+
+
 class TenantVacancyPreference(models.Model):
     """Tenant's search preferences for finding a unit (unit type, location)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -15,7 +37,7 @@ class TenantVacancyPreference(models.Model):
     )
     is_looking = models.BooleanField(default=False)
     preferred_unit_type = models.CharField(
-        max_length=20,
+        max_length=32,
         blank=True,
         choices=Unit.UnitType.choices,
     )

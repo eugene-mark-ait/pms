@@ -106,6 +106,10 @@ class Unit(models.Model):
         default=PaymentFrequency.MONTHLY,
     )
     is_vacant = models.BooleanField(default=True)
+    is_reserved = models.BooleanField(
+        default=False,
+        help_text="When True, unit is reserved and hidden from public vacancy discovery.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

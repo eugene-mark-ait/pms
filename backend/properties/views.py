@@ -1,3 +1,5 @@
+from datetime import date as date_type
+
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -7,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
 from .models import Property, Unit, PropertyRule, ManagerAssignment, CaretakerAssignment, PropertyImage
+from vacancies.models import UnitVacancyInfo
 from .serializers import (
     PropertyListSerializer,
     PropertyDetailSerializer,
@@ -165,6 +168,65 @@ class UnitDetailView(generics.RetrieveUpdateDestroyAPIView):
         if request.user.has_role("caretaker"):
             raise PermissionDenied("Caretakers cannot delete units.")
         return super().destroy(request, *args, **kwargs)
+
+
+def _unit_queryset_for_landlord_or_manager(request):
+    user = request.user
+    if user.has_role("landlord"):
+        return Unit.objects.filter(property__landlord=user)
+    if user.has_role("manager"):
+        return Unit.objects.filter(property__manager_assignments__manager=user).distinct()
+    return Unit.objects.none()
+
+
+class UnitVacancyStatusView(APIView):
+    """PATCH /api/units/<id>/vacancy/ - set unit status (vacant | occupied | reserved) and vacancy details (availability, contact visibility)."""
+    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+
+    def patch(self, request, pk):
+        if request.user.has_role("caretaker"):
+            raise PermissionDenied("Caretakers cannot change unit vacancy status.")
+        unit = get_object_or_404(_unit_queryset_for_landlord_or_manager(request), pk=pk)
+        status_val = (request.data.get("status") or "").strip().lower()
+        if status_val not in ("vacant", "occupied", "reserved"):
+            return Response(
+                {"error": "status must be one of: vacant, occupied, reserved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if status_val == "occupied":
+            unit.is_vacant = False
+            unit.is_reserved = False
+            unit.save(update_fields=["is_vacant", "is_reserved", "updated_at"])
+            return Response({"success": True, "status": "occupied"})
+        if status_val == "reserved":
+            unit.is_vacant = True
+            unit.is_reserved = True
+            unit.save(update_fields=["is_vacant", "is_reserved", "updated_at"])
+            return Response({"success": True, "status": "reserved"})
+        # vacant
+        unit.is_vacant = True
+        unit.is_reserved = False
+        unit.save(update_fields=["is_vacant", "is_reserved", "updated_at"])
+        available_from = request.data.get("available_from")
+        if available_from:
+            try:
+                from datetime import datetime
+                if isinstance(available_from, str):
+                    available_from = datetime.strptime(available_from[:10], "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                available_from = date_type.today()
+        else:
+            available_from = date_type.today()
+        show_landlord = request.data.get("show_landlord_phone", False)
+        show_manager = request.data.get("show_manager_phone", False)
+        show_caretaker = request.data.get("show_caretaker_phone", False)
+        info, _ = UnitVacancyInfo.objects.get_or_create(unit=unit, defaults={"available_from": available_from})
+        info.available_from = available_from
+        info.show_landlord_phone = bool(show_landlord)
+        info.show_manager_phone = bool(show_manager)
+        info.show_caretaker_phone = bool(show_caretaker)
+        info.save(update_fields=["available_from", "show_landlord_phone", "show_manager_phone", "show_caretaker_phone", "updated_at"])
+        return Response({"success": True, "status": "vacant"})
 
 
 def _property_for_landlord(request, pk):
