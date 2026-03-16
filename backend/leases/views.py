@@ -63,7 +63,7 @@ def tenant_leases_queryset(user):
 
 class LeaseListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/leases/ - list or create leases (landlord/manager/caretaker)."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManagerOrCaretaker]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
 
     def get_queryset(self):
         process_due_notices()
@@ -235,7 +235,7 @@ class GiveNoticeView(generics.GenericAPIView):
 
 class CreateEvictionView(generics.GenericAPIView):
     """POST /api/leases/<lease_id>/eviction/ - landlord issues eviction notice."""
-    permission_classes = [IsAuthenticated, IsLandlordOrManager]
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManager]
     serializer_class = GiveEvictionSerializer
 
     def get_lease(self, pk):
