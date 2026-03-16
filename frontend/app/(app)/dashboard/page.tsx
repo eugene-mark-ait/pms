@@ -65,15 +65,18 @@ export default function DashboardPage() {
   const [prefError, setPrefError] = useState("");
   const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  const [marketplaceInsights, setMarketplaceInsights] = useState<{ total_services?: number; active_providers?: number; total_requests?: number } | null>(null);
 
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
   const isTenant = user?.role_names?.includes("tenant");
+  const isServiceProvider = user?.role_names?.includes("service_provider");
   const canSeeOverview = isPropertyOwner || isManager || isCaretaker;
   const canAddProperty = isPropertyOwner;
   const canAddUnit = isPropertyOwner || isManager;
   const canAddTenant = isPropertyOwner || isManager;
+  const showMarketplaceInsights = (isPropertyOwner || isManager || isCaretaker || isTenant) && !isServiceProvider;
 
   useEffect(() => {
     (async () => {
@@ -132,6 +135,12 @@ export default function DashboardPage() {
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
         }
+        if (roles.includes("property_owner") || roles.includes("manager") || roles.includes("caretaker") || roles.includes("tenant")) {
+          api.get<{ total_services?: number; active_providers?: number; total_requests?: number }>("/marketplace/insights/").then((res) => setMarketplaceInsights(res.data ?? null)).catch(() => setMarketplaceInsights(null));
+        }
+        if (roles.includes("service_provider") && !roles.includes("property_owner") && !roles.includes("manager") && !roles.includes("caretaker") && !roles.includes("tenant")) {
+          setMarketplaceInsights(null);
+        }
       } catch {
         setStats({});
       } finally {
@@ -176,7 +185,7 @@ export default function DashboardPage() {
         <p className="text-surface-600 dark:text-surface-400 text-base">
           Welcome back, {displayName}
           {user?.role_names?.length ? (
-            <span className="ml-1 text-surface-500 dark:text-surface-500">· {user.role_names.map((r) => (r === "landlord" || r === "property_owner") ? "Property Owner" : r).join(", ")}</span>
+            <span className="ml-1 text-surface-500 dark:text-surface-500">· {user.role_names.map((r) => (r === "landlord" || r === "property_owner") ? "Property Owner" : r === "service_provider" ? "Service Provider" : r).join(", ")}</span>
           ) : null}
         </p>
       </div>
@@ -320,7 +329,38 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!isPropertyOwner && !isTenant && !isManager && !isCaretaker && (
+      {isServiceProvider && !canSeeOverview && !isTenant && (
+        <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/20 p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Service Provider</h2>
+          <p className="mt-1 text-sm text-surface-600 dark:text-surface-400">Manage your services, profile, and incoming requests from the Provider Dashboard.</p>
+          <Link href="/dashboard/provider" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+            Open Provider Dashboard →
+          </Link>
+        </div>
+      )}
+
+      {showMarketplaceInsights && (
+        <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider mb-4">Marketplace insights</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700/50 p-4">
+              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Total services listed</p>
+              <p className="mt-1 text-xl font-bold text-surface-900 dark:text-surface-100">{marketplaceInsights?.total_services ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700/50 p-4">
+              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Active providers</p>
+              <p className="mt-1 text-xl font-bold text-surface-900 dark:text-surface-100">{marketplaceInsights?.active_providers ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700/50 p-4">
+              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Total requests / bookings</p>
+              <p className="mt-1 text-xl font-bold text-surface-900 dark:text-surface-100">{marketplaceInsights?.total_requests ?? "—"}</p>
+            </div>
+          </div>
+          <Link href="/marketplace" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">View Marketplace →</Link>
+        </section>
+      )}
+
+      {!isPropertyOwner && !isTenant && !isManager && !isCaretaker && !isServiceProvider && (
         <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
           <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Role</p>
           <p className="mt-1 text-lg font-semibold text-surface-900 dark:text-surface-100">{user?.role_names?.join(", ") || "—"}</p>

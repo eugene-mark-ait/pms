@@ -70,7 +70,7 @@ export default function PropertiesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Properties</h1>
-        {(isLandlord || isManager || isCaretaker) && (
+        {(isPropertyOwner || isManager || isCaretaker) && (
           <div className="flex items-center gap-2 min-w-[200px] max-w-sm flex-1">
             <label htmlFor="property-search" className="text-sm font-medium text-surface-700 dark:text-surface-300 whitespace-nowrap sr-only">
               Search properties
@@ -108,7 +108,7 @@ export default function PropertiesPage() {
           <span>Loading properties…</span>
         </div>
       ) : list.length === 0 && !error ? (
-        <p className="text-surface-600 dark:text-surface-400">No properties.{isLandlord && <> <Link href="/properties/new" className="text-primary-600 dark:text-primary-400 hover:underline">Add one</Link>.</>}</p>
+        <p className="text-surface-600 dark:text-surface-400">No properties.{isPropertyOwner && <> <Link href="/properties/new" className="text-primary-600 dark:text-primary-400 hover:underline">Add one</Link>.</>}</p>
       ) : list.length > 0 ? (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">

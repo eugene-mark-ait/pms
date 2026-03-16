@@ -95,12 +95,12 @@ export default function PropertyDetailPage() {
   const [publicListingSaving, setPublicListingSaving] = useState(false);
   const [publicListingError, setPublicListingError] = useState("");
 
-  const isLandlord = user?.role_names?.includes("landlord");
+  const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
-  const canEdit = isLandlord || isManager;
-  const canManageAssignments = isLandlord;
-  const canCloseProperty = (isLandlord || isManager) && !isCaretaker;
+  const canEdit = isPropertyOwner || isManager;
+  const canManageAssignments = isPropertyOwner;
+  const canCloseProperty = (isPropertyOwner || isManager) && !isCaretaker;
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));

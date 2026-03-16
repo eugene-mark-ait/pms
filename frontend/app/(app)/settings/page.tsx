@@ -84,7 +84,7 @@ export default function SettingsPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-surface-500 dark:text-surface-400">Roles</label>
-          <p className="text-surface-900 dark:text-surface-100">{user.role_names?.map((r) => (r === "landlord" || r === "property_owner") ? "Property Owner" : r).join(", ") || "—"}</p>
+          <p className="text-surface-900 dark:text-surface-100">{user.role_names?.map((r) => (r === "landlord" || r === "property_owner") ? "Property Owner" : r === "service_provider" ? "Service Provider" : r).join(", ") || "—"}</p>
         </div>
       </div>
 
@@ -111,10 +111,10 @@ export default function SettingsPage() {
                   <span className="font-medium">{u.email}</span>
                   <span className="text-xs text-surface-500 dark:text-surface-400">({u.role_names?.join(", ") || "no roles"})</span>
                   <div className="flex flex-wrap gap-1">
-                    {ROLES.filter((r) => r !== "landlord" || user.role_names?.includes("staff")).map((role) => (
+                    {ROLES.filter((r) => r !== "property_owner" || user.role_names?.includes("staff")).map((role) => (
                       <label key={role} className="flex items-center gap-1 text-sm">
                         <input type="checkbox" checked={(selectedForUser[u.id] ?? []).includes(role)} onChange={() => toggleRole(u.id, role)} className="rounded" />
-                        {(role === "landlord" || role === "property_owner") ? "Property Owner" : role}
+                        {(role === "landlord" || role === "property_owner") ? "Property Owner" : role === "service_provider" ? "Service Provider" : role}
                       </label>
                     ))}
                   </div>
