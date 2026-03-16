@@ -30,6 +30,13 @@ class UnitVacancyInfo(models.Model):
 class UnitNotificationSubscription(models.Model):
     """User subscription to be notified when a vacancy matches their search filters."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="vacancy_notification_subscriptions",
+    )
     email = models.EmailField()
     phone = models.CharField(max_length=20, blank=True)
     search_filters = models.JSONField(

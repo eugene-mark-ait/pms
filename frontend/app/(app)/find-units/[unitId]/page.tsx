@@ -50,9 +50,6 @@ export default function VacancyDetailPage() {
   if (loading) return <p className="text-surface-500 dark:text-surface-400">Loading…</p>;
   if (error || !item) return <div className="space-y-4"><p className="text-red-600 dark:text-red-400">{error || "Not found."}</p><Link href="/find-units" className="text-primary-600 dark:text-primary-400 hover:underline">← Back to search</Link></div>;
 
-  const { contact } = item;
-  const hasContact = contact?.landlord_phone || contact?.manager_phone || contact?.caretaker_phone;
-
   return (
     <div className="space-y-6 max-w-2xl">
       <Link href="/find-units" className="text-primary-600 dark:text-primary-400 hover:underline">← Back to search</Link>
@@ -102,18 +99,6 @@ export default function VacancyDetailPage() {
       {item.contact_preference && (
         <p className="text-sm text-surface-500 dark:text-surface-400">Preferred contact: {item.contact_preference}</p>
       )}
-      <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
-        <h2 className="font-semibold text-surface-900 dark:text-surface-100 mb-2">Contact</h2>
-        {hasContact ? (
-          <ul className="space-y-2 text-sm">
-            {contact.landlord_phone && <li><span className="text-surface-500 dark:text-surface-400">Landlord:</span> <a href={`tel:${contact.landlord_phone}`} className="text-primary-600 dark:text-primary-400 hover:underline">{contact.landlord_phone}</a></li>}
-            {contact.manager_phone && <li><span className="text-surface-500 dark:text-surface-400">Manager:</span> <a href={`tel:${contact.manager_phone}`} className="text-primary-600 dark:text-primary-400 hover:underline">{contact.manager_phone}</a></li>}
-            {contact.caretaker_phone && <li><span className="text-surface-500 dark:text-surface-400">Caretaker:</span> <a href={`tel:${contact.caretaker_phone}`} className="text-primary-600 dark:text-primary-400 hover:underline">{contact.caretaker_phone}</a></li>}
-          </ul>
-        ) : (
-          <p className="text-surface-500 dark:text-surface-400">Contact details are not shared for this listing. You can visit the property or inquire through the platform.</p>
-        )}
-      </div>
     </div>
   );
 }

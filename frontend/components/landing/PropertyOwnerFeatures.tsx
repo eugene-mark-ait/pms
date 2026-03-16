@@ -30,13 +30,13 @@ const features = [
 
 export default function PropertyOwnerFeatures() {
   return (
-    <section id="property-owners" className="py-20 sm:py-28 bg-surface-50">
+    <section id="property-owners" className="py-20 sm:py-28 bg-surface-50 dark:bg-surface-800/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100 sm:text-4xl">
             Tools for Property Owners
           </h2>
-          <p className="mt-4 text-lg text-surface-600">
+          <p className="mt-4 text-lg text-surface-600 dark:text-surface-400">
             Everything you need to operate and grow your rental portfolio — from one dashboard.
           </p>
         </div>
@@ -45,11 +45,11 @@ export default function PropertyOwnerFeatures() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm hover:shadow-md transition"
+              className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm hover:shadow-md transition"
             >
               <span className="text-2xl" aria-hidden>{f.icon}</span>
-              <h3 className="mt-4 text-lg font-semibold text-surface-900">{f.title}</h3>
-              <p className="mt-2 text-surface-600">{f.description}</p>
+              <h3 className="mt-4 text-lg font-semibold text-surface-900 dark:text-surface-100">{f.title}</h3>
+              <p className="mt-2 text-surface-600 dark:text-surface-400">{f.description}</p>
             </div>
           ))}
         </div>

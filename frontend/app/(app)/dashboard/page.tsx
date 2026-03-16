@@ -5,12 +5,35 @@ import { api, User } from "@/lib/api";
 import Link from "next/link";
 import { format } from "date-fns";
 
+const UNIT_TYPES: { value: string; label: string }[] = [
+  { value: "", label: "Any" },
+  { value: "bedsitter", label: "Bedsitter" },
+  { value: "studio", label: "Studio" },
+  { value: "one_bedroom", label: "One Bedroom" },
+  { value: "two_bedroom", label: "Two Bedroom" },
+  { value: "three_bedroom", label: "Three Bedroom" },
+  { value: "apartment", label: "Apartment" },
+  { value: "penthouse", label: "Penthouse" },
+  { value: "duplex", label: "Duplex" },
+  { value: "serviced_apartment", label: "Serviced Apartment" },
+  { value: "other", label: "Other" },
+];
+
 interface PaymentRow {
   id: string;
   amount: string;
   payment_date: string;
   payment_status: string;
   lease?: { unit?: { unit_number?: string }; tenant?: { first_name?: string; last_name?: string } };
+}
+
+interface SubscriptionAlert {
+  id: string;
+  email: string;
+  phone: string;
+  search_filters: { unit_type?: string; location?: string; min_rent?: string | number; max_rent?: string | number };
+  created_at: string;
+  match_count: number;
 }
 
 export default function DashboardPage() {
@@ -28,6 +51,13 @@ export default function DashboardPage() {
   }>({});
   const [recentPayments, setRecentPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionAlert[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [addAlertOpen, setAddAlertOpen] = useState(false);
+  const [addAlertSubmitting, setAddAlertSubmitting] = useState(false);
+  const [addAlertError, setAddAlertError] = useState("");
+  const [addAlertForm, setAddAlertForm] = useState({ location: "", unit_type: "", min_rent: "", max_rent: "" });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isLandlord = user?.role_names?.includes("landlord");
   const isManager = user?.role_names?.includes("manager");
@@ -79,9 +109,10 @@ export default function DashboardPage() {
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
         } else if (roles.includes("tenant")) {
-          const [myUnitsRes, paymentsRes] = await Promise.all([
+          const [myUnitsRes, paymentsRes, subsRes] = await Promise.all([
             api.get("/tenant/my-units/").catch(() => ({ data: [] })),
             api.get("/payments/history/").catch(() => ({ data: [] })),
+            api.get<SubscriptionAlert[]>("/vacancies/my-subscriptions/").catch(() => ({ data: [] })),
           ]);
           const myUnits = Array.isArray(myUnitsRes.data) ? myUnitsRes.data : (myUnitsRes.data as { results?: unknown[] })?.results ?? [];
           const payments = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data as { results?: unknown[] })?.results ?? [];
@@ -91,6 +122,7 @@ export default function DashboardPage() {
             myUnitsCount: (myUnits as unknown[]).length,
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
+          setSubscriptions(Array.isArray(subsRes.data) ? subsRes.data : []);
         }
       } catch {
         setStats({});
@@ -112,6 +144,49 @@ export default function DashboardPage() {
   }
 
   const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "there";
+
+  function buildFindUnitsQuery(filters: SubscriptionAlert["search_filters"]) {
+    const p = new URLSearchParams();
+    if (filters?.unit_type) p.set("unit_type", String(filters.unit_type));
+    if (filters?.location) p.set("location", String(filters.location));
+    if (filters?.min_rent != null && String(filters.min_rent).trim()) p.set("min_rent", String(filters.min_rent));
+    if (filters?.max_rent != null && String(filters.max_rent).trim()) p.set("max_rent", String(filters.max_rent));
+    return p.toString();
+  }
+
+  function refreshSubscriptions() {
+    if (!isTenant) return;
+    setSubscriptionsLoading(true);
+    api.get<SubscriptionAlert[]>("/vacancies/my-subscriptions/").then((r) => setSubscriptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSubscriptions([])).finally(() => setSubscriptionsLoading(false));
+  }
+
+  function submitAddAlert(e: React.FormEvent) {
+    e.preventDefault();
+    setAddAlertError("");
+    setAddAlertSubmitting(true);
+    const filters: SubscriptionAlert["search_filters"] = {};
+    if (addAlertForm.unit_type) filters.unit_type = addAlertForm.unit_type;
+    if (addAlertForm.location.trim()) filters.location = addAlertForm.location.trim();
+    if (addAlertForm.min_rent.trim()) filters.min_rent = addAlertForm.min_rent.trim();
+    if (addAlertForm.max_rent.trim()) filters.max_rent = addAlertForm.max_rent.trim();
+    api.post("/vacancies/notify-subscribe/", { email: user?.email ?? "", search_filters: filters }).then(() => {
+      setAddAlertOpen(false);
+      setAddAlertForm({ location: "", unit_type: "", min_rent: "", max_rent: "" });
+      refreshSubscriptions();
+    }).catch((err: { response?: { data?: { detail?: string } } }) => {
+      setAddAlertError(err?.response?.data?.detail ?? "Failed to add alert.");
+    }).finally(() => setAddAlertSubmitting(false));
+  }
+
+  function deleteSubscription(id: string) {
+    if (!confirm("Remove this alert?")) return;
+    setDeletingId(id);
+    api.delete(`/vacancies/notify-subscribe/${id}/`).then(() => refreshSubscriptions()).finally(() => setDeletingId(null));
+  }
+
+  function formatUnitType(v: string) {
+    return UNIT_TYPES.find((t) => t.value === v)?.label ?? v || "Any";
+  }
 
   return (
     <div className="space-y-10">
@@ -198,6 +273,134 @@ export default function DashboardPage() {
             <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.myUnitsCount ?? 0}</p>
           </div>
         </div>
+      )}
+
+      {isTenant && (
+        <section>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider">Unit Alerts</h2>
+            <button
+              type="button"
+              onClick={() => { setAddAlertOpen(true); setAddAlertError(""); }}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              Add Alert
+            </button>
+          </div>
+          {subscriptionsLoading ? (
+            <p className="text-sm text-surface-500 dark:text-surface-400">Loading alerts…</p>
+          ) : subscriptions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-6 text-center">
+              <p className="text-surface-600 dark:text-surface-400 text-sm">No vacancy alerts yet.</p>
+              <p className="text-surface-500 dark:text-surface-500 text-sm mt-1">Add an alert to get notified when units match your criteria.</p>
+              <Link href="/find-units" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Browse Find Units →</Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {subscriptions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Location: {sub.search_filters?.location || "Any"} · Budget: {sub.search_filters?.min_rent != null && String(sub.search_filters.min_rent).trim() ? `KES ${Number(sub.search_filters.min_rent).toLocaleString("en-KE")}` : "—"} – {sub.search_filters?.max_rent != null && String(sub.search_filters.max_rent).trim() ? `KES ${Number(sub.search_filters.max_rent).toLocaleString("en-KE")}` : "—"}
+                      </p>
+                      <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Type: {formatUnitType(sub.search_filters?.unit_type ?? "")}</p>
+                      <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">Subscribed {format(new Date(sub.created_at), "MMM d, yyyy")}</p>
+                      <p className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+                        {sub.match_count} unit{sub.match_count !== 1 ? "s" : ""} currently match{sub.match_count === 1 ? "es" : ""} this alert
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link
+                        href={`/find-units?${buildFindUnitsQuery(sub.search_filters ?? {})}`}
+                        className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+                      >
+                        View Matches
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => deleteSubscription(sub.id)}
+                        disabled={deletingId === sub.id}
+                        className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                      >
+                        {deletingId === sub.id ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {addAlertOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !addAlertSubmitting && setAddAlertOpen(false)}>
+              <div className="bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Add vacancy alert</h3>
+                <p className="text-sm text-surface-600 dark:text-surface-400">Get notified when new units match your criteria.</p>
+                <form onSubmit={submitAddAlert} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={addAlertForm.location}
+                      onChange={(e) => setAddAlertForm((f) => ({ ...f, location: e.target.value }))}
+                      placeholder="e.g. Westlands"
+                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Unit type</label>
+                    <select
+                      value={addAlertForm.unit_type}
+                      onChange={(e) => setAddAlertForm((f) => ({ ...f, unit_type: e.target.value }))}
+                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                    >
+                      {UNIT_TYPES.map((o) => (
+                        <option key={o.value || "any"} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Min rent (KSh)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={addAlertForm.min_rent}
+                        onChange={(e) => setAddAlertForm((f) => ({ ...f, min_rent: e.target.value }))}
+                        placeholder="Optional"
+                        className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Max rent (KSh)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={addAlertForm.max_rent}
+                        onChange={(e) => setAddAlertForm((f) => ({ ...f, max_rent: e.target.value }))}
+                        placeholder="Optional"
+                        className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                      />
+                    </div>
+                  </div>
+                  {addAlertError && <p className="text-sm text-red-600 dark:text-red-400">{addAlertError}</p>}
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => setAddAlertOpen(false)} disabled={addAlertSubmitting} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={addAlertSubmitting} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50">
+                      {addAlertSubmitting ? "Adding…" : "Save alert"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
       {!isLandlord && !isTenant && !isManager && !isCaretaker && (

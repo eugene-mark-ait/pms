@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { User } from "@/lib/api";
 import { getDisplayName, clearTokens } from "@/lib/api";
 
@@ -16,6 +17,8 @@ const navLinks = [
 
 export default function Navbar({ user = null }: { user?: User | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   function handleLogout() {
     clearTokens();
@@ -25,13 +28,13 @@ export default function Navbar({ user = null }: { user?: User | null }) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-surface-200/60">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-200/60 dark:border-surface-700/60">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-surface-900">
+          <span className="text-xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
             PMS
           </span>
-          <span className="hidden text-sm text-surface-500 sm:inline">Rental Housing OS</span>
+          <span className="hidden text-sm text-surface-500 dark:text-surface-400 sm:inline">Rental Housing OS</span>
         </Link>
 
         <div className="hidden md:flex md:items-center md:gap-8">
@@ -39,7 +42,7 @@ export default function Navbar({ user = null }: { user?: User | null }) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+              className="text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition"
             >
               {link.label}
             </Link>
@@ -47,21 +50,41 @@ export default function Navbar({ user = null }: { user?: User | null }) {
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
+          <div className="flex items-center rounded-lg border border-surface-200 dark:border-surface-600 p-0.5 bg-surface-50 dark:bg-surface-800" role="group" aria-label="Theme toggle">
+            <button
+              type="button"
+              onClick={() => setTheme("light")}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${!isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"}`}
+              aria-pressed={!isDark}
+              aria-label="Light theme"
+            >
+              ☀ Light
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme("dark")}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"}`}
+              aria-pressed={isDark}
+              aria-label="Dark theme"
+            >
+              🌙 Dark
+            </button>
+          </div>
           {user ? (
             <>
               <Link
                 href="/dashboard"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition"
               >
                 Dashboard
               </Link>
-              <span className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700">
+              <span className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300">
                 {getDisplayName(user)}
               </span>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-lg bg-surface-100 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-200 transition"
+                className="rounded-lg bg-surface-100 dark:bg-surface-700 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-600 transition"
               >
                 Log out
               </button>
@@ -70,7 +93,7 @@ export default function Navbar({ user = null }: { user?: User | null }) {
             <>
               <Link
                 href="/login"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-900 transition"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition"
               >
                 Login
               </Link>
@@ -101,35 +124,39 @@ export default function Navbar({ user = null }: { user?: User | null }) {
       </nav>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-surface-200 bg-white px-4 py-4 space-y-2">
+        <div className="md:hidden border-t border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 px-4 py-4 space-y-2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="block py-2 text-sm font-medium text-surface-700"
+              className="block py-2 text-sm font-medium text-surface-700 dark:text-surface-300"
               onClick={() => setMobileOpen(false)}
             >
               {link.label}
             </Link>
           ))}
-          <div className="pt-4 space-y-2 border-t border-surface-100">
+          <div className="pt-4 space-y-3 border-t border-surface-100 dark:border-surface-700">
+            <div className="flex items-center rounded-lg border border-surface-200 dark:border-surface-600 p-0.5 bg-surface-50 dark:bg-surface-800 w-fit" role="group" aria-label="Theme toggle">
+              <button type="button" onClick={() => setTheme("light")} className={`rounded-md px-2 py-1 text-xs font-medium ${!isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400"}`}>☀ Light</button>
+              <button type="button" onClick={() => setTheme("dark")} className={`rounded-md px-2 py-1 text-xs font-medium ${isDark ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm" : "text-surface-600 dark:text-surface-400"}`}>🌙 Dark</button>
+            </div>
             {user ? (
               <>
-                <Link href="/dashboard" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
+                <Link href="/dashboard" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700 dark:text-surface-300" onClick={() => setMobileOpen(false)}>
                   Dashboard
                 </Link>
-                <p className="py-2 text-center text-sm text-surface-600">{getDisplayName(user)}</p>
+                <p className="py-2 text-center text-sm text-surface-600 dark:text-surface-400">{getDisplayName(user)}</p>
                 <button
                   type="button"
                   onClick={() => { handleLogout(); }}
-                  className="block w-full rounded-lg py-2 text-center text-sm font-medium text-surface-700 bg-surface-100 hover:bg-surface-200"
+                  className="block w-full rounded-lg py-2 text-center text-sm font-medium text-surface-700 dark:text-surface-200 bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600"
                 >
                   Log out
                 </button>
               </>
             ) : (
               <>
-                <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700" onClick={() => setMobileOpen(false)}>
+                <Link href="/login" className="block rounded-lg py-2 text-center text-sm font-medium text-surface-700 dark:text-surface-300" onClick={() => setMobileOpen(false)}>
                   Login
                 </Link>
                 <Link href="/register" className="block rounded-lg bg-primary-600 py-2 text-center text-sm font-medium text-white" onClick={() => setMobileOpen(false)}>

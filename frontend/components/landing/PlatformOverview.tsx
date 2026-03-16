@@ -39,15 +39,21 @@ const colorClasses = {
   violet: "bg-violet-50 text-violet-700 border-violet-100",
 } as const;
 
+const colorClassesDark = {
+  primary: "dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800",
+  emerald: "dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800",
+  violet: "dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+} as const;
+
 export default function PlatformOverview() {
   return (
-    <section id="overview" className="py-20 sm:py-28 bg-white">
+    <section id="overview" className="py-20 sm:py-28 bg-white dark:bg-surface-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100 sm:text-4xl">
             One Platform Powering the Rental Economy
           </h2>
-          <p className="mt-4 text-lg text-surface-600">
+          <p className="mt-4 text-lg text-surface-600 dark:text-surface-400">
             The system connects three layers: property operations, tenant financial identity, and embedded housing finance — in one financial operating system.
           </p>
         </div>
@@ -56,13 +62,13 @@ export default function PlatformOverview() {
           {pillars.map((pillar) => (
             <div
               key={pillar.title}
-              className="rounded-2xl border border-surface-200 bg-white p-8 shadow-sm hover:shadow-lg transition text-center"
+              className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-8 shadow-sm hover:shadow-lg transition text-center"
             >
-              <div className={`inline-flex items-center justify-center rounded-xl border p-4 ${colorClasses[pillar.color as keyof typeof colorClasses]}`}>
+              <div className={`inline-flex items-center justify-center rounded-xl border p-4 ${colorClasses[pillar.color as keyof typeof colorClasses]} ${colorClassesDark[pillar.color as keyof typeof colorClassesDark]}`}>
                 {pillar.icon}
               </div>
-              <h3 className="mt-5 text-xl font-semibold text-surface-900">{pillar.title}</h3>
-              <p className="mt-3 text-surface-600">{pillar.description}</p>
+              <h3 className="mt-5 text-xl font-semibold text-surface-900 dark:text-surface-100">{pillar.title}</h3>
+              <p className="mt-3 text-surface-600 dark:text-surface-400">{pillar.description}</p>
             </div>
           ))}
         </div>

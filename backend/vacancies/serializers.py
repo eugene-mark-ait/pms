@@ -85,6 +85,20 @@ class VacancyNotifySubscribeSerializer(serializers.ModelSerializer):
         return value
 
 
+class MySubscriptionSerializer(serializers.ModelSerializer):
+    """Subscription with match_count for tenant dashboard."""
+    match_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UnitNotificationSubscription
+        fields = ["id", "email", "phone", "search_filters", "created_at", "match_count"]
+        read_only_fields = ["id", "email", "phone", "search_filters", "created_at", "match_count"]
+
+    def get_match_count(self, obj):
+        from .notification_service import vacancy_count_for_filters
+        return vacancy_count_for_filters(obj.search_filters or {})
+
+
 def _get_available_from(unit):
     """Available date: from UnitVacancyInfo, or VacancyListing, or today."""
     try:

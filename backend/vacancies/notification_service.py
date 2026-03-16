@@ -8,6 +8,7 @@ Integration points (to be implemented):
 """
 import logging
 from decimal import Decimal
+from django.db.models import Q
 from properties.models import Unit
 from .models import UnitNotificationSubscription
 
@@ -47,6 +48,38 @@ def _filters_match_unit(subscription_filters: dict, unit: Unit) -> bool:
     except (ValueError, TypeError):
         pass
     return True
+
+
+def vacancy_count_for_filters(filters_dict: dict) -> int:
+    """Return count of discoverable units matching the given search_filters (same logic as vacancy search)."""
+    if not isinstance(filters_dict, dict):
+        return 0
+    qs = Unit.objects.filter(
+        is_vacant=True,
+        is_reserved=False,
+        property__is_closed=False,
+    )
+    unit_type = (filters_dict.get("unit_type") or "").strip()
+    location = (filters_dict.get("location") or "").strip()
+    min_rent = filters_dict.get("min_rent")
+    max_rent = filters_dict.get("max_rent")
+    if unit_type:
+        qs = qs.filter(unit_type=unit_type)
+    if location:
+        qs = qs.filter(
+            Q(property__location__icontains=location) | Q(property__address__icontains=location)
+        )
+    if min_rent is not None and str(min_rent).strip() != "":
+        try:
+            qs = qs.filter(monthly_rent__gte=float(min_rent))
+        except (ValueError, TypeError):
+            pass
+    if max_rent is not None and str(max_rent).strip() != "":
+        try:
+            qs = qs.filter(monthly_rent__lte=float(max_rent))
+        except (ValueError, TypeError):
+            pass
+    return qs.count()
 
 
 def get_matching_subscriptions(unit: Unit) -> list:

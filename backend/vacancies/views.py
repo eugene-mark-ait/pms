@@ -7,13 +7,14 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from leases.models import LeaseHistory
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
     VacancyDiscoverySerializer,
     VacancyNotifySubscribeSerializer,
+    MySubscriptionSerializer,
 )
 from .notification_service import count_subscriptions_matching_filters
 from accounts.permissions import IsLandlordOrManagerOrCaretaker, IsTenant
@@ -201,14 +202,41 @@ class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):
 
 
 class NotifySubscribeView(APIView):
-    """POST /api/vacancies/notify-subscribe/ - subscribe to vacancy notifications (email, optional phone, search_filters). AllowAny."""
+    """POST /api/vacancies/notify-subscribe/ - subscribe to vacancy notifications (email, optional phone, search_filters). AllowAny. If authenticated, user is linked."""
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = VacancyNotifySubscribeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = serializer.validated_data.copy()
+        if request.user.is_authenticated:
+            data["user"] = request.user
+            data.setdefault("email", request.user.email)
+        subscription = UnitNotificationSubscription.objects.create(**data)
+        out_serializer = VacancyNotifySubscribeSerializer(subscription)
+        return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MySubscriptionsView(APIView):
+    """GET /api/vacancies/my-subscriptions/ - list current user's vacancy notification subscriptions (tenant). Each includes match_count."""
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def get(self, request):
+        qs = UnitNotificationSubscription.objects.filter(user=request.user).order_by("-created_at")
+        serializer = MySubscriptionSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class DeleteSubscriptionView(APIView):
+    """DELETE /api/vacancies/notify-subscribe/<id>/ - delete a subscription. Tenant only; must own the subscription (user or email match)."""
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def delete(self, request, pk):
+        sub = get_object_or_404(UnitNotificationSubscription, pk=pk)
+        if sub.user_id != request.user.id and sub.email != request.user.email:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        sub.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CancelNoticeView(APIView):
