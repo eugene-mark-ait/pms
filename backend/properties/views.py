@@ -121,8 +121,8 @@ class UnitListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Unit.objects.select_related("property").all()
         user = self.request.user
-        if user.has_role("landlord"):
-            qs = qs.filter(property__landlord=user)
+        if user.has_role("property_owner"):
+            qs = qs.filter(property__property_owner=user)
         elif user.has_role("manager"):
             qs = qs.filter(property__manager_assignments__manager=user)
         elif user.has_role("caretaker"):

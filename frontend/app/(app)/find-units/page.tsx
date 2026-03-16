@@ -65,7 +65,48 @@ export default function FindUnitsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [subscribePhone, setSubscribePhone] = useState("");
+  const [subscribeSubmitting, setSubscribeSubmitting] = useState(false);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+  const [subscribeError, setSubscribeError] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  function getCurrentSearchFilters(): Record<string, string> {
+    const f: Record<string, string> = {};
+    if (unitType) f.unit_type = unitType;
+    if (location.trim()) f.location = location.trim();
+    if (minRent.trim()) f.min_rent = minRent.trim();
+    if (maxRent.trim()) f.max_rent = maxRent.trim();
+    return f;
+  }
+
+  function submitSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    const email = subscribeEmail.trim();
+    if (!email) {
+      setSubscribeError("Email is required.");
+      return;
+    }
+    setSubscribeError("");
+    setSubscribeSubmitting(true);
+    api
+      .post("/vacancies/notify-subscribe/", {
+        email,
+        phone: subscribePhone.trim() || undefined,
+        search_filters: getCurrentSearchFilters(),
+      })
+      .then(() => {
+        setSubscribeSuccess(true);
+        setSubscribeEmail("");
+        setSubscribePhone("");
+      })
+      .catch((err: { response?: { data?: { email?: string[]; detail?: string } } }) => {
+        const msg = err?.response?.data?.email?.[0] ?? err?.response?.data?.detail ?? "Failed to subscribe.";
+        setSubscribeError(msg);
+      })
+      .finally(() => setSubscribeSubmitting(false));
+  }
 
   function getBaseSearchParams(): URLSearchParams {
     const params = new URLSearchParams();
