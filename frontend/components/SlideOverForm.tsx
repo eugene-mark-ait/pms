@@ -116,12 +116,18 @@ export default function SlideOverForm({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Enter: first paint in closed state (translate-x-full), then transition to open so browser can animate
+  // Enter: paint closed state, force reflow, then transition to open for smooth slide-in
   useLayoutEffect(() => {
     if (isOpen) {
       setVisible(false);
       setIsClosing(false);
-      const id = requestAnimationFrame(() => setVisible(true));
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Force reflow so browser has applied translate-x-full before we transition
+          if (panelRef.current) void panelRef.current.offsetHeight;
+          setVisible(true);
+        });
+      });
       return () => cancelAnimationFrame(id);
     } else {
       setVisible(false);
@@ -156,7 +162,7 @@ export default function SlideOverForm({
       />
       <div
         ref={panelRef}
-        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col transform transition-transform duration-300 ease-in-out ${panelTranslate}`}
+        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col will-change-transform transform transition-transform duration-300 ease-in-out ${panelTranslate}`}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
         onClick={(e) => e.stopPropagation()}
       >
