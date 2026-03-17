@@ -372,16 +372,16 @@ export default function TenantsPage() {
         onClose={() => setAddLeaseDrawerOpen(false)}
         title="Add Lease (Assign Tenant)"
         width="lg"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setAddLeaseDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={LEASE_CREATE_FORM_ID} type="submit" disabled={leaseFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {leaseFormSubmitting ? "Creating…" : "Create Lease"}
             </button>
           </div>
-        }
+        )}
       >
         <LeaseCreateForm
           onSuccess={() => { setAddLeaseDrawerOpen(false); refresh(); }}

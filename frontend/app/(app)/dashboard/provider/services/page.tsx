@@ -141,16 +141,16 @@ export default function ProviderServicesPage() {
         onClose={() => setAddDrawerOpen(false)}
         title="Add a New Service You Offer"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={SERVICE_FORM_ID} type="submit" disabled={formSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {formSubmitting ? "Creating…" : "Create Service"}
             </button>
           </div>
-        }
+        )}
       >
         <ServiceForm
           mode="create"
@@ -168,16 +168,16 @@ export default function ProviderServicesPage() {
         onClose={() => setEditService(null)}
         title="Edit Service"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setEditService(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={SERVICE_FORM_ID} type="submit" disabled={formSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {formSubmitting ? "Saving…" : "Save"}
             </button>
           </div>
-        }
+        )}
       >
         {editService && (
           <ServiceForm

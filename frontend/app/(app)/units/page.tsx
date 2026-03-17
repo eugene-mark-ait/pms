@@ -302,16 +302,16 @@ export default function UnitsPage() {
         onClose={() => setAddDrawerOpen(false)}
         title="Add Unit"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={UNIT_CREATE_FORM_ID} type="submit" disabled={unitFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {unitFormSubmitting ? "Creating…" : "Create Unit"}
             </button>
           </div>
-        }
+        )}
       >
         <UnitCreateForm
           initialPropertyId={propertyId ?? undefined}
@@ -325,16 +325,16 @@ export default function UnitsPage() {
         onClose={() => setEditUnitId(null)}
         title="Edit Unit"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setEditUnitId(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={UNIT_EDIT_FORM_ID} type="submit" disabled={unitFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {unitFormSubmitting ? "Saving…" : "Save"}
             </button>
           </div>
-        }
+        )}
       >
         {editUnitId && (
           <UnitEditForm
@@ -350,16 +350,16 @@ export default function UnitsPage() {
         onClose={() => !bulkSubmitting && setBulkOpen(false)}
         title="Bulk upload units"
         width="lg"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setBulkOpen(false)} disabled={bulkSubmitting} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 disabled:opacity-50">
+            <button type="button" onClick={onRequestClose} disabled={bulkSubmitting} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 disabled:opacity-50">
               Cancel
             </button>
             <button type="button" onClick={handleBulkSubmit} disabled={bulkSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {bulkSubmitting ? "Creating…" : "Create units"}
             </button>
           </div>
-        }
+        )}
       >
         <div className="space-y-4">
           <p className="text-sm text-surface-600 dark:text-surface-400">Upload a CSV with columns: Unit Name, Type, Rent, Deposit, Status.</p>

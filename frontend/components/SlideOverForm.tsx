@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 
-const OVERLAY_CLASS =
-  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end bg-surface-900/40 dark:bg-surface-950/50 backdrop-blur-sm z-[100] transition-opacity duration-200 ease-in-out";
+const OVERLAY_BASE =
+  "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end z-[100]";
+const BACKDROP_CLASS =
+  "absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out";
 
 const WIDTH_CLASS = {
   sm: "max-w-full sm:max-w-sm",
@@ -20,8 +22,8 @@ export interface SlideOverFormProps {
   title: string;
   children: React.ReactNode;
   width?: WidthKey;
-  /** Optional sticky footer (e.g. Save / Cancel). If not provided, no footer. */
-  footer?: React.ReactNode;
+  /** Optional sticky footer (e.g. Save / Cancel). If function, receives onRequestClose to trigger animated close. */
+  footer?: React.ReactNode | ((onRequestClose: () => void) => React.ReactNode);
   /** Optional aria-describedby for the dialog description. */
   ariaDescribedBy?: string;
 }
@@ -38,6 +40,9 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(selector));
 }
 
+const TRANSITION_PANEL =
+  "transition-transform duration-300 ease-in-out transform";
+
 export default function SlideOverForm({
   isOpen,
   onClose,
@@ -49,13 +54,21 @@ export default function SlideOverForm({
 }: SlideOverFormProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const [entered, setEntered] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  // Close: animate out then notify parent (useEffect below runs timeout)
+  const handleClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+  }, [isClosing]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!isOpen) return;
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        handleClose();
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
@@ -75,7 +88,7 @@ export default function SlideOverForm({
         }
       }
     },
-    [isOpen, onClose]
+    [isOpen, handleClose]
   );
 
   useEffect(() => {
@@ -105,20 +118,45 @@ export default function SlideOverForm({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  // Enter: start off-screen, then transition to visible
+  useEffect(() => {
+    if (!isOpen) return;
+    setEntered(false);
+    setIsClosing(false);
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isClosing) return;
+    const t = window.setTimeout(() => onClose(), 300);
+    return () => window.clearTimeout(t);
+  }, [isClosing, onClose]);
+
   if (!isOpen) return null;
+
+  const panelVisible = entered && !isClosing;
+  const backdropOpacity = panelVisible ? "opacity-100" : "opacity-0";
+  const panelTranslate = panelVisible ? "translate-x-0" : "translate-x-full";
 
   const content = (
     <div
-      className={OVERLAY_CLASS}
-      onClick={onClose}
+      className={OVERLAY_BASE}
       role="dialog"
       aria-modal="true"
       aria-labelledby="slide-over-form-title"
       aria-describedby={ariaDescribedBy}
     >
       <div
+        className={`${BACKDROP_CLASS} ${backdropOpacity}`}
+        onClick={handleClose}
+        aria-hidden
+      />
+      <div
         ref={panelRef}
-        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col animate-slide-in-right`}
+        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col ${TRANSITION_PANEL} ${panelTranslate}`}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -129,7 +167,7 @@ export default function SlideOverForm({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="shrink-0 rounded-lg p-2 text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 hover:text-surface-700 dark:hover:text-surface-200 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close"
           >
@@ -147,7 +185,7 @@ export default function SlideOverForm({
         {/* Sticky footer */}
         {footer != null && (
           <div className="shrink-0 p-6 pt-4 border-t border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
-            {footer}
+            {typeof footer === "function" ? footer(handleClose) : footer}
           </div>
         )}
       </div>

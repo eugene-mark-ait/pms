@@ -171,16 +171,16 @@ export default function PropertiesPage() {
         onClose={() => setAddDrawerOpen(false)}
         title="Add Property"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={PROPERTY_FORM_ID} type="submit" disabled={propertyFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {propertyFormSubmitting ? "Creating…" : "Create Property"}
             </button>
           </div>
-        }
+        )}
       >
         <PropertyForm
           mode="create"
@@ -194,16 +194,16 @@ export default function PropertiesPage() {
         onClose={() => setEditPropertyId(null)}
         title="Edit Property"
         width="md"
-        footer={
+        footer={(onRequestClose) => (
           <div className="flex gap-3">
-            <button type="button" onClick={() => setEditPropertyId(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+            <button type="button" onClick={onRequestClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
               Cancel
             </button>
             <button form={PROPERTY_FORM_ID} type="submit" disabled={propertyFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
               {propertyFormSubmitting ? "Saving…" : "Save"}
             </button>
           </div>
-        }
+        )}
       >
         {editPropertyId && (
           <PropertyForm
