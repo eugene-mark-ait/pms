@@ -1,8 +1,9 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import serializers as drf_serializers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
@@ -27,8 +28,19 @@ class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
 
+class SafeTokenRefreshSerializer(TokenRefreshSerializer):
+    """Refresh serializer that handles missing/deleted users without raising 500."""
+
+    def validate(self, attrs):
+        try:
+            return super().validate(attrs)
+        except User.DoesNotExist:
+            raise drf_serializers.ValidationError({"detail": "Invalid or expired refresh token"})
+
+
 class RefreshTokenView(TokenRefreshView):
-    """POST /api/auth/refresh/ - returns new access token."""
+    """POST /api/auth/refresh/ - returns new access token. Fails gracefully if user no longer exists."""
+    serializer_class = SafeTokenRefreshSerializer
 
 
 class CurrentUserView(generics.RetrieveUpdateAPIView):
