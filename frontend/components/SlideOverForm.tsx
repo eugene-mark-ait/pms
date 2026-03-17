@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 const OVERLAY_BASE =
   "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end z-[100]";
 const BACKDROP_BASE =
-  "absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out";
+  "absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out";
 
 const WIDTH_CLASS = {
   sm: "max-w-full sm:max-w-sm",
@@ -162,7 +162,7 @@ export default function SlideOverForm({
       />
       <div
         ref={panelRef}
-        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col will-change-transform transform transition-transform duration-300 ease-in-out ${panelTranslate}`}
+        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col will-change-transform transform transition-transform duration-300 ease-out ${panelTranslate}`}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
         onClick={(e) => e.stopPropagation()}
       >

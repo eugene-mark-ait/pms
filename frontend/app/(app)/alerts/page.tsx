@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import SlideOverForm from "@/components/SlideOverForm";
 import UnitAlertForm, {
   UNIT_ALERT_FORM_ID,
@@ -10,43 +11,47 @@ import UnitAlertForm, {
   type TenantUnitAlertType,
 } from "@/components/forms/UnitAlertForm";
 
+function parseAlertsResponse(data: unknown): { results: TenantUnitAlertType[]; next: string | null; count?: number } {
+  const d = data as { results?: TenantUnitAlertType[]; next?: string | null; count?: number };
+  return {
+    results: Array.isArray(d?.results) ? d.results : [],
+    next: d?.next ?? null,
+    count: d?.count,
+  };
+}
+
 export default function AlertsPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [alerts, setAlerts] = useState<TenantUnitAlertType[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [editAlert, setEditAlert] = useState<TenantUnitAlertType | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const isTenant = user?.role_names?.includes("tenant");
 
-  function loadAlerts() {
-    if (!isTenant) return;
-    api
-      .get<{ results?: TenantUnitAlertType[] }>("/vacancies/alerts/")
-      .then((r) => setAlerts(r.data?.results ?? []))
-      .catch(() => setAlerts([]))
-      .finally(() => setLoading(false));
-  }
+  const {
+    items: alerts,
+    loading,
+    loadingMore,
+    hasMore,
+    error,
+    refresh,
+    sentinelRef,
+  } = useInfiniteScroll<TenantUnitAlertType>({
+    endpoint: "/vacancies/alerts/",
+    pageSize: 20,
+    enabled: isTenant ?? false,
+    parseResponse: parseAlertsResponse,
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
-
-  useEffect(() => {
-    if (!isTenant) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    loadAlerts();
-  }, [isTenant]);
 
   async function handleToggleActive(alert: TenantUnitAlertType) {
     try {
       await api.patch(`/vacancies/alerts/${alert.id}/`, {
         is_active: !alert.is_active,
       });
-      loadAlerts();
+      refresh();
     } catch {
       alert("Failed to update alert.");
     }
@@ -57,7 +62,7 @@ export default function AlertsPage() {
     try {
       await api.delete(`/vacancies/alerts/${alert.id}/`);
       setEditAlert(null);
-      loadAlerts();
+      refresh();
     } catch {
       alert("Failed to delete alert.");
     }
@@ -66,6 +71,15 @@ export default function AlertsPage() {
   function getUnitTypeLabel(value: string) {
     if (!value) return "Any";
     return UNIT_TYPES_ALERT.find((o) => o.value === value)?.label ?? value.replace(/_/g, " ");
+  }
+
+  if (user === null) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+        <p className="text-surface-500 dark:text-surface-400">Loading…</p>
+      </div>
+    );
   }
 
   if (user && !isTenant) {
@@ -100,8 +114,13 @@ export default function AlertsPage() {
         )}
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
       {loading ? (
-        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400" role="status" aria-live="polite">
           <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
           <span>Loading alerts…</span>
         </div>
@@ -193,6 +212,20 @@ export default function AlertsPage() {
           ))}
         </div>
       )}
+      {alerts.length > 0 && (
+        <>
+          <div ref={sentinelRef} className="min-h-[24px]" aria-hidden />
+          {loadingMore && (
+            <div className="flex justify-center py-6" role="status" aria-live="polite">
+              <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+              <span className="sr-only">Loading more…</span>
+            </div>
+          )}
+          {!loadingMore && !hasMore && alerts.length > 0 && (
+            <p className="text-center text-sm text-surface-500 dark:text-surface-400 py-2">No more results</p>
+          )}
+        </>
+      )}
 
       <SlideOverForm
         isOpen={addDrawerOpen}
@@ -223,7 +256,7 @@ export default function AlertsPage() {
           mode="create"
           onSuccess={() => {
             setAddDrawerOpen(false);
-            loadAlerts();
+            refresh();
           }}
           onSubmittingChange={setFormSubmitting}
         />
@@ -261,7 +294,7 @@ export default function AlertsPage() {
             initialData={editAlert}
             onSuccess={() => {
               setEditAlert(null);
-              loadAlerts();
+              refresh();
             }}
             onSubmittingChange={setFormSubmitting}
           />

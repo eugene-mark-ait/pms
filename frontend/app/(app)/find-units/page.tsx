@@ -286,12 +286,16 @@ export default function FindUnitsPage() {
           </div>
           <div ref={sentinelRef} className="min-h-[24px]" aria-hidden />
           {loadingMore && (
-            <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <div className="flex justify-center py-8" role="status" aria-live="polite">
+              <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+              <span className="sr-only">Loading more…</span>
             </div>
           )}
           {!loadingMore && nextPageUrl && list.length < unitsFound && (
             <p className="text-center text-sm text-surface-500 dark:text-surface-400 py-2">Scroll for more</p>
+          )}
+          {!loadingMore && !nextPageUrl && list.length > 0 && (
+            <p className="text-center text-sm text-surface-500 dark:text-surface-400 py-2">No more results</p>
           )}
         </>
       )}

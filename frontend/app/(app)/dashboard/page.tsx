@@ -170,6 +170,9 @@ export default function DashboardPage() {
     api.patch<VacancyPreference>("/vacancies/my-preference/", updates).then((res) => setPreference(res.data)).catch((err: { response?: { data?: { detail?: string } } }) => setPrefError(err?.response?.data?.detail ?? "Failed to save")).finally(() => setPrefSaving(false));
   }
 
+  const tenantBalance = stats.balance != null ? parseFloat(stats.balance) : 0;
+  const hasBalance = tenantBalance > 0;
+
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-2">
@@ -181,6 +184,29 @@ export default function DashboardPage() {
           ) : null}
         </p>
       </div>
+
+      {isTenant && (
+        <div
+          className={`rounded-xl border p-6 shadow-sm ${
+            hasBalance
+              ? "border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20"
+              : "border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800"
+          }`}
+        >
+          <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Outstanding balance</p>
+          <p className={`mt-1 text-2xl font-bold tabular-nums ${hasBalance ? "text-amber-800 dark:text-amber-200" : "text-surface-900 dark:text-surface-100"}`}>
+            KSh {(stats.balance ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+          </p>
+          {hasBalance ? (
+            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">Amount due on your leases</p>
+          ) : (
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">No balance due</p>
+          )}
+          <Link href="/payments" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+            View payments →
+          </Link>
+        </div>
+      )}
 
       {canSeeOverview && (
         <>
@@ -246,10 +272,6 @@ export default function DashboardPage() {
 
       {isTenant && !canSeeOverview && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-            <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Outstanding Balance</p>
-            <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">KSh {(stats.balance ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-          </div>
           <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
             <p className="text-sm font-medium text-surface-500 dark:text-surface-400">My Units</p>
             <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.myUnitsCount ?? 0}</p>

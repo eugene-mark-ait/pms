@@ -318,9 +318,10 @@ class ApplicationDeclineView(APIView):
 
 
 class TenantUnitAlertListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/vacancies/alerts/ - list and create tenant unit alerts (tenant only)."""
+    """GET/POST /api/vacancies/alerts/ - list and create tenant unit alerts (tenant only). Paginated list."""
     permission_classes = [IsAuthenticated, IsTenant]
     serializer_class = TenantUnitAlertSerializer
+    pagination_class = OptionalPageSizePagination
 
     def get_queryset(self):
         return TenantUnitAlert.objects.filter(user=self.request.user)
