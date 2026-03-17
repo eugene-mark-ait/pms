@@ -51,7 +51,7 @@ class ServiceListCreateView(APIView):
 
     def get(self, request):
         qs = _services_queryset_with_ratings()
-        provider_id = request.query_params.get("provider_id")
+        provider_id = request.query_params.get("provider_id") or request.query_params.get("provider")
         if provider_id:
             qs = qs.filter(provider_id=provider_id)
         category = (request.query_params.get("category") or "").strip()
@@ -197,6 +197,22 @@ class MarketplaceInsightsView(APIView):
             "total_services": total_services,
             "active_providers": Service.objects.values("provider").distinct().count(),
         })
+
+
+class MarketplaceProvidersListView(APIView):
+    """GET /marketplace/providers/ - list providers who have at least one service (for filter dropdown)."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        provider_ids = Service.objects.values_list("provider_id", flat=True).distinct()
+        users = User.objects.filter(id__in=provider_ids).order_by("first_name", "last_name", "email")
+        out = []
+        for u in users:
+            name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email
+            out.append({"id": str(u.id), "email": u.email, "name": name})
+        return Response(out)
 
 
 class ServiceReviewListCreateView(APIView):

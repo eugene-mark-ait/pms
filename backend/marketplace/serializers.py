@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import Service, ServiceReview, ServiceRequest
 
+# Default image when service has no upload; avoid hardcoding in multiple places
+DEFAULT_SERVICE_IMAGE_PATH = "/static/defaults/service-placeholder.png"
+
 
 class ServiceSerializer(serializers.ModelSerializer):
     provider_name = serializers.SerializerMethodField()
@@ -38,7 +41,10 @@ class ServiceSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
-        return None
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(DEFAULT_SERVICE_IMAGE_PATH)
+        return DEFAULT_SERVICE_IMAGE_PATH
 
     def get_provider_name(self, obj):
         if not obj.provider_id:

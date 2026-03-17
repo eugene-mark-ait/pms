@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
+import { SERVICE_PLACEHOLDER } from "@/lib/marketplace";
 import SlideOverForm from "@/components/SlideOverForm";
 import ServiceRequestForm, { SERVICE_REQUEST_FORM_ID } from "@/components/forms/ServiceRequestForm";
 import { SERVICE_CATEGORIES, type MarketplaceService } from "@/components/forms/ServiceForm";
@@ -87,11 +88,14 @@ export default function ServiceDetailPage() {
         <Link href="/marketplace" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">← Marketplace</Link>
       </div>
       <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-        {service.image_url && (
-          <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-6">
-            <img src={service.image_url} alt="" className="w-full h-full object-cover" />
-          </div>
-        )}
+        <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-6">
+          <img
+            src={service.image_url || SERVICE_PLACEHOLDER}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={(e) => (e.currentTarget.src = SERVICE_PLACEHOLDER)}
+          />
+        </div>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">{service.title}</h1>
         <p className="text-surface-500 dark:text-surface-400 mt-1">{getCategoryLabel(service.category)}</p>
         <p className="text-surface-600 dark:text-surface-400 mt-2 font-medium">{service.provider_name ?? "Provider"}</p>

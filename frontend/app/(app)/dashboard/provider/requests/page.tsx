@@ -13,7 +13,7 @@ interface ServiceRequestItem {
   service_title: string;
   message: string;
   preferred_date: string | null;
-  status: "pending" | "actioned";
+  status: "pending" | "actioned" | "cancelled";
   created_at: string;
 }
 
@@ -27,8 +27,11 @@ export default function ProviderRequestsPage() {
   function loadRequests() {
     if (!isProvider) return;
     api
-      .get<ServiceRequestItem[]>("/marketplace/my-requests/")
-      .then((r) => setRequests(Array.isArray(r.data) ? r.data : []))
+      .get<{ results?: ServiceRequestItem[]; next?: string | null; count?: number } | ServiceRequestItem[]>("/marketplace/my-requests/")
+      .then((r) => {
+        const raw = (r.data as { results?: ServiceRequestItem[] })?.results ?? r.data;
+        setRequests(Array.isArray(raw) ? raw : []);
+      })
       .catch(() => setRequests([]))
       .finally(() => setLoading(false));
   }
@@ -107,10 +110,12 @@ export default function ProviderRequestsPage() {
                     className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
                       req.status === "pending"
                         ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
-                        : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
+                        : req.status === "actioned"
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
+                          : "bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-300"
                     }`}
                   >
-                    {req.status === "pending" ? "Pending" : "Actioned"}
+                    {req.status === "pending" ? "Pending" : req.status === "actioned" ? "Actioned" : "Cancelled"}
                   </span>
                   {req.status === "pending" && (
                     <button

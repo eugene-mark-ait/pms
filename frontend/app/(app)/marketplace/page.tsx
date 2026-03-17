@@ -4,8 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api, User } from "@/lib/api";
+import { SERVICE_PLACEHOLDER } from "@/lib/marketplace";
 import { SERVICE_CATEGORIES, type MarketplaceService } from "@/components/forms/ServiceForm";
 import { useCursorInfiniteScroll } from "@/hooks/useCursorInfiniteScroll";
+
+interface MarketplaceProvider {
+  id: string;
+  email: string;
+  name: string;
+}
 
 interface MarketplaceInsights {
   total_services?: number;
@@ -54,10 +61,12 @@ export default function MarketplacePage() {
   const [insights, setInsights] = useState<MarketplaceInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const category = searchParams.get("category") ?? "";
+  const providerId = searchParams.get("provider") ?? "";
   const minPrice = searchParams.get("min_price") ?? "";
   const maxPrice = searchParams.get("max_price") ?? "";
   const minRating = searchParams.get("min_rating") ?? "";
   const sort = searchParams.get("sort") ?? "newest";
+  const [providers, setProviders] = useState<MarketplaceProvider[]>([]);
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -73,6 +82,7 @@ export default function MarketplacePage() {
 
   const params: Record<string, string> = {};
   if (category) params.category = category;
+  if (providerId.trim()) params.provider_id = providerId.trim();
   if (minPrice.trim()) params.min_price = minPrice.trim();
   if (maxPrice.trim()) params.max_price = maxPrice.trim();
   if (minRating.trim()) params.min_rating = minRating.trim();
@@ -107,6 +117,14 @@ export default function MarketplacePage() {
       .then((res) => { if (!cancelled) setInsights(res.data ?? null); })
       .catch(() => { if (!cancelled) setInsights(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<MarketplaceProvider[]>("/marketplace/providers/")
+      .then((res) => { if (!cancelled) setProviders(Array.isArray(res.data) ? res.data : []); })
+      .catch(() => { if (!cancelled) setProviders([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -173,6 +191,19 @@ export default function MarketplacePage() {
               <option value="">All</option>
               {SERVICE_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Provider</label>
+            <select
+              value={providerId}
+              onChange={(e) => updateParams({ provider: e.target.value })}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-w-[160px]"
+            >
+              <option value="">All providers</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name || p.email}</option>
               ))}
             </select>
           </div>
@@ -249,11 +280,14 @@ export default function MarketplacePage() {
                   href={`/marketplace/services/${s.id}`}
                   className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-4 hover:shadow-md transition block"
                 >
-                  {s.image_url && (
-                    <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
-                      <img src={s.image_url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                  <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
+                    <img
+                      src={s.image_url || SERVICE_PLACEHOLDER}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={(e) => (e.currentTarget.src = SERVICE_PLACEHOLDER)}
+                    />
+                  </div>
                   <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
                   <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
                   <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.provider_name ?? "Provider"}</p>

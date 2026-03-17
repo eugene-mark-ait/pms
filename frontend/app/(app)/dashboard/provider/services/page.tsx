@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api, User } from "@/lib/api";
+import { SERVICE_PLACEHOLDER } from "@/lib/marketplace";
 import SlideOverForm from "@/components/SlideOverForm";
 import ServiceForm, {
   SERVICE_FORM_ID,
@@ -138,11 +139,14 @@ export default function ProviderServicesPage() {
               key={s.id}
               className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition flex flex-col"
             >
-              {s.image_url && (
-                <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
-                  <img src={s.image_url} alt="" className="w-full h-full object-cover" />
-                </div>
-              )}
+              <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
+                <img
+                  src={s.image_url || SERVICE_PLACEHOLDER}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.src = SERVICE_PLACEHOLDER)}
+                />
+              </div>
               <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
               <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
               <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.service_area}</p>
