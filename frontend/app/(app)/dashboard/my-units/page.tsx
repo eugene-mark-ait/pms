@@ -36,9 +36,14 @@ export default function MyUnitsPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">My Units</h1>
-      {units.length === 0 ? (
+      {loadError && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {loadError} <button type="button" onClick={() => load()} className="font-medium underline">Retry</button>
+        </div>
+      )}
+      {units.length === 0 && !loadError ? (
         <p className="text-surface-600 dark:text-surface-400">You have no active leases.</p>
-      ) : (
+      ) : units.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2">
           {units.map((lease) => (
             <div
