@@ -45,7 +45,8 @@ class CursorPagination(BasePagination):
             # Next page: rows where (created_at, id) < (cursor_created_at, cursor_id)
             qs = qs.filter(
                 Q(created_at__lt=cursor["created_at"])
-                | (Q(created_at=cursor["created_at"]) & Q(id__lt=cursor["id"]))
+                | (Q(created_at=cursor["created_at"]) & Q(id__lt=cursor["id"])),
+            )
         self.queryset = qs
         self.page = list(qs[: page_size + 1])
         self.has_next = len(self.page) > page_size
