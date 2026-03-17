@@ -51,12 +51,12 @@ export default function ComplaintDetailModal({
     : "—";
 
   const footer =
-    canManage && complaint.status !== "closed" && onCloseComplaint ? (
+    canManage && complaint != null && complaint.status !== "closed" && onCloseComplaint ? (
       <div className="flex gap-3">
         <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
           Cancel
         </button>
-        <button type="button" onClick={() => onCloseComplaint(complaint.id)} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+        <button type="button" onClick={() => complaint && onCloseComplaint(complaint.id)} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
           Close complaint
         </button>
       </div>
