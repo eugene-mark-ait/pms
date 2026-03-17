@@ -326,6 +326,9 @@ class TenantUnitAlertListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return TenantUnitAlert.objects.filter(user=self.request.user)
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 class TenantUnitAlertDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PUT/PATCH/DELETE /api/vacancies/alerts/<id>/ - retrieve, update, or delete an alert (owner only)."""

@@ -18,6 +18,16 @@ class CursorPagination(BasePagination):
     max_page_size = 100
     cursor_query_param = "cursor"
 
+    def get_page_size(self, request):
+        """Support dynamic page size via query param; respect max_page_size."""
+        if self.page_size_query_param:
+            try:
+                size = int(request.query_params.get(self.page_size_query_param, self.page_size))
+                return min(size, self.max_page_size)
+            except (ValueError, TypeError):
+                pass
+        return self.page_size
+
     def _decode_cursor(self, cursor_str):
         if not cursor_str:
             return None

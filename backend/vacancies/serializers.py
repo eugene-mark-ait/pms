@@ -70,7 +70,7 @@ class TenantVacancyPreferenceSerializer(serializers.ModelSerializer):
 
 
 class TenantUnitAlertSerializer(serializers.ModelSerializer):
-    """Tenant saved search alert: unit type, rent range, location, contact (email/phone)."""
+    """Tenant saved search alert: unit type, rent range, location, contact (email/phone). User set in perform_create."""
     class Meta:
         model = TenantUnitAlert
         fields = [
@@ -79,6 +79,7 @@ class TenantUnitAlertSerializer(serializers.ModelSerializer):
             "is_active", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        # user is never sent by client; set in view via perform_create
 
     def validate(self, attrs):
         # Partial update (e.g. is_active only): skip criteria check

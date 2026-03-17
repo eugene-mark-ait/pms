@@ -261,7 +261,7 @@ class MySentRequestsView(APIView):
         paginator = CursorPagination()
         page = paginator.paginate_queryset(qs, request)
         if page is None:
-            page = qs[: paginator.get_page_size(request)]
+            page = qs[: paginator.get_page_size(paginator.request)]
         serializer = ServiceRequestSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
@@ -294,7 +294,7 @@ class MyRequestsView(APIView):
         paginator = CursorPagination()
         page = paginator.paginate_queryset(qs, request)
         if page is None:
-            page = qs[: paginator.get_page_size(request)]
+            page = qs[: paginator.get_page_size(paginator.request)]
         return paginator.get_paginated_response(ServiceRequestSerializer(page, many=True).data)
 
 
