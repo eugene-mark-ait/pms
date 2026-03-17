@@ -6,6 +6,7 @@ class ServiceSerializer(serializers.ModelSerializer):
     provider_name = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
@@ -22,12 +23,22 @@ class ServiceSerializer(serializers.ModelSerializer):
             "service_area",
             "availability",
             "contact_info",
+            "image",
+            "image_url",
             "average_rating",
             "review_count",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "provider", "created_at", "updated_at"]
+
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
     def get_provider_name(self, obj):
         if not obj.provider_id:
@@ -98,12 +109,13 @@ class ServiceReviewSerializer(serializers.ModelSerializer):
 
 class ServiceRequestSerializer(serializers.ModelSerializer):
     service_title = serializers.CharField(source="service.title", read_only=True)
+    service_category = serializers.CharField(source="service.category", read_only=True)
     requester_email = serializers.CharField(source="user.email", read_only=True)
 
     class Meta:
         model = ServiceRequest
         fields = [
-            "id", "user", "requester_email", "provider", "service", "service_title",
+            "id", "user", "requester_email", "provider", "service", "service_title", "service_category",
             "message", "preferred_date", "status", "created_at",
         ]
         read_only_fields = ["id", "user", "provider", "service", "status", "created_at"]

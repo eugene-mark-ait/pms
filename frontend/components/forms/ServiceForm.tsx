@@ -33,6 +33,7 @@ export interface MarketplaceService {
   service_area: string;
   availability?: string;
   contact_info?: string;
+  image_url?: string | null;
   average_rating?: number;
   review_count?: number;
   created_at?: string;

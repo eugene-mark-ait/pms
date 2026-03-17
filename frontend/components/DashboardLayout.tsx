@@ -21,6 +21,7 @@ const navItems: { href: string; label: string; roles: string[]; icon: React.Reac
   { href: "/complaints", label: "Complaints", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <AlertIcon /> },
   { href: "/messages", label: "Messages", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <MessageIcon /> },
   { href: "/marketplace", label: "Marketplace", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <MarketplaceIcon /> },
+  { href: "/marketplace/requests", label: "My requests", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <BellIcon /> },
   { href: "/dashboard/provider", label: "Provider Dashboard", roles: ["service_provider"], icon: <ProviderDashboardIcon /> },
   { href: "/settings", label: "Settings", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <SettingsIcon /> },
 ];

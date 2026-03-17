@@ -18,6 +18,7 @@ export default function ProviderServicesPage() {
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [editService, setEditService] = useState<MarketplaceService | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const isProvider = user?.role_names?.includes("service_provider");
 
   function loadServices() {
@@ -54,6 +55,32 @@ export default function ProviderServicesPage() {
       loadServices();
     } catch {
       alert("Failed to delete service.");
+    }
+  }
+
+  async function handleImageUpload(serviceId: string, file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be under 5MB.");
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      alert("Use JPEG, PNG, WebP, or GIF.");
+      return;
+    }
+    setUploadingId(serviceId);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      await api.post(`/marketplace/services/${serviceId}/upload-image/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      loadServices();
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { detail?: string } } };
+      alert(ax.response?.data?.detail ?? "Upload failed.");
+    } finally {
+      setUploadingId(null);
     }
   }
 
@@ -111,11 +138,30 @@ export default function ProviderServicesPage() {
               key={s.id}
               className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition flex flex-col"
             >
+              {s.image_url && (
+                <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
+                  <img src={s.image_url} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
               <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
               <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
               <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.service_area}</p>
               <p className="text-sm text-surface-600 dark:text-surface-400 mt-2 line-clamp-2 flex-1">{s.description}</p>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
+                <label className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    disabled={uploadingId === s.id}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageUpload(s.id, f);
+                      e.target.value = "";
+                    }}
+                  />
+                  {uploadingId === s.id ? "Uploading…" : "Upload image"}
+                </label>
                 <button
                   type="button"
                   onClick={() => setEditService(s)}

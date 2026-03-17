@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api, User } from "@/lib/api";
 import { SERVICE_CATEGORIES, type MarketplaceService } from "@/components/forms/ServiceForm";
+import { useCursorInfiniteScroll } from "@/hooks/useCursorInfiniteScroll";
 
 interface MarketplaceInsights {
   total_services?: number;
@@ -37,30 +39,63 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest first" },
+  { value: "rating_desc", label: "Highest rated" },
+  { value: "rating_asc", label: "Lowest rated" },
+  { value: "reviews_desc", label: "Most reviews" },
+];
+
 export default function MarketplacePage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [insights, setInsights] = useState<MarketplaceInsights | null>(null);
-  const [services, setServices] = useState<MarketplaceService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [servicesLoading, setServicesLoading] = useState(true);
-  const [category, setCategory] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [minRating, setMinRating] = useState("");
+  const category = searchParams.get("category") ?? "";
+  const minPrice = searchParams.get("min_price") ?? "";
+  const maxPrice = searchParams.get("max_price") ?? "";
+  const minRating = searchParams.get("min_rating") ?? "";
+  const sort = searchParams.get("sort") ?? "newest";
 
-  const fetchServices = useCallback(() => {
-    setServicesLoading(true);
-    const params = new URLSearchParams();
-    if (category) params.set("category", category);
-    if (minPrice.trim()) params.set("min_price", minPrice.trim());
-    if (maxPrice.trim()) params.set("max_price", maxPrice.trim());
-    if (minRating.trim()) params.set("min_rating", minRating.trim());
-    api
-      .get<{ results?: MarketplaceService[] }>(`/marketplace/services/?${params.toString()}`)
-      .then((res) => setServices(res.data?.results ?? []))
-      .catch(() => setServices([]))
-      .finally(() => setServicesLoading(false));
-  }, [category, minPrice, maxPrice, minRating]);
+  const updateParams = useCallback(
+    (updates: Record<string, string>) => {
+      const p = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([k, v]) => {
+        if (v === "" || v == null) p.delete(k);
+        else p.set(k, v);
+      });
+      router.replace(`${pathname}?${p.toString()}`);
+    },
+    [searchParams, router, pathname]
+  );
+
+  const params: Record<string, string> = {};
+  if (category) params.category = category;
+  if (minPrice.trim()) params.min_price = minPrice.trim();
+  if (maxPrice.trim()) params.max_price = maxPrice.trim();
+  if (minRating.trim()) params.min_rating = minRating.trim();
+  if (sort && sort !== "newest") params.sort = sort;
+
+  const {
+    items: services,
+    loading: servicesLoading,
+    loadingMore,
+    hasMore,
+    error: servicesError,
+    refresh,
+    sentinelRef,
+  } = useCursorInfiniteScroll<MarketplaceService>({
+    endpoint: "/marketplace/services/",
+    params,
+    pageSize: 20,
+    enabled: true,
+    parseResponse: (data) => {
+      const d = data as { results?: MarketplaceService[]; next?: string | null };
+      return { results: d?.results ?? [], next: d?.next ?? null };
+    },
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -74,10 +109,6 @@ export default function MarketplacePage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    fetchServices();
-  }, [fetchServices]);
 
   const totalServices = insights?.total_services ?? 0;
   const activeProviders = insights?.active_providers ?? 0;
@@ -136,7 +167,7 @@ export default function MarketplacePage() {
             <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Category</label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => updateParams({ category: e.target.value })}
               className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-w-[140px]"
             >
               <option value="">All</option>
@@ -151,7 +182,8 @@ export default function MarketplacePage() {
               type="number"
               min={0}
               value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              onChange={(e) => updateParams({ min_price: e.target.value })}
+              onBlur={(e) => updateParams({ min_price: e.target.value })}
               placeholder="Optional"
               className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 w-28 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             />
@@ -162,7 +194,8 @@ export default function MarketplacePage() {
               type="number"
               min={0}
               value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
+              onChange={(e) => updateParams({ max_price: e.target.value })}
+              onBlur={(e) => updateParams({ max_price: e.target.value })}
               placeholder="Optional"
               className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 w-28 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             />
@@ -171,7 +204,7 @@ export default function MarketplacePage() {
             <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Min rating</label>
             <select
               value={minRating}
-              onChange={(e) => setMinRating(e.target.value)}
+              onChange={(e) => updateParams({ min_rating: e.target.value })}
               className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
             >
               <option value="">Any</option>
@@ -180,7 +213,24 @@ export default function MarketplacePage() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Sort by</label>
+            <select
+              value={sort}
+              onChange={(e) => updateParams({ sort: e.target.value })}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 min-w-[140px]"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
+        {servicesError && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 text-sm text-amber-800 dark:text-amber-200 mb-4">
+            {servicesError} <button type="button" onClick={() => refresh()} className="underline">Retry</button>
+          </div>
+        )}
         {servicesLoading ? (
           <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400 py-6">
             <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
@@ -191,25 +241,42 @@ export default function MarketplacePage() {
             <p className="text-surface-500 dark:text-surface-400 text-sm">No services match your filters. Try adjusting or clear filters.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <Link
-                key={s.id}
-                href={`/marketplace/services/${s.id}`}
-                className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-4 hover:shadow-md transition block"
-              >
-                <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
-                <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.provider_name ?? "Provider"}</p>
-                <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">{s.service_area}</p>
-                <p className="text-sm text-surface-600 dark:text-surface-400 mt-2 line-clamp-2">{s.description}</p>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">{formatPriceRange(s)}</p>
-                {(s.average_rating ?? 0) > 0 && (
-                  <p className="mt-1"><StarRating value={s.average_rating ?? 0} /></p>
-                )}
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {services.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/marketplace/services/${s.id}`}
+                  className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-4 hover:shadow-md transition block"
+                >
+                  {s.image_url && (
+                    <div className="aspect-video rounded-lg overflow-hidden bg-surface-200 dark:bg-surface-700 mb-3">
+                      <img src={s.image_url} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.provider_name ?? "Provider"}</p>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">{s.service_area}</p>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 mt-2 line-clamp-2">{s.description}</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">{formatPriceRange(s)}</p>
+                  {((s.average_rating ?? 0) > 0 || (s.review_count ?? 0) > 0) && (
+                    <p className="mt-1"><StarRating value={s.average_rating ?? 0} /> <span className="text-surface-500">({s.review_count ?? 0} reviews)</span></p>
+                  )}
+                </Link>
+              ))}
+            </div>
+            <div ref={sentinelRef} className="min-h-[24px]" aria-hidden />
+            {loadingMore && (
+              <div className="flex justify-center py-6" role="status" aria-live="polite">
+                <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+                <span className="sr-only">Loading more…</span>
+              </div>
+            )}
+            {!loadingMore && !hasMore && services.length > 0 && (
+              <p className="text-center text-sm text-surface-500 dark:text-surface-400 py-2">No more results</p>
+            )}
+          </>
         )}
       </section>
     </div>

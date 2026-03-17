@@ -28,6 +28,8 @@ class Service(models.Model):
     service_area = models.CharField(max_length=255)
     availability = models.CharField(max_length=255, blank=True)
     contact_info = models.CharField(max_length=255, blank=True)
+    # Optional image: stored in MEDIA_ROOT or S3 (e.g. marketplace/service/<uuid>.jpg)
+    image = models.ImageField(upload_to="marketplace/services/", blank=True, null=True, max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -86,10 +88,11 @@ class ServiceReview(models.Model):
 
 
 class ServiceRequest(models.Model):
-    """User request for a service; provider can mark as actioned."""
+    """User request for a service; provider can mark as actioned; user can cancel if pending."""
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         ACTIONED = "actioned", "Actioned"
+        CANCELLED = "cancelled", "Cancelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
