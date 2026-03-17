@@ -7,13 +7,14 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from leases.models import LeaseHistory
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitApplication
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitApplication, TenantUnitAlert
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
     VacancyDiscoverySerializer,
     UnitApplicationSerializer,
+    TenantUnitAlertSerializer,
 )
 from config.pagination import OptionalPageSizePagination
 from accounts.permissions import IsPropertyOwnerOrManagerOrCaretaker, IsTenant
@@ -314,3 +315,21 @@ class ApplicationDeclineView(APIView):
         app.status = UnitApplication.Status.DECLINED
         app.save(update_fields=["status", "updated_at"])
         return Response(UnitApplicationSerializer(app).data)
+
+
+class TenantUnitAlertListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/vacancies/alerts/ - list and create tenant unit alerts (tenant only)."""
+    permission_classes = [IsAuthenticated, IsTenant]
+    serializer_class = TenantUnitAlertSerializer
+
+    def get_queryset(self):
+        return TenantUnitAlert.objects.filter(user=self.request.user)
+
+
+class TenantUnitAlertDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PUT/PATCH/DELETE /api/vacancies/alerts/<id>/ - retrieve, update, or delete an alert (owner only)."""
+    permission_classes = [IsAuthenticated, IsTenant]
+    serializer_class = TenantUnitAlertSerializer
+
+    def get_queryset(self):
+        return TenantUnitAlert.objects.filter(user=self.request.user)

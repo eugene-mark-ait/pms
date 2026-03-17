@@ -10,7 +10,7 @@ import logging
 from decimal import Decimal
 from django.db.models import Q
 from properties.models import Unit
-from .models import UnitNotificationSubscription
+from .models import UnitNotificationSubscription, TenantUnitAlert
 
 logger = logging.getLogger(__name__)
 
@@ -174,9 +174,56 @@ def _send_notification_stub(subscription: UnitNotificationSubscription, unit: Un
     )
 
 
+def _tenant_alert_matches_unit(alert: TenantUnitAlert, unit: Unit) -> bool:
+    """Return True if this unit matches the tenant alert criteria."""
+    if alert.unit_type and unit.unit_type != alert.unit_type:
+        return False
+    if alert.location and alert.location.strip():
+        loc = alert.location.strip().lower()
+        prop = unit.property
+        if not (
+            (prop.location and loc in prop.location.lower())
+            or (prop.address and loc in prop.address.lower())
+        ):
+            return False
+    if alert.property_name and alert.property_name.strip():
+        if not unit.property_id or (unit.property.name or "").lower().find(alert.property_name.strip().lower()) < 0:
+            return False
+    if alert.min_rent is not None:
+        try:
+            if unit.monthly_rent < Decimal(str(alert.min_rent)):
+                return False
+        except (ValueError, TypeError):
+            pass
+    if alert.max_rent is not None:
+        try:
+            if unit.monthly_rent > Decimal(str(alert.max_rent)):
+                return False
+        except (ValueError, TypeError):
+            pass
+    return True
+
+
+def get_matching_tenant_alerts(unit: Unit):
+    """Return active TenantUnitAlert records whose criteria match this unit. For future in-app/email/SMS notifications."""
+    return [a for a in TenantUnitAlert.objects.filter(is_active=True).select_related("user") if _tenant_alert_matches_unit(a, unit)]
+
+
+def _notify_tenant_alert_stub(alert: TenantUnitAlert, unit: Unit, available_from=None):
+    """Stub: future in-app notification or email to alert.user."""
+    logger.info(
+        "Tenant alert match (stub): user %s alert %s unit %s available_from=%s",
+        alert.user_id,
+        alert.id,
+        unit.id,
+        available_from,
+    )
+
+
 def notify_subscribers(unit: Unit, available_from=None):
     """
     Find all subscriptions whose filters match this unit and trigger notifications.
+    Also find matching TenantUnitAlerts for future in-app/email notifications.
     Call this when:
     - Unit status changes to VACANT
     - Tenant submits a move-out notice (unit will become available)
@@ -191,3 +238,5 @@ def notify_subscribers(unit: Unit, available_from=None):
         _send_notification_stub(subscription, unit, available_from)
     if matching:
         logger.info("Notified %d subscriber(s) for unit %s", len(matching), unit.id)
+    for alert in get_matching_tenant_alerts(unit):
+        _notify_tenant_alert_stub(alert, unit, available_from)

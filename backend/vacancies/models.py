@@ -53,6 +53,43 @@ class UnitNotificationSubscription(models.Model):
         return f"{self.email} subscription"
 
 
+class TenantUnitAlert(models.Model):
+    """Tenant's saved search alert: get notified when units match criteria."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="tenant_unit_alerts",
+    )
+    unit_type = models.CharField(max_length=32, blank=True)
+    min_rent = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Minimum monthly rent (optional).",
+    )
+    max_rent = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Maximum monthly rent (optional).",
+    )
+    location = models.CharField(max_length=255, blank=True)
+    property_name = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenant_alerts"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Alert for {self.user.email} ({self.unit_type or 'any'} @ {self.location or 'any'})"
+
+
 class TenantVacancyPreference(models.Model):
     """Tenant's search preferences for finding a unit (unit type, location)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

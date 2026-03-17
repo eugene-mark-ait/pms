@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, TenantUnitAlert
 
 
 @admin.register(VacateNotice)
@@ -25,5 +25,14 @@ class TenantVacancyPreferenceAdmin(admin.ModelAdmin):
     list_display = ("user", "is_looking", "preferred_unit_type", "preferred_location", "updated_at")
     list_filter = ("is_looking", "preferred_unit_type")
     search_fields = ("user__email", "preferred_location")
+    raw_id_fields = ("user",)
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
+@admin.register(TenantUnitAlert)
+class TenantUnitAlertAdmin(admin.ModelAdmin):
+    list_display = ("user", "unit_type", "min_rent", "max_rent", "location", "is_active", "created_at")
+    list_filter = ("is_active", "unit_type")
+    search_fields = ("user__email", "location", "property_name")
     raw_id_fields = ("user",)
     readonly_fields = ("id", "created_at", "updated_at")

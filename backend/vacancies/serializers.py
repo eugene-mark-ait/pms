@@ -1,7 +1,7 @@
 from datetime import date as date_type
 
 from rest_framework import serializers
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication, TenantUnitAlert
 from properties.serializers import UnitSerializer, PropertyListSerializer
 from properties.models import Unit
 
@@ -67,6 +67,34 @@ class TenantVacancyPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = TenantVacancyPreference
         fields = ["id", "is_looking", "preferred_unit_type", "preferred_location", "created_at", "updated_at"]
+
+
+class TenantUnitAlertSerializer(serializers.ModelSerializer):
+    """Tenant saved search alert: unit type, rent range, location, etc."""
+    class Meta:
+        model = TenantUnitAlert
+        fields = [
+            "id", "unit_type", "min_rent", "max_rent", "location", "property_name",
+            "is_active", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        # Partial update (e.g. is_active only): skip criteria check
+        if self.instance and set(attrs.keys()) <= {"is_active"}:
+            return attrs
+        unit_type = (attrs.get("unit_type") or "").strip()
+        location = (attrs.get("location") or "").strip()
+        property_name = (attrs.get("property_name") or "").strip()
+        min_rent = attrs.get("min_rent")
+        max_rent = attrs.get("max_rent")
+        if not any([unit_type, location, property_name, min_rent is not None, max_rent is not None]):
+            raise serializers.ValidationError(
+                "Provide at least one criterion: unit type, location, property name, or rent range."
+            )
+        if min_rent is not None and max_rent is not None and min_rent > max_rent:
+            raise serializers.ValidationError("min_rent cannot be greater than max_rent.")
+        return attrs
 
 
 class VacancyNotifySubscribeSerializer(serializers.ModelSerializer):
