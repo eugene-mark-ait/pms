@@ -57,7 +57,10 @@ export default function DashboardPage() {
     balance?: string;
     myUnitsCount?: number;
     complaintsCount?: number;
+    /** Tenant: "paid" | "due" | "overdue" | "partial" from lease payment_status */
+    paymentStatusSummary?: "paid" | "due" | "overdue" | "partial";
   }>({});
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [recentPayments, setRecentPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [preference, setPreference] = useState<VacancyPreference | null>(null);
@@ -118,23 +121,35 @@ export default function DashboardPage() {
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
         } else if (roles.includes("tenant")) {
           const [myUnitsRes, paymentsRes] = await Promise.all([
-            api.get("/tenant/my-units/").catch(() => ({ data: [] })),
+            api.get("/tenant/my-units/").catch((err) => {
+              setDashboardError(err?.response?.data?.detail ?? "Could not load your units.");
+              return { data: [] };
+            }),
             api.get("/payments/history/").catch(() => ({ data: [] })),
           ]);
           const myUnits = Array.isArray(myUnitsRes.data) ? myUnitsRes.data : (myUnitsRes.data as { results?: unknown[] })?.results ?? [];
           const payments = Array.isArray(paymentsRes.data) ? paymentsRes.data : (paymentsRes.data as { results?: unknown[] })?.results ?? [];
-          const balance = (myUnits as { outstanding_balance?: string }[]).reduce((s, u) => s + parseFloat(u.outstanding_balance || "0"), 0);
+          const unitsList = myUnits as { outstanding_balance?: string; payment_status?: string }[];
+          const balance = unitsList.reduce((s, u) => s + parseFloat(String(u?.outstanding_balance ?? "0") || "0"), 0);
+          const statuses = unitsList.map((u) => u?.payment_status).filter(Boolean) as string[];
+          let paymentStatusSummary: "paid" | "due" | "overdue" | "partial" = "paid";
+          if (statuses.length === 0) paymentStatusSummary = "paid";
+          else if (statuses.some((s) => s === "overdue")) paymentStatusSummary = "overdue";
+          else if (statuses.some((s) => s === "due")) paymentStatusSummary = "due";
+          else if (statuses.some((s) => s !== "paid")) paymentStatusSummary = "partial";
           setStats({
             balance: balance.toFixed(2),
-            myUnitsCount: (myUnits as unknown[]).length,
+            myUnitsCount: myUnits.length,
+            paymentStatusSummary,
           });
           setRecentPayments((payments as PaymentRow[]).slice(0, 5));
         }
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
         }
-      } catch {
+      } catch (err) {
         setStats({});
+        setDashboardError("Failed to load dashboard.");
       } finally {
         setLoading(false);
       }
@@ -170,8 +185,9 @@ export default function DashboardPage() {
     api.patch<VacancyPreference>("/vacancies/my-preference/", updates).then((res) => setPreference(res.data)).catch((err: { response?: { data?: { detail?: string } } }) => setPrefError(err?.response?.data?.detail ?? "Failed to save")).finally(() => setPrefSaving(false));
   }
 
-  const tenantBalance = stats.balance != null ? parseFloat(stats.balance) : 0;
+  const tenantBalance = stats.balance != null ? parseFloat(String(stats.balance)) : 0;
   const hasBalance = tenantBalance > 0;
+  const isFullyPaid = stats.paymentStatusSummary === "paid";
 
   return (
     <div className="space-y-10">
@@ -185,26 +201,74 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {dashboardError && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {dashboardError} <Link href="/dashboard" className="font-medium underline">Refresh</Link>
+        </div>
+      )}
+
       {isTenant && (
-        <div
-          className={`rounded-xl border p-6 shadow-sm ${
-            hasBalance
-              ? "border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20"
-              : "border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800"
-          }`}
-        >
-          <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Outstanding balance</p>
-          <p className={`mt-1 text-2xl font-bold tabular-nums ${hasBalance ? "text-amber-800 dark:text-amber-200" : "text-surface-900 dark:text-surface-100"}`}>
-            KSh {(stats.balance ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-          </p>
-          {hasBalance ? (
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">Amount due on your leases</p>
-          ) : (
-            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">No balance due</p>
-          )}
-          <Link href="/payments" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
-            View payments →
-          </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                className={`rounded-xl border p-5 shadow-sm ${
+                  hasBalance
+                    ? "border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20"
+                    : "border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800"
+                }`}
+              >
+                <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Outstanding balance</p>
+                <p className={`mt-1 text-xl font-bold tabular-nums ${hasBalance ? "text-amber-800 dark:text-amber-200" : "text-surface-900 dark:text-surface-100"}`}>
+                  KSh {String(stats.balance ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                </p>
+                {hasBalance ? (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Rent + unpaid deposit minus payments</p>
+                ) : (
+                  <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">No balance due</p>
+                )}
+                <Link href="/payments" className="mt-2 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                  View payments →
+                </Link>
+              </div>
+              <div
+                className={`rounded-xl border p-5 shadow-sm ${
+                  isFullyPaid
+                    ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-900/20"
+                    : stats.paymentStatusSummary === "overdue"
+                      ? "border-red-200 dark:border-red-800 bg-red-50/80 dark:bg-red-900/20"
+                      : "border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800"
+                }`}
+              >
+                <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Payment status</p>
+                <p className={`mt-1 text-lg font-bold ${isFullyPaid ? "text-emerald-800 dark:text-emerald-200" : stats.paymentStatusSummary === "overdue" ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200"}`}>
+                  {isFullyPaid ? "Up to date" : stats.paymentStatusSummary === "overdue" ? "Overdue" : stats.paymentStatusSummary === "due" ? "Due" : "Partial"}
+                </p>
+                <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                  {isFullyPaid ? "All leases paid" : "See My Units for details"}
+                </p>
+                <Link href="/dashboard/my-units" className="mt-2 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                  My units →
+                </Link>
+              </div>
+            </div>
+            {stats.myUnitsCount != null && stats.myUnitsCount > 0 && (
+              <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
+                <p className="text-sm font-medium text-surface-500 dark:text-surface-400">My Units</p>
+                <p className="mt-1 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.myUnitsCount}</p>
+              </div>
+            )}
+          </div>
+          <div className="space-y-4">
+            <Link href="/alerts" className="block rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+              <span className="font-medium text-surface-900 dark:text-surface-100">Vacancy Alerts</span>
+              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Create and manage alerts for matching units</p>
+            </Link>
+            <Link href="/complaints" className="block rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+              <span className="font-medium text-surface-900 dark:text-surface-100">Complaints</span>
+              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">View and submit complaints</p>
+            </Link>
+          </div>
         </div>
       )}
 
@@ -268,15 +332,6 @@ export default function DashboardPage() {
             </div>
           )}
         </>
-      )}
-
-      {isTenant && !canSeeOverview && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-            <p className="text-sm font-medium text-surface-500 dark:text-surface-400">My Units</p>
-            <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.myUnitsCount ?? 0}</p>
-          </div>
-        </div>
       )}
 
       {isTenant && (

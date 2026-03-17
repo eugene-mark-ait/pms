@@ -26,6 +26,8 @@ export interface TenantUnitAlertType {
   max_rent: string | number | null;
   location: string;
   property_name: string;
+  email?: string;
+  phone?: string;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -59,6 +61,8 @@ export default function UnitAlertForm({
   );
   const [location, setLocation] = useState(initialData?.location ?? "");
   const [propertyName, setPropertyName] = useState(initialData?.property_name ?? "");
+  const [email, setEmail] = useState(initialData?.email ?? "");
+  const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [loading, setLoading] = useState(mode === "edit" && !!alertId);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -88,6 +92,8 @@ export default function UnitAlertForm({
       setMaxRent(initialData.max_rent != null ? String(initialData.max_rent) : "");
       setLocation(initialData.location ?? "");
       setPropertyName(initialData.property_name ?? "");
+      setEmail(initialData.email ?? "");
+      setPhone(initialData.phone ?? "");
     }
   }, [mode, alertId]);
 
@@ -232,6 +238,28 @@ export default function UnitAlertForm({
           placeholder="Filter by property name"
           className={inputBase}
         />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Contact email (optional)</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Where to notify you"
+            className={inputBase}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Contact phone (optional)</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="e.g. 07XX XXX XXX"
+            className={inputBase}
+          />
+        </div>
       </div>
       <p className="text-xs text-surface-500 dark:text-surface-400">
         Provide at least one criterion. You’ll be notified when matching units become available.

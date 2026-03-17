@@ -30,6 +30,7 @@ export default function ServiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -76,6 +77,12 @@ export default function ServiceDetailPage() {
 
   return (
     <div className="space-y-6">
+      {requestSuccess && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+          <span>Request sent. The provider will contact you.</span>
+          <button type="button" onClick={() => setRequestSuccess(false)} className="text-emerald-600 dark:text-emerald-400 hover:underline">Dismiss</button>
+        </div>
+      )}
       <div>
         <Link href="/marketplace" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">← Marketplace</Link>
       </div>
@@ -139,6 +146,7 @@ export default function ServiceDetailPage() {
         <ServiceRequestForm
           serviceId={id}
           onSuccess={() => {
+            setRequestSuccess(true);
             setRequestDrawerOpen(false);
             router.refresh();
           }}

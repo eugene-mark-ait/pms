@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { AxiosError } from "axios";
 
 export const SERVICE_REQUEST_FORM_ID = "service-request-form";
 
 const inputBase =
   "w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition";
 const labelClass = "block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1";
+
+function getErrorMessage(err: unknown): string {
+  const ax = err as AxiosError<{ message?: string[]; preferred_date?: string[]; detail?: string }>;
+  const data = ax.response?.data;
+  if (!data) return "Failed to send request. Please try again.";
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.message) && data.message.length) return data.message[0];
+  if (Array.isArray(data.preferred_date) && data.preferred_date.length) return `Date: ${data.preferred_date[0]}`;
+  return "Failed to send request. Please try again.";
+}
 
 interface ServiceRequestFormProps {
   serviceId: string;
@@ -28,7 +39,8 @@ export default function ServiceRequestForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!message.trim()) {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
       setError("Please describe what you need.");
       return;
     }
@@ -36,14 +48,14 @@ export default function ServiceRequestForm({
     onSubmittingChange?.(true);
     try {
       await api.post(`/marketplace/services/${serviceId}/request/`, {
-        message: message.trim(),
+        message: trimmedMessage,
         preferred_date: preferredDate.trim() || null,
       });
       setMessage("");
       setPreferredDate("");
       onSuccess();
-    } catch {
-      setError("Failed to send request. Please try again.");
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
       onSubmittingChange?.(false);

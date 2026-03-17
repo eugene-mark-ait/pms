@@ -70,11 +70,12 @@ class TenantVacancyPreferenceSerializer(serializers.ModelSerializer):
 
 
 class TenantUnitAlertSerializer(serializers.ModelSerializer):
-    """Tenant saved search alert: unit type, rent range, location, etc."""
+    """Tenant saved search alert: unit type, rent range, location, contact (email/phone)."""
     class Meta:
         model = TenantUnitAlert
         fields = [
             "id", "unit_type", "min_rent", "max_rent", "location", "property_name",
+            "email", "phone",
             "is_active", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]

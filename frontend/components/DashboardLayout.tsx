@@ -12,7 +12,7 @@ const navItems: { href: string; label: string; roles: string[]; icon: React.Reac
   { href: "/choose-role", label: "Choose role", roles: [], icon: <SettingsIcon /> },
   { href: "/dashboard/my-units", label: "My Units", roles: ["tenant"], icon: <HomeIcon /> },
   { href: "/find-units", label: "Find units", roles: ["tenant"], icon: <SearchIcon /> },
-  { href: "/alerts", label: "Alerts", roles: ["tenant"], icon: <BellIcon /> },
+  { href: "/alerts", label: "Vacancy Alerts", roles: ["tenant"], icon: <BellIcon /> },
   { href: "/properties", label: "Properties", roles: ["property_owner", "manager", "caretaker"], icon: <BuildingIcon /> },
   { href: "/units", label: "Units", roles: ["property_owner", "manager", "caretaker"], icon: <GridIcon /> },
   { href: "/tenants", label: "Tenants", roles: ["property_owner", "manager", "caretaker"], icon: <UsersIcon /> },

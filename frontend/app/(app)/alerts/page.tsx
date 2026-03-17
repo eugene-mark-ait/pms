@@ -85,8 +85,8 @@ export default function AlertsPage() {
   if (user && !isTenant) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Unit alerts</h1>
-        <p className="text-surface-600 dark:text-surface-400">Only tenants can create and manage unit alerts.</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Vacancy Alerts</h1>
+        <p className="text-surface-600 dark:text-surface-400">Only tenants can create and manage vacancy alerts.</p>
         <Link href="/dashboard" className="text-primary-600 dark:text-primary-400 hover:underline">
           ← Dashboard
         </Link>
@@ -98,7 +98,7 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Unit alerts</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Vacancy Alerts</h1>
           <p className="text-surface-600 dark:text-surface-400 mt-1">
             Get notified when units matching your criteria become available.
           </p>
@@ -169,6 +169,11 @@ export default function AlertsPage() {
                   {alert.property_name && (
                     <p className="text-sm text-surface-500 dark:text-surface-500 truncate" title={alert.property_name}>
                       {alert.property_name}
+                    </p>
+                  )}
+                  {((alert as { email?: string }).email || (alert as { phone?: string }).phone) && (
+                    <p className="text-xs text-surface-500 dark:text-surface-500 mt-1">
+                      Contact: {[(alert as { email?: string }).email, (alert as { phone?: string }).phone].filter(Boolean).join(" · ")}
                     </p>
                   )}
                   <p className="text-xs text-surface-500 dark:text-surface-500 mt-2">

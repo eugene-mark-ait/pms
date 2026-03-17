@@ -9,15 +9,20 @@ import GiveNoticeDrawer from "@/components/GiveNoticeDrawer";
 export default function MyUnitsPage() {
   const [units, setUnits] = useState<Lease[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [payModalLease, setPayModalLease] = useState<Lease | null>(null);
   const [noticeModalLease, setNoticeModalLease] = useState<Lease | null>(null);
 
   function load() {
+    setLoadError(null);
     setLoading(true);
     api.get<Lease[]>("/tenant/my-units/").then((res) => {
       const data = res.data;
       setUnits(Array.isArray(data) ? data : (data as { results?: Lease[] })?.results ?? []);
-    }).catch(() => setUnits([])).finally(() => setLoading(false));
+    }).catch(() => {
+      setUnits([]);
+      setLoadError("Could not load your units. Please try again.");
+    }).finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -43,6 +48,8 @@ export default function MyUnitsPage() {
                   ? "bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-700 ring-1 ring-red-200/50 dark:ring-red-600/30"
                   : lease.has_active_notice
                   ? "bg-amber-50/80 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 ring-1 ring-amber-200/50 dark:ring-amber-600/30"
+                  : lease.payment_status === "paid"
+                  ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700 ring-1 ring-emerald-200/50 dark:ring-emerald-600/30"
                   : "bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700"
               }`}
             >
@@ -101,16 +108,24 @@ export default function MyUnitsPage() {
                 <div className="flex justify-between">
                   <dt className="text-surface-500 dark:text-surface-400">Status</dt>
                   <dd>
-                    <span className={lease.payment_status === "overdue" ? "text-red-600 dark:text-red-400" : lease.payment_status === "due" ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>
-                      {lease.payment_status?.charAt(0).toUpperCase() + (lease.payment_status?.slice(1) ?? "")}
+                    <span className={
+                      lease.payment_status === "paid"
+                        ? "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-600/20 dark:ring-emerald-500/30"
+                        : lease.payment_status === "overdue"
+                        ? "text-red-600 dark:text-red-400 font-medium"
+                        : lease.payment_status === "due"
+                        ? "text-amber-600 dark:text-amber-400 font-medium"
+                        : "text-surface-600 dark:text-surface-400"
+                    }>
+                      {lease.payment_status === "paid" ? "Up to date" : (lease.payment_status?.charAt(0).toUpperCase() ?? "") + (lease.payment_status?.slice(1) ?? "")}
                     </span>
                   </dd>
                 </div>
               </dl>
               <div className="mt-6 flex gap-3">
                 {lease.payment_status === "paid" ? (
-                  <span className="flex-1 inline-flex items-center justify-center py-2.5 px-4 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 font-medium">
-                    Paid
+                  <span className="flex-1 inline-flex items-center justify-center py-2.5 px-4 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 font-medium ring-1 ring-emerald-600/20 dark:ring-emerald-500/30">
+                    Paid · Up to date
                   </span>
                 ) : (
                   <button
@@ -150,7 +165,7 @@ export default function MyUnitsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <PayRentModal
         lease={payModalLease}
