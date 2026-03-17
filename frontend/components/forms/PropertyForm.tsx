@@ -151,7 +151,7 @@ export default function PropertyForm({
   }
 
   return (
-    <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+    <form id={PROPERTY_FORM_ID} onSubmit={handleSubmit} className="space-y-4">
       {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       <div>
         <label className={labelClass}>Name</label>

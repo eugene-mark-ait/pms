@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 
 const OVERLAY_BASE =
   "fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex justify-end z-[100]";
-const BACKDROP_CLASS =
+const BACKDROP_BASE =
   "absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out";
 
 const WIDTH_CLASS = {
@@ -40,9 +40,6 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(selector));
 }
 
-const TRANSITION_PANEL =
-  "transition-transform duration-300 ease-in-out transform";
-
 export default function SlideOverForm({
   isOpen,
   onClose,
@@ -54,7 +51,8 @@ export default function SlideOverForm({
 }: SlideOverFormProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
-  const [entered, setEntered] = useState(false);
+  // Visible = panel has transitioned to open (for smooth enter). Reset when closing or when isOpen becomes false.
+  const [visible, setVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   // Close: animate out then notify parent (useEffect below runs timeout)
@@ -118,15 +116,16 @@ export default function SlideOverForm({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Enter: start off-screen, then transition to visible
-  useEffect(() => {
-    if (!isOpen) return;
-    setEntered(false);
-    setIsClosing(false);
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setEntered(true));
-    });
-    return () => cancelAnimationFrame(id);
+  // Enter: first paint in closed state (translate-x-full), then transition to open so browser can animate
+  useLayoutEffect(() => {
+    if (isOpen) {
+      setVisible(false);
+      setIsClosing(false);
+      const id = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(id);
+    } else {
+      setVisible(false);
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -135,11 +134,12 @@ export default function SlideOverForm({
     return () => window.clearTimeout(t);
   }, [isClosing, onClose]);
 
-  if (!isOpen) return null;
+  // Transform-based visibility: closed = off-screen right, open = on screen (smooth enter + exit)
+  const panelOpen = isOpen && visible && !isClosing;
+  const backdropOpacity = panelOpen ? "opacity-100" : "opacity-0";
+  const panelTranslate = panelOpen ? "translate-x-0" : "translate-x-full";
 
-  const panelVisible = entered && !isClosing;
-  const backdropOpacity = panelVisible ? "opacity-100" : "opacity-0";
-  const panelTranslate = panelVisible ? "translate-x-0" : "translate-x-full";
+  if (!isOpen) return null;
 
   const content = (
     <div
@@ -150,13 +150,13 @@ export default function SlideOverForm({
       aria-describedby={ariaDescribedBy}
     >
       <div
-        className={`${BACKDROP_CLASS} ${backdropOpacity}`}
+        className={`${BACKDROP_BASE} ${backdropOpacity}`}
         onClick={handleClose}
         aria-hidden
       />
       <div
         ref={panelRef}
-        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col ${TRANSITION_PANEL} ${panelTranslate}`}
+        className={`w-full ${WIDTH_CLASS[width]} h-full bg-white dark:bg-surface-800 shadow-2xl border-l border-surface-200 dark:border-surface-700 flex flex-col transform transition-transform duration-300 ease-in-out ${panelTranslate}`}
         style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.12)" }}
         onClick={(e) => e.stopPropagation()}
       >
