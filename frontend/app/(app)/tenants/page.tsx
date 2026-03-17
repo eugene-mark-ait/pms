@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api, User, getDisplayName } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { clsx } from "clsx";
 import GiveEvictionNoticeDrawer from "@/components/GiveEvictionNoticeDrawer";
+import SlideOverForm from "@/components/SlideOverForm";
+import LeaseCreateForm, { LEASE_CREATE_FORM_ID } from "@/components/forms/LeaseCreateForm";
 
 interface Lease {
   id: string;
@@ -24,6 +27,7 @@ interface UnitOption {
 }
 
 export default function TenantsPage() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [statusFilter, setStatusFilter] = useState<"current" | "previous" | "all">("current");
   const [unitFilter, setUnitFilter] = useState<string>("");
@@ -32,6 +36,8 @@ export default function TenantsPage() {
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [evictionDrawerLease, setEvictionDrawerLease] = useState<Lease | null>(null);
+  const [addLeaseDrawerOpen, setAddLeaseDrawerOpen] = useState(false);
+  const [leaseFormSubmitting, setLeaseFormSubmitting] = useState(false);
 
   const canView = user?.role_names?.includes("property_owner") || user?.role_names?.includes("manager") || user?.role_names?.includes("caretaker");
   const canManage = user?.role_names?.includes("property_owner") || user?.role_names?.includes("manager");
@@ -62,6 +68,10 @@ export default function TenantsPage() {
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
+
+  useEffect(() => {
+    if (searchParams?.get("open") === "add" && canManage) setAddLeaseDrawerOpen(true);
+  }, [searchParams, canManage]);
 
   useEffect(() => {
     if (!canView) return;
@@ -96,9 +106,13 @@ export default function TenantsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Tenants</h1>
         {canManage && (
-          <Link href="/tenants/new" className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center">
+          <button
+            type="button"
+            onClick={() => setAddLeaseDrawerOpen(true)}
+            className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center"
+          >
             Add Lease (Assign Tenant)
-          </Link>
+          </button>
         )}
       </div>
 
@@ -353,13 +367,33 @@ export default function TenantsPage() {
           {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more tenants</p>}
         </>
       )}
-      {evictionDrawerLease && (
-        <GiveEvictionNoticeDrawer
-          lease={evictionDrawerLease}
-          onClose={() => setEvictionDrawerLease(null)}
-          onSuccess={() => { setEvictionDrawerLease(null); refresh(); }}
+      <SlideOverForm
+        isOpen={addLeaseDrawerOpen}
+        onClose={() => setAddLeaseDrawerOpen(false)}
+        title="Add Lease (Assign Tenant)"
+        width="lg"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setAddLeaseDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={LEASE_CREATE_FORM_ID} type="submit" disabled={leaseFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {leaseFormSubmitting ? "Creating…" : "Create Lease"}
+            </button>
+          </div>
+        }
+      >
+        <LeaseCreateForm
+          onSuccess={() => { setAddLeaseDrawerOpen(false); refresh(); }}
+          onSubmittingChange={setLeaseFormSubmitting}
         />
-      )}
+      </SlideOverForm>
+
+      <GiveEvictionNoticeDrawer
+        lease={evictionDrawerLease}
+        onClose={() => setEvictionDrawerLease(null)}
+        onSuccess={() => { setEvictionDrawerLease(null); refresh(); }}
+      />
     </div>
   );
 }

@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import SlideOverForm from "@/components/SlideOverForm";
+import PropertyForm, { PROPERTY_FORM_ID } from "@/components/forms/PropertyForm";
 
 interface Property {
   id: string;
@@ -16,14 +19,22 @@ interface Property {
 }
 
 export default function PropertiesPage() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [propertySearch, setPropertySearch] = useState("");
   const [propertySearchDebounced, setPropertySearchDebounced] = useState("");
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
+  const [propertyFormSubmitting, setPropertyFormSubmitting] = useState(false);
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
   const isCaretaker = user?.role_names?.includes("caretaker");
   const canEditDelete = isPropertyOwner || isManager;
   const enabled = user !== null && (isPropertyOwner || isManager || isCaretaker);
+
+  useEffect(() => {
+    if (searchParams?.get("open") === "add" && isPropertyOwner) setAddDrawerOpen(true);
+  }, [searchParams, isPropertyOwner]);
 
   useEffect(() => {
     const t = setTimeout(() => setPropertySearchDebounced(propertySearch.trim()), 300);
@@ -86,12 +97,13 @@ export default function PropertiesPage() {
           </div>
         )}
         {isPropertyOwner && (
-          <Link
-            href="/properties/new"
+          <button
+            type="button"
+            onClick={() => setAddDrawerOpen(true)}
             className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium min-h-[44px] inline-flex items-center"
           >
             Add Property
-          </Link>
+          </button>
         )}
       </div>
       {error && (
@@ -108,7 +120,7 @@ export default function PropertiesPage() {
           <span>Loading properties…</span>
         </div>
       ) : list.length === 0 && !error ? (
-        <p className="text-surface-600 dark:text-surface-400">No properties.{isPropertyOwner && <> <Link href="/properties/new" className="text-primary-600 dark:text-primary-400 hover:underline">Add one</Link>.</>}</p>
+        <p className="text-surface-600 dark:text-surface-400">No properties.{isPropertyOwner && <> <button type="button" onClick={() => setAddDrawerOpen(true)} className="text-primary-600 dark:text-primary-400 hover:underline">Add one</button>.</>}</p>
       ) : list.length > 0 ? (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -136,7 +148,7 @@ export default function PropertiesPage() {
                     <Link href={`/properties/${p.id}`} className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium min-h-[44px] sm:min-h-0 inline-flex items-center">View</Link>
                     {canEditDelete && !p.is_closed && (
                       <>
-                        <Link href={`/properties/${p.id}/edit`} className="text-surface-600 dark:text-surface-400 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</Link>
+                        <button type="button" onClick={() => setEditPropertyId(p.id)} className="text-surface-600 dark:text-surface-400 hover:underline text-sm min-h-[44px] sm:min-h-0 inline-flex items-center">Edit</button>
                         {isPropertyOwner && (
                           <button type="button" onClick={() => handleDelete(p.id, p.name)} className="text-red-600 dark:text-red-400 hover:underline text-sm min-h-[44px] sm:min-h-0">Delete</button>
                         )}
@@ -153,6 +165,55 @@ export default function PropertiesPage() {
           {!hasMore && list.length > 0 && <p className="text-center text-surface-500 dark:text-surface-400 text-sm">No more properties</p>}
         </>
       ) : null}
+
+      <SlideOverForm
+        isOpen={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        title="Add Property"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={PROPERTY_FORM_ID} type="submit" disabled={propertyFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {propertyFormSubmitting ? "Creating…" : "Create Property"}
+            </button>
+          </div>
+        }
+      >
+        <PropertyForm
+          mode="create"
+          onSuccess={() => { setAddDrawerOpen(false); refresh(); }}
+          onSubmittingChange={setPropertyFormSubmitting}
+        />
+      </SlideOverForm>
+
+      <SlideOverForm
+        isOpen={editPropertyId !== null}
+        onClose={() => setEditPropertyId(null)}
+        title="Edit Property"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditPropertyId(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={PROPERTY_FORM_ID} type="submit" disabled={propertyFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {propertyFormSubmitting ? "Saving…" : "Save"}
+            </button>
+          </div>
+        }
+      >
+        {editPropertyId && (
+          <PropertyForm
+            mode="edit"
+            propertyId={editPropertyId}
+            onSuccess={() => { setEditPropertyId(null); refresh(); }}
+            onSubmittingChange={setPropertyFormSubmitting}
+          />
+        )}
+      </SlideOverForm>
     </div>
   );
 }

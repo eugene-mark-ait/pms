@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import SlideOverForm from "@/components/SlideOverForm";
+import UnitCreateForm, { UNIT_CREATE_FORM_ID } from "@/components/forms/UnitCreateForm";
+import UnitEditForm, { UNIT_EDIT_FORM_ID } from "@/components/forms/UnitEditForm";
 
 interface Unit {
   id: string;
@@ -44,6 +46,9 @@ export default function UnitsPage() {
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [unitSearch, setUnitSearch] = useState("");
   const [unitSearchDebounced, setUnitSearchDebounced] = useState("");
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [editUnitId, setEditUnitId] = useState<string | null>(null);
+  const [unitFormSubmitting, setUnitFormSubmitting] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkPropertyId, setBulkPropertyId] = useState(propertyId ?? "");
   const [bulkFile, setBulkFile] = useState<string>("");
@@ -83,6 +88,12 @@ export default function UnitsPage() {
       setProperties(Array.isArray(res.data) ? res.data : []);
     }).catch(() => setProperties([]));
   }, [canView]);
+
+  useEffect(() => {
+    if (searchParams?.get("open") === "add" && canManage) setAddDrawerOpen(true);
+    const editId = searchParams?.get("edit");
+    if (editId && canManage) setEditUnitId(editId);
+  }, [searchParams, canManage]);
 
   async function handleBulkSubmit() {
     if (!bulkPropertyId || !bulkFile.trim()) {
@@ -185,12 +196,13 @@ export default function UnitsPage() {
         )}
         {canManage && (
           <div className="flex gap-2">
-            <Link
-              href={propertyId ? `/units/new?property=${propertyId}` : "/units/new"}
+            <button
+              type="button"
+              onClick={() => setAddDrawerOpen(true)}
               className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 text-sm font-medium"
             >
               Add Unit
-            </Link>
+            </button>
             <button
               type="button"
               onClick={() => { setBulkOpen(true); setBulkPropertyId(propertyId ?? ""); setBulkResult(null); }}
@@ -205,7 +217,7 @@ export default function UnitsPage() {
       {loading ? (
         <p className="text-surface-500 dark:text-surface-400">Loading…</p>
       ) : list.length === 0 ? (
-        <p className="text-surface-600 dark:text-surface-400">No units.{canManage && <> <Link href="/units/new" className="text-primary-600 dark:text-primary-400 hover:underline">Add one</Link>.</>}</p>
+        <p className="text-surface-600 dark:text-surface-400">No units.{canManage && <> <button type="button" onClick={() => setAddDrawerOpen(true)} className="text-primary-600 dark:text-primary-400 hover:underline">Add one</button>.</>}</p>
       ) : (
         <>
           <div className="hidden md:block bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
@@ -271,7 +283,7 @@ export default function UnitsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-3 mt-3">
-                    <Link href={`/units/${u.id}/edit`} className="min-h-[44px] inline-flex items-center text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium">Edit</Link>
+                    <button type="button" onClick={() => setEditUnitId(u.id)} className="min-h-[44px] inline-flex items-center text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium">Edit</button>
                     <button type="button" onClick={() => handleDelete(u)} className="min-h-[44px] text-red-600 dark:text-red-400 hover:underline text-sm">Delete</button>
                   </div>
                 )}
@@ -285,44 +297,99 @@ export default function UnitsPage() {
         </>
       )}
 
-      {canManage && bulkOpen && (typeof document !== "undefined" ? createPortal(
-        <div className="fixed inset-0 top-0 left-0 w-[100vw] min-w-full h-[100vh] min-h-screen overflow-hidden flex items-center justify-center bg-surface-950/40 dark:bg-surface-950/60 backdrop-blur-sm p-4 z-[100]" onClick={() => !bulkSubmitting && setBulkOpen(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Bulk upload units</h2>
-            <p className="text-sm text-surface-600 dark:text-surface-400">Upload a CSV with columns: Unit Name, Type, Rent, Deposit, Status.</p>
-            <a href="/unit-bulk-template.csv" download className="inline-block text-sm text-primary-600 dark:text-primary-400 hover:underline">Download template</a>
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Property</label>
-              <select
-                value={bulkPropertyId}
-                onChange={(e) => setBulkPropertyId(e.target.value)}
-                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-              >
-                <option value="">Select property</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">CSV content (paste or upload then paste)</label>
-              <textarea
-                value={bulkFile}
-                onChange={(e) => setBulkFile(e.target.value)}
-                placeholder="Unit Name,Type,Rent,Deposit,Status&#10;101,one_bedroom,1200,2400,vacant"
-                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700 font-mono text-sm min-h-[120px] placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                rows={6}
-              />
-            </div>
-            {bulkResult && <p className={`text-sm ${bulkResult.startsWith("Created") ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{bulkResult}</p>}
-            <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setBulkOpen(false)} disabled={bulkSubmitting} className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50">Cancel</button>
-              <button type="button" onClick={handleBulkSubmit} disabled={bulkSubmitting} className="rounded-lg bg-primary-600 text-white px-4 py-2 hover:bg-primary-700 disabled:opacity-50">{bulkSubmitting ? "Creating…" : "Create units"}</button>
-            </div>
+      <SlideOverForm
+        isOpen={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        title="Add Unit"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={UNIT_CREATE_FORM_ID} type="submit" disabled={unitFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {unitFormSubmitting ? "Creating…" : "Create Unit"}
+            </button>
           </div>
-        </div>,
-        document.body
-      ) : null)}
+        }
+      >
+        <UnitCreateForm
+          initialPropertyId={propertyId ?? undefined}
+          onSuccess={() => { setAddDrawerOpen(false); refresh(); }}
+          onSubmittingChange={setUnitFormSubmitting}
+        />
+      </SlideOverForm>
+
+      <SlideOverForm
+        isOpen={editUnitId !== null}
+        onClose={() => setEditUnitId(null)}
+        title="Edit Unit"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditUnitId(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={UNIT_EDIT_FORM_ID} type="submit" disabled={unitFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {unitFormSubmitting ? "Saving…" : "Save"}
+            </button>
+          </div>
+        }
+      >
+        {editUnitId && (
+          <UnitEditForm
+            unitId={editUnitId}
+            onSuccess={() => { setEditUnitId(null); refresh(); }}
+            onSubmittingChange={setUnitFormSubmitting}
+          />
+        )}
+      </SlideOverForm>
+
+      <SlideOverForm
+        isOpen={bulkOpen}
+        onClose={() => !bulkSubmitting && setBulkOpen(false)}
+        title="Bulk upload units"
+        width="lg"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setBulkOpen(false)} disabled={bulkSubmitting} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 disabled:opacity-50">
+              Cancel
+            </button>
+            <button type="button" onClick={handleBulkSubmit} disabled={bulkSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {bulkSubmitting ? "Creating…" : "Create units"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600 dark:text-surface-400">Upload a CSV with columns: Unit Name, Type, Rent, Deposit, Status.</p>
+          <a href="/unit-bulk-template.csv" download className="inline-block text-sm text-primary-600 dark:text-primary-400 hover:underline">Download template</a>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Property</label>
+            <select
+              value={bulkPropertyId}
+              onChange={(e) => setBulkPropertyId(e.target.value)}
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+            >
+              <option value="">Select property</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">CSV content (paste or upload then paste)</label>
+            <textarea
+              value={bulkFile}
+              onChange={(e) => setBulkFile(e.target.value)}
+              placeholder="Unit Name,Type,Rent,Deposit,Status&#10;101,one_bedroom,1200,2400,vacant"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800 font-mono text-sm min-h-[120px] placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+              rows={6}
+            />
+          </div>
+          {bulkResult && <p className={`text-sm ${bulkResult.startsWith("Created") ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{bulkResult}</p>}
+        </div>
+      </SlideOverForm>
     </div>
   );
 }

@@ -182,24 +182,21 @@ export default function ComplaintsPage() {
         </>
       )}
 
-      {fileModalOpen && (
-        <FileComplaintModal
-          onClose={() => setFileModalOpen(false)}
-          onSuccess={() => {
-            setFileModalOpen(false);
-            refresh();
-            if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
-          }}
-        />
-      )}
-      {detailComplaint && (
-        <ComplaintDetailModal
-          complaint={detailComplaint}
-          onClose={() => setDetailComplaint(null)}
-          onCloseComplaint={canManageComplaints ? closeComplaint : undefined}
-          canManage={canManageComplaints}
-        />
-      )}
+      <FileComplaintModal
+        isOpen={fileModalOpen}
+        onClose={() => setFileModalOpen(false)}
+        onSuccess={() => {
+          setFileModalOpen(false);
+          refresh();
+          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("complaints-updated"));
+        }}
+      />
+      <ComplaintDetailModal
+        complaint={detailComplaint}
+        onClose={() => setDetailComplaint(null)}
+        onCloseComplaint={canManageComplaints ? closeComplaint : undefined}
+        canManage={canManageComplaints}
+      />
     </div>
   );
 }

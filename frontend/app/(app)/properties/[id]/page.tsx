@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User, formatKSH } from "@/lib/api";
+import SlideOverForm from "@/components/SlideOverForm";
+import PropertyForm, { PROPERTY_FORM_ID } from "@/components/forms/PropertyForm";
 
 interface UserRef {
   id: string;
@@ -94,6 +96,8 @@ export default function PropertyDetailPage() {
   });
   const [publicListingSaving, setPublicListingSaving] = useState(false);
   const [publicListingError, setPublicListingError] = useState("");
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [propertyFormSubmitting, setPropertyFormSubmitting] = useState(false);
 
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
@@ -297,7 +301,7 @@ export default function PropertyDetailPage() {
         </div>
         {canEdit && !property.is_closed && (
           <div className="flex gap-2">
-            <Link href={`/properties/${id}/edit`} className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Edit</Link>
+            <button type="button" onClick={() => setEditDrawerOpen(true)} className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Edit</button>
             {canCloseProperty && (
               <button type="button" onClick={handleCloseProperty} className="rounded-lg border border-amber-200 dark:border-amber-700 px-3 py-1.5 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30">
                 Close property
@@ -561,6 +565,30 @@ export default function PropertyDetailPage() {
           </form>
         )}
       </section>
+
+      <SlideOverForm
+        isOpen={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        title="Edit Property"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={PROPERTY_FORM_ID} type="submit" disabled={propertyFormSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {propertyFormSubmitting ? "Saving…" : "Save"}
+            </button>
+          </div>
+        }
+      >
+        <PropertyForm
+          mode="edit"
+          propertyId={id}
+          onSuccess={() => { setEditDrawerOpen(false); refresh(); }}
+          onSubmittingChange={setPropertyFormSubmitting}
+        />
+      </SlideOverForm>
 
       {assignMode && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !assigning && setAssignMode(null)}>

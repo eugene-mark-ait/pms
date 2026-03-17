@@ -180,13 +180,11 @@ export default function EditLeasePage() {
           <Link href="/tenants" className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700">Cancel</Link>
         </div>
       </form>
-      {evictionDrawerOpen && (
-        <GiveEvictionNoticeDrawer
-          lease={lease}
-          onClose={() => setEvictionDrawerOpen(false)}
-          onSuccess={() => { setEvictionDrawerOpen(false); loadLease(); }}
-        />
-      )}
+      <GiveEvictionNoticeDrawer
+        lease={evictionDrawerOpen ? lease : null}
+        onClose={() => setEvictionDrawerOpen(false)}
+        onSuccess={() => { setEvictionDrawerOpen(false); loadLease(); }}
+      />
     </div>
   );
 }

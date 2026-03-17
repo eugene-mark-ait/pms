@@ -152,20 +152,16 @@ export default function MyUnitsPage() {
         </div>
       )}
 
-      {payModalLease && (
-        <PayRentModal
-          lease={payModalLease}
-          onClose={() => setPayModalLease(null)}
-          onSuccess={() => { setPayModalLease(null); load(); }}
-        />
-      )}
-      {noticeModalLease && (
-        <GiveNoticeDrawer
-          lease={noticeModalLease}
-          onClose={() => setNoticeModalLease(null)}
-          onSuccess={() => { setNoticeModalLease(null); load(); }}
-        />
-      )}
+      <PayRentModal
+        lease={payModalLease}
+        onClose={() => setPayModalLease(null)}
+        onSuccess={() => { setPayModalLease(null); load(); }}
+      />
+      <GiveNoticeDrawer
+        lease={noticeModalLease}
+        onClose={() => setNoticeModalLease(null)}
+        onSuccess={() => { setNoticeModalLease(null); load(); }}
+      />
     </div>
   );
 }

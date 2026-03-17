@@ -62,7 +62,7 @@ h1, h2, h3, h4 {
     text-wrap: balance;
   }
   .animate-slide-in-right {
-    animation: slideInRight 0.25s ease-out;
+    animation: slideInRight 0.25s ease-in-out;
   }
   .animate-delay-100 { animation-delay: 100ms; }
   .animate-delay-200 { animation-delay: 200ms; }
