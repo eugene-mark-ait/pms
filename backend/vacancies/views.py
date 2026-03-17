@@ -7,14 +7,12 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from leases.models import LeaseHistory
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication
+from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitApplication
 from .serializers import (
     VacancyListingSerializer,
     VacancySearchSerializer,
     TenantVacancyPreferenceSerializer,
     VacancyDiscoverySerializer,
-    VacancyNotifySubscribeSerializer,
-    MySubscriptionSerializer,
     UnitApplicationSerializer,
 )
 from config.pagination import OptionalPageSizePagination
@@ -200,44 +198,6 @@ class TenantVacancyPreferenceView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         pref, _ = TenantVacancyPreference.objects.get_or_create(user=self.request.user)
         return pref
-
-
-class NotifySubscribeView(APIView):
-    """POST /api/vacancies/notify-subscribe/ - subscribe to vacancy notifications (email, optional phone, search_filters). AllowAny. If authenticated, user is linked."""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = VacancyNotifySubscribeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data.copy()
-        if request.user.is_authenticated:
-            data["user"] = request.user
-            data.setdefault("email", request.user.email)
-        subscription = UnitNotificationSubscription.objects.create(**data)
-        out_serializer = VacancyNotifySubscribeSerializer(subscription)
-        return Response(out_serializer.data, status=status.HTTP_201_CREATED)
-
-
-class MySubscriptionsView(generics.ListAPIView):
-    """GET /api/vacancies/my-subscriptions/?page=&page_size= - list current user's vacancy notification subscriptions (tenant), paginated."""
-    permission_classes = [IsAuthenticated, IsTenant]
-    serializer_class = MySubscriptionSerializer
-    pagination_class = OptionalPageSizePagination
-
-    def get_queryset(self):
-        return UnitNotificationSubscription.objects.filter(user=self.request.user).order_by("-created_at")
-
-
-class DeleteSubscriptionView(APIView):
-    """DELETE /api/vacancies/notify-subscribe/<id>/ - delete a subscription. Tenant only; must own the subscription (user or email match)."""
-    permission_classes = [IsAuthenticated, IsTenant]
-
-    def delete(self, request, pk):
-        sub = get_object_or_404(UnitNotificationSubscription, pk=pk)
-        if sub.user_id != request.user.id and sub.email != request.user.email:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        sub.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CancelNoticeView(APIView):

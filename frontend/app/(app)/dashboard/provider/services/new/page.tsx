@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
+import { useState } from "react";
 
-export default function NewServicePage() {
+/** Redirect to My Services page; use "Add a New Service You Offer" button there to open the create drawer. */
+export default function NewServiceRedirectPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const isProvider = user?.role_names?.includes("service_provider");
 
@@ -12,7 +16,16 @@ export default function NewServicePage() {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
-  if (!isProvider) {
+  useEffect(() => {
+    if (user === null) return;
+    if (isProvider) {
+      router.replace("/dashboard/provider/services?open=add");
+    } else {
+      router.replace("/dashboard/provider");
+    }
+  }, [user, isProvider, router]);
+
+  if (!isProvider && user) {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add service</h1>
@@ -23,16 +36,9 @@ export default function NewServicePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/provider/services" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 text-sm">← My services</Link>
-      </div>
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Add service listing</h1>
-      <p className="text-surface-600 dark:text-surface-400">Add a new service you offer (e.g. pipe repair, electrical installation, cleaning). Form will appear when the marketplace API is connected.</p>
-      <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
-        <p className="text-surface-500 dark:text-surface-400 text-sm">Service creation form coming soon.</p>
-        <Link href="/dashboard/provider/services" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">← Back to My services</Link>
-      </div>
+    <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400 py-4">
+      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+      <span>Redirecting…</span>
     </div>
   );
 }

@@ -2,21 +2,64 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api, User } from "@/lib/api";
+import SlideOverForm from "@/components/SlideOverForm";
+import ServiceForm, {
+  SERVICE_FORM_ID,
+  SERVICE_CATEGORIES,
+  type MarketplaceService,
+} from "@/components/forms/ServiceForm";
 
 export default function ProviderServicesPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [services, setServices] = useState<unknown[]>([]);
+  const [services, setServices] = useState<MarketplaceService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [editService, setEditService] = useState<MarketplaceService | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
   const isProvider = user?.role_names?.includes("service_provider");
+
+  function loadServices() {
+    if (!isProvider) return;
+    api
+      .get<{ results?: MarketplaceService[]; count?: number }>("/marketplace/my-services/")
+      .then((r) => setServices(r.data?.results ?? []))
+      .catch(() => setServices([]))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
+  const searchParams = useSearchParams();
   useEffect(() => {
-    if (!isProvider) return;
-    api.get<{ results?: unknown[] }>("/marketplace/my-services/").then((r) => setServices(r.data?.results ?? [])).catch(() => setServices([]));
+    if (searchParams?.get("open") === "add" && isProvider) setAddDrawerOpen(true);
+  }, [searchParams, isProvider]);
+
+  useEffect(() => {
+    if (!isProvider) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    loadServices();
   }, [isProvider]);
+
+  async function handleDelete(service: MarketplaceService) {
+    if (!confirm(`Delete "${service.title}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/marketplace/services/${service.id}/`);
+      loadServices();
+    } catch {
+      alert("Failed to delete service.");
+    }
+  }
+
+  function getCategoryLabel(value: string) {
+    return SERVICE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+  }
 
   if (!isProvider) {
     return (
@@ -34,25 +77,122 @@ export default function ProviderServicesPage() {
         <div className="flex items-center gap-4">
           <Link href="/dashboard/provider" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 text-sm">← Provider Dashboard</Link>
         </div>
-        <Link href="/dashboard/provider/services/new" className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Add service</Link>
+        <button
+          type="button"
+          onClick={() => setAddDrawerOpen(true)}
+          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 min-h-[44px] inline-flex items-center"
+        >
+          Add a New Service You Offer
+        </button>
       </div>
       <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">My services</h1>
       <p className="text-surface-600 dark:text-surface-400">Create and edit the services you offer. Listings appear in the Marketplace.</p>
-      {services.length === 0 ? (
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+          <span>Loading services…</span>
+        </div>
+      ) : services.length === 0 ? (
         <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
           <p className="text-surface-500 dark:text-surface-400 text-sm">No services yet. Add your first service listing.</p>
-          <Link href="/dashboard/provider/services/new" className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Add service →</Link>
+          <button
+            type="button"
+            onClick={() => setAddDrawerOpen(true)}
+            className="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+          >
+            Add a New Service You Offer →
+          </button>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {(services as { id?: string; service_title?: string }[]).map((s) => (
-            <li key={s.id} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 flex items-center justify-between">
-              <span className="font-medium text-surface-900 dark:text-surface-100">{s.service_title ?? "Service"}</span>
-              <span className="text-sm text-surface-500 dark:text-surface-400">Edit (API coming soon)</span>
-            </li>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {services.map((s) => (
+            <div
+              key={s.id}
+              className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition flex flex-col"
+            >
+              <h3 className="font-semibold text-surface-900 dark:text-surface-100">{s.title}</h3>
+              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{getCategoryLabel(s.category)}</p>
+              <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">{s.service_area}</p>
+              <p className="text-sm text-surface-600 dark:text-surface-400 mt-2 line-clamp-2 flex-1">{s.description}</p>
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditService(s)}
+                  className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(s)}
+                  className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
+
+      <SlideOverForm
+        isOpen={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        title="Add a New Service You Offer"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setAddDrawerOpen(false)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={SERVICE_FORM_ID} type="submit" disabled={formSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {formSubmitting ? "Creating…" : "Create Service"}
+            </button>
+          </div>
+        }
+      >
+        <ServiceForm
+          mode="create"
+          onSuccess={() => {
+            setAddDrawerOpen(false);
+            loadServices();
+          }}
+          onSubmittingChange={setFormSubmitting}
+          defaultContact={user?.email ?? ""}
+        />
+      </SlideOverForm>
+
+      <SlideOverForm
+        isOpen={editService !== null}
+        onClose={() => setEditService(null)}
+        title="Edit Service"
+        width="md"
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setEditService(null)} className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300">
+              Cancel
+            </button>
+            <button form={SERVICE_FORM_ID} type="submit" disabled={formSubmitting} className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+              {formSubmitting ? "Saving…" : "Save"}
+            </button>
+          </div>
+        }
+      >
+        {editService && (
+          <ServiceForm
+            mode="edit"
+            serviceId={editService.id}
+            initialData={editService}
+            onSuccess={() => {
+              setEditService(null);
+              loadServices();
+            }}
+            onSubmittingChange={setFormSubmitting}
+            defaultContact={user?.email ?? ""}
+          />
+        )}
+      </SlideOverForm>
     </div>
   );
 }

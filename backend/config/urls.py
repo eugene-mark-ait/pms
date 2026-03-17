@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/", include("complaints.urls")),
     path("api/", include("notifications.urls")),
     path("api/", include("vacancies.urls")),
+    path("api/", include("marketplace.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

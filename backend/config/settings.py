@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "complaints",
     "notifications",
     "vacancies",
+    "marketplace",
 ]
 
 MIDDLEWARE = [
