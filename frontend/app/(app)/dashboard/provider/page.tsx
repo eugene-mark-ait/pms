@@ -19,7 +19,7 @@ export default function ProviderDashboardPage() {
     if (!isProvider) return;
     // Stub: replace with real APIs when backend marketplace exists
     api.get<{ count?: number }>("/marketplace/my-services/").then((r) => setServicesCount(r.data?.count ?? 0)).catch(() => setServicesCount(0));
-    api.get<{ count?: number }>("/marketplace/my-requests/").then((r) => setRequestsCount(r.data?.count ?? 0)).catch(() => setRequestsCount(0));
+    api.get<unknown[]>("/marketplace/my-requests/").then((r) => setRequestsCount(Array.isArray(r.data) ? r.data.length : 0)).catch(() => setRequestsCount(0));
   }, [isProvider]);
 
   if (loading) {

@@ -83,6 +83,9 @@ export default function PropertyForm({
           address,
           location: location.trim() || undefined,
         });
+        setName("");
+        setAddress("");
+        setLocation("");
         onSuccess();
       } else if (propertyId) {
         await api.patch(`/properties/${propertyId}/`, {
@@ -102,6 +105,7 @@ export default function PropertyForm({
       setError(typeof msg === "string" ? msg : "Failed to save.");
     } finally {
       setSubmitting(false);
+      onSubmittingChange?.(false);
     }
   }
 

@@ -1,0 +1,150 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { api, User } from "@/lib/api";
+import SlideOverForm from "@/components/SlideOverForm";
+import ServiceRequestForm, { SERVICE_REQUEST_FORM_ID } from "@/components/forms/ServiceRequestForm";
+import { SERVICE_CATEGORIES, type MarketplaceService } from "@/components/forms/ServiceForm";
+
+function getCategoryLabel(value: string) {
+  return SERVICE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+function formatPriceRange(s: MarketplaceService): string {
+  if (s.min_price != null && s.max_price != null) {
+    return `KSh ${Number(s.min_price).toLocaleString("en-KE")} – ${Number(s.max_price).toLocaleString("en-KE")}`;
+  }
+  if (s.min_price != null) return `From KSh ${Number(s.min_price).toLocaleString("en-KE")}`;
+  if (s.max_price != null) return `Up to KSh ${Number(s.max_price).toLocaleString("en-KE")}`;
+  return s.price_range || "Price on request";
+}
+
+export default function ServiceDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params?.id as string | undefined;
+  const [user, setUser] = useState<User | null>(null);
+  const [service, setService] = useState<MarketplaceService | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    api
+      .get<MarketplaceService>(`/marketplace/services/${id}/`)
+      .then((res) => setService(res.data))
+      .catch(() => setService(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (!id) {
+    return (
+      <div className="space-y-4">
+        <p className="text-surface-600 dark:text-surface-400">Invalid service.</p>
+        <Link href="/marketplace" className="text-primary-600 dark:text-primary-400 hover:underline">← Marketplace</Link>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400 py-8">
+        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+        <span>Loading…</span>
+      </div>
+    );
+  }
+
+  if (!service) {
+    return (
+      <div className="space-y-4">
+        <p className="text-surface-600 dark:text-surface-400">Service not found.</p>
+        <Link href="/marketplace" className="text-primary-600 dark:text-primary-400 hover:underline">← Marketplace</Link>
+      </div>
+    );
+  }
+
+  const rating = service.average_rating ?? 0;
+  const reviewCount = service.review_count ?? 0;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link href="/marketplace" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">← Marketplace</Link>
+      </div>
+      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">{service.title}</h1>
+        <p className="text-surface-500 dark:text-surface-400 mt-1">{getCategoryLabel(service.category)}</p>
+        <p className="text-surface-600 dark:text-surface-400 mt-2 font-medium">{service.provider_name ?? "Provider"}</p>
+        <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">{service.service_area}</p>
+        {rating > 0 && (
+          <p className="mt-2 text-sm">
+            <span className="text-amber-500">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span>
+            <span className="ml-2 text-surface-500 dark:text-surface-400">({rating}) · {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
+          </p>
+        )}
+        <p className="mt-4 text-surface-700 dark:text-surface-300">{service.description}</p>
+        <p className="mt-4 font-medium text-surface-900 dark:text-surface-100">{formatPriceRange(service)}</p>
+        {service.availability && (
+          <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Availability: {service.availability}</p>
+        )}
+        {service.contact_info && (
+          <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Contact: {service.contact_info}</p>
+        )}
+        {user && (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setRequestDrawerOpen(true)}
+              className="rounded-lg bg-primary-600 text-white px-5 py-2.5 text-sm font-medium hover:bg-primary-700"
+            >
+              Request Service
+            </button>
+          </div>
+        )}
+      </div>
+
+      <SlideOverForm
+        isOpen={requestDrawerOpen}
+        onClose={() => setRequestDrawerOpen(false)}
+        title="Request service"
+        width="md"
+        footer={(onRequestClose) => (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onRequestClose}
+              className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300"
+            >
+              Cancel
+            </button>
+            <button
+              form={SERVICE_REQUEST_FORM_ID}
+              type="submit"
+              disabled={formSubmitting}
+              className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            >
+              {formSubmitting ? "Sending…" : "Send request"}
+            </button>
+          </div>
+        )}
+      >
+        <ServiceRequestForm
+          serviceId={id}
+          onSuccess={() => {
+            setRequestDrawerOpen(false);
+            router.refresh();
+          }}
+          onSubmittingChange={setFormSubmitting}
+        />
+      </SlideOverForm>
+    </div>
+  );
+}

@@ -23,13 +23,18 @@ export const SERVICE_CATEGORIES = [
 export interface MarketplaceService {
   id: string;
   provider: string;
+  provider_name?: string;
   title: string;
   category: string;
   description: string;
   price_range?: string;
+  min_price?: string | number | null;
+  max_price?: string | number | null;
   service_area: string;
   availability?: string;
   contact_info?: string;
+  average_rating?: number;
+  review_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -60,6 +65,12 @@ export default function ServiceForm({
   const [category, setCategory] = useState(initialData?.category ?? "other");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [priceRange, setPriceRange] = useState(initialData?.price_range ?? "");
+  const [minPrice, setMinPrice] = useState(
+    initialData?.min_price != null ? String(initialData.min_price) : ""
+  );
+  const [maxPrice, setMaxPrice] = useState(
+    initialData?.max_price != null ? String(initialData.max_price) : ""
+  );
   const [serviceArea, setServiceArea] = useState(initialData?.service_area ?? "");
   const [availability, setAvailability] = useState(initialData?.availability ?? "");
   const [contactInfo, setContactInfo] = useState(initialData?.contact_info ?? defaultContact);
@@ -78,6 +89,8 @@ export default function ServiceForm({
         setCategory(d.category || "other");
         setDescription(d.description);
         setPriceRange(d.price_range ?? "");
+        setMinPrice(d.min_price != null ? String(d.min_price) : "");
+        setMaxPrice(d.max_price != null ? String(d.max_price) : "");
         setServiceArea(d.service_area);
         setAvailability(d.availability ?? "");
         setContactInfo(d.contact_info ?? defaultContact);
@@ -93,6 +106,8 @@ export default function ServiceForm({
       setCategory(initialData.category ?? "other");
       setDescription(initialData.description ?? "");
       setPriceRange(initialData.price_range ?? "");
+      setMinPrice(initialData.min_price != null ? String(initialData.min_price) : "");
+      setMaxPrice(initialData.max_price != null ? String(initialData.max_price) : "");
       setServiceArea(initialData.service_area ?? "");
       setAvailability(initialData.availability ?? "");
       setContactInfo(initialData.contact_info ?? defaultContact);
@@ -118,30 +133,47 @@ export default function ServiceForm({
       setError("Service area / location is required.");
       return;
     }
+    const minP = minPrice.trim() ? Number(minPrice.trim()) : null;
+    const maxP = maxPrice.trim() ? Number(maxPrice.trim()) : null;
+    if (minP != null && (Number.isNaN(minP) || minP < 0)) {
+      setError("Min price must be a number >= 0.");
+      return;
+    }
+    if (maxP != null && (Number.isNaN(maxP) || maxP < 0)) {
+      setError("Max price must be a number >= 0.");
+      return;
+    }
+    if (minP != null && maxP != null && minP > maxP) {
+      setError("Max price must be >= min price.");
+      return;
+    }
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const payload = {
+        title: title.trim(),
+        category: category || "other",
+        description: description.trim(),
+        price_range: priceRange.trim() || undefined,
+        min_price: minP,
+        max_price: maxP,
+        service_area: serviceArea.trim(),
+        availability: availability.trim() || undefined,
+        contact_info: contactInfo.trim() || undefined,
+      };
       if (mode === "create") {
-        await api.post("/marketplace/services/", {
-          title: title.trim(),
-          category: category || "other",
-          description: description.trim(),
-          price_range: priceRange.trim() || undefined,
-          service_area: serviceArea.trim(),
-          availability: availability.trim() || undefined,
-          contact_info: contactInfo.trim() || undefined,
-        });
+        await api.post("/marketplace/services/", payload);
+        setTitle("");
+        setDescription("");
+        setPriceRange("");
+        setMinPrice("");
+        setMaxPrice("");
+        setServiceArea("");
+        setAvailability("");
+        setContactInfo(defaultContact);
         onSuccess();
       } else if (serviceId) {
-        await api.put(`/marketplace/services/${serviceId}/`, {
-          title: title.trim(),
-          category: category || "other",
-          description: description.trim(),
-          price_range: priceRange.trim() || undefined,
-          service_area: serviceArea.trim(),
-          availability: availability.trim() || undefined,
-          contact_info: contactInfo.trim() || undefined,
-        });
+        await api.put(`/marketplace/services/${serviceId}/`, payload);
         onSuccess();
       }
     } catch (err: unknown) {
@@ -200,14 +232,38 @@ export default function ServiceForm({
           required
         />
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Min price (KSh)</label>
+          <input
+            type="number"
+            min={0}
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            className={inputBase}
+            placeholder="Optional"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Max price (KSh)</label>
+          <input
+            type="number"
+            min={0}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            className={inputBase}
+            placeholder="Optional"
+          />
+        </div>
+      </div>
       <div>
-        <label className={labelClass}>Price Range (optional)</label>
+        <label className={labelClass}>Price range label (optional)</label>
         <input
           type="text"
           value={priceRange}
           onChange={(e) => setPriceRange(e.target.value)}
           className={inputBase}
-          placeholder="e.g. KSh 500–2000, Quote on request"
+          placeholder="e.g. Quote on request"
         />
       </div>
       <div>

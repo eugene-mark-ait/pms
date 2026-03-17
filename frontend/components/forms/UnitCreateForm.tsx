@@ -71,6 +71,11 @@ export default function UnitCreateForm({
         extra_costs: extraCosts || undefined,
         payment_frequency: paymentFrequency,
       });
+      setUnitNumber("");
+      setMonthlyRent("");
+      setSecurityDeposit("");
+      setServiceCharge("");
+      setExtraCosts("");
       onSuccess();
     } catch (err: unknown) {
       const msg =
