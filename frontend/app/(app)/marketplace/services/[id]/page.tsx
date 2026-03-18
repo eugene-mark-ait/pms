@@ -22,6 +22,13 @@ function formatPriceRange(s: MarketplaceService): string {
   return s.price_range || "Price on request";
 }
 
+interface ServiceReviewItem {
+  id: string;
+  rating: number;
+  review: string;
+  created_at: string;
+}
+
 export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -32,6 +39,7 @@ export default function ServiceDetailPage() {
   const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [reviews, setReviews] = useState<ServiceReviewItem[]>([]);
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -44,6 +52,14 @@ export default function ServiceDetailPage() {
       .then((res) => setService(res.data))
       .catch(() => setService(null))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    api
+      .get<ServiceReviewItem[]>(`/marketplace/services/${id}/reviews/`)
+      .then((res) => setReviews(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setReviews([]));
   }, [id]);
 
   if (!id) {
@@ -126,6 +142,30 @@ export default function ServiceDetailPage() {
           </div>
         )}
       </div>
+
+      {reviews.length > 0 && (
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Reviews ({reviews.length})</h2>
+          <ul className="mt-4 space-y-4">
+            {reviews.map((r) => (
+              <li key={r.id} className="border-b border-surface-100 dark:border-surface-700 pb-4 last:border-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
+                    {"★".repeat(Math.min(5, Math.round(r.rating)))}
+                    {"☆".repeat(5 - Math.min(5, Math.round(r.rating)))}
+                  </span>
+                  <span className="text-xs text-surface-500 dark:text-surface-400">
+                    {new Date(r.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                  </span>
+                </div>
+                {r.review && (
+                  <p className="mt-2 text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{r.review}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <SlideOverForm
         isOpen={requestDrawerOpen}
