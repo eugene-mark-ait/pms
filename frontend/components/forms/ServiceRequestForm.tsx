@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { AxiosError } from "axios";
+import { useToast } from "@/context/ToastContext";
 
 export const SERVICE_REQUEST_FORM_ID = "service-request-form";
 
@@ -31,6 +32,7 @@ export default function ServiceRequestForm({
   onSuccess,
   onSubmittingChange,
 }: ServiceRequestFormProps) {
+  const { showToast } = useToast();
   const [message, setMessage] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -55,8 +57,11 @@ export default function ServiceRequestForm({
       setPreferredDate("");
       onSuccess();
       if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("marketplace-request-created"));
+      showToast("Request sent successfully", "success");
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setSubmitting(false);
       onSubmittingChange?.(false);

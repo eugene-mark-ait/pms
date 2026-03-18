@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { api, clearTokens, User } from "@/lib/api";
 import { clsx } from "clsx";
 import ThemeToggle from "@/components/ThemeToggle";
+import { ToastProvider } from "@/context/ToastContext";
 
 const navItems: { href: string; label: string; roles: string[]; icon: React.ReactNode }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <DashboardIcon /> },
@@ -109,6 +110,7 @@ export default function DashboardLayout({
   const sidebarWidth = sidebarCollapsed ? 72 : 256;
 
   return (
+    <ToastProvider>
     <div className="flex min-h-screen bg-surface-50 dark:bg-surface-900">
       <aside
         className="border-r border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 flex flex-col fixed h-full z-30 transition-[width] duration-200 ease-in-out overflow-hidden shrink-0"
@@ -199,5 +201,6 @@ export default function DashboardLayout({
         <main className="flex-1 w-full min-w-0 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

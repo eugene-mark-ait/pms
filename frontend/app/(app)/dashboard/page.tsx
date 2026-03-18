@@ -283,14 +283,16 @@ export default function DashboardPage() {
               <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">View and submit complaints</p>
             </Link>
             {requestCounts !== null && (
-              <Link href="/marketplace/requests" className="block p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+              <Link href="/marketplace/requests" className="block p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">Total Requests</h3>
-                  <span className="text-lg font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</span>
+                  <div>
+                    <p className="text-sm text-surface-500 dark:text-surface-400">Total Requests</p>
+                    <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{requestCounts.total}</h3>
+                    {(requestCounts.awaiting_rating ?? 0) > 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
+                    )}
+                  </div>
                 </div>
-                {(requestCounts.awaiting_rating ?? 0) > 0 && (
-                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
-                )}
               </Link>
             )}
           </div>
@@ -327,46 +329,71 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Total Properties</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.propertiesCount ?? 0}</p>
-            </div>
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Units</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.unitsCount ?? 0}</p>
-            </div>
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Occupied</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.occupiedCount ?? 0}</p>
-            </div>
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Monthly Revenue</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">KSh {(stats.revenue ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-            </div>
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Overdue</p>
-              <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">{stats.overdueCount ?? 0}</p>
-            </div>
-          </div>
-
-          {stats.complaintsCount !== undefined && (
-            <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm inline-block">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Open Complaints</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.complaintsCount}</p>
-            </div>
-          )}
-          {requestCounts !== null && (
-            <Link href="/marketplace/requests" className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm inline-block hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">Total Requests</h3>
-                <span className="text-lg font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</span>
+                <div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Total Properties</p>
+                  <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{stats.propertiesCount ?? 0}</h3>
+                </div>
               </div>
-              {(requestCounts.awaiting_rating ?? 0) > 0 && (
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
-              )}
-            </Link>
-          )}
+            </div>
+            <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Units</p>
+                  <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{stats.unitsCount ?? 0}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Occupied</p>
+                  <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{stats.occupiedCount ?? 0}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Monthly Revenue</p>
+                  <h3 className="text-2xl font-bold text-surface-900 dark:text-white">KSh {(stats.revenue ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Overdue</p>
+                  <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.overdueCount ?? 0}</h3>
+                </div>
+              </div>
+            </div>
+            {stats.complaintsCount !== undefined && (
+              <div className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-surface-500 dark:text-surface-400">Open Complaints</p>
+                    <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{stats.complaintsCount}</h3>
+                  </div>
+                </div>
+              </div>
+            )}
+            {requestCounts !== null && (
+              <Link href="/marketplace/requests" className="p-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm block hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-surface-500 dark:text-surface-400">Total Requests</p>
+                    <h3 className="text-2xl font-bold text-surface-900 dark:text-white">{requestCounts.total}</h3>
+                    {(requestCounts.awaiting_rating ?? 0) > 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            )}
+          </div>
         </>
       )}
 
