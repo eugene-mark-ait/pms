@@ -42,7 +42,7 @@ export default function PaymentsPage() {
   }, []);
 
   async function handleExport(formatType: "csv" | "pdf") {
-    const token = typeof window !== "undefined" ? localStorage.getItem("pms_access_token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("mahaliwise_access_token") : null;
     const base = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/api\/?$/, "") + "/api";
     const url = `${base}/payments/export/?format=${formatType}`;
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });

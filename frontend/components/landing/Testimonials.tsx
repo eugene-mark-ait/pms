@@ -14,7 +14,7 @@ const testimonials = [
     avatar: "JK",
   },
   {
-    quote: "As a property manager, I need visibility across all units. PMS gives me occupancy, maintenance, and communication in one place.",
+    quote: "As a property manager, I need visibility across all units. Mahaliwise gives me occupancy, maintenance, and communication in one place.",
     author: "David L.",
     role: "Property Manager",
     avatar: "DL",
@@ -57,7 +57,7 @@ export default function Testimonials() {
             What Our Users Say
           </h2>
           <p className="mt-4 text-lg text-surface-600">
-            Landlords, tenants, and property managers trust PMS to simplify renting and management.
+            Landlords, tenants, and property managers trust Mahaliwise to simplify renting and management.
           </p>
         </div>
 

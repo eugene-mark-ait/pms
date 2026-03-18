@@ -9,8 +9,8 @@ export const api = axios.create({
   withCredentials: false,
 });
 
-const ACCESS_KEY = "pms_access_token";
-const REFRESH_KEY = "pms_refresh_token";
+const ACCESS_KEY = "mahaliwise_access_token";
+const REFRESH_KEY = "mahaliwise_refresh_token";
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -26,14 +26,14 @@ export function setTokens(access: string, refresh: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
-  document.cookie = "pms_session=1; path=/; max-age=604800; SameSite=Lax";
+  document.cookie = "mahaliwise_session=1; path=/; max-age=604800; SameSite=Lax";
 }
 
 export function clearTokens() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
-  document.cookie = "pms_session=; path=/; max-age=0";
+  document.cookie = "mahaliwise_session=; path=/; max-age=0";
 }
 
 api.interceptors.request.use((config) => {

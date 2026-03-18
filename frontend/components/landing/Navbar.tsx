@@ -29,7 +29,7 @@ export default function Navbar({ user = null }: { user?: User | null }) {
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight text-surface-900 dark:text-surface-100">
-            PMS
+            Mahaliwise
           </span>
           <span className="hidden text-sm text-surface-500 dark:text-surface-400 sm:inline">Rental Housing OS</span>
         </Link>

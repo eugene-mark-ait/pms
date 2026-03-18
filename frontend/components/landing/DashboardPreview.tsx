@@ -27,7 +27,7 @@ export default function DashboardPreview() {
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </div>
-              <span className="ml-4 text-sm text-surface-500">PMS Dashboard</span>
+              <span className="ml-4 text-sm text-surface-500">Mahaliwise Dashboard</span>
             </div>
 
             <div className="grid md:grid-cols-2 gap-0">

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const session = request.cookies.get("pms_session")?.value;
+  const session = request.cookies.get("mahaliwise_session")?.value;
   const path = request.nextUrl.pathname;
   const isLanding = path === "/";
   const isPricing = path === "/pricing";

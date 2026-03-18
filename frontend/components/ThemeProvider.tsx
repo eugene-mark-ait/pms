@@ -12,7 +12,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       attribute="class"
       defaultTheme="system"
       enableSystem
-      storageKey="pms-theme"
+      storageKey="mahaliwise-theme"
     >
       {children}
     </NextThemesProvider>

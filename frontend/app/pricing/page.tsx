@@ -5,7 +5,7 @@ import {
 import PricingContent from "@/components/landing/PricingContent";
 
 export const metadata = {
-  title: "Pricing | PMS – Property Management",
+  title: "Pricing | Mahaliwise – Property Management",
   description: "Simple per-unit pricing for landlords. Tenants and property managers use the platform for free.",
 };
 

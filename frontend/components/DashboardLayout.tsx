@@ -118,7 +118,7 @@ export default function DashboardLayout({
       >
         <div className="flex items-center justify-between h-14 px-3 border-b border-surface-200 dark:border-surface-700 shrink-0">
           <Link href="/dashboard" className={clsx("font-bold text-primary-600 dark:text-primary-400 truncate", sidebarCollapsed ? "w-0 overflow-hidden" : "text-lg")}>
-            PMS
+            Mahaliwise
           </Link>
           <button
             type="button"

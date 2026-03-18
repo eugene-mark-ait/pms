@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PMS - Property Management",
-  description: "SaaS Property Management Platform",
+  title: "Mahaliwise - Property Management",
+  description: "The financial operating system for rental housing. Property owners, tenants, and embedded financial services.",
 };
 
 export default function RootLayout({

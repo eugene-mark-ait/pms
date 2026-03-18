@@ -10,7 +10,7 @@ export default function CTA() {
           Ready to get started?
         </h2>
         <p className="mt-4 text-lg text-primary-100">
-          Join landlords, property managers, and tenants who use PMS every day.
+          Join property owners, property managers, and tenants who use Mahaliwise every day.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
