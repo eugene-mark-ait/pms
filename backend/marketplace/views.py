@@ -314,6 +314,29 @@ class MyRequestsView(APIView):
         return paginator.get_paginated_response(ServiceRequestSerializer(page, many=True).data)
 
 
+class MyRequestsCountsView(APIView):
+    """GET /marketplace/my-requests/counts/ - pending/actioned counts for provider (rating flow, badges)."""
+    permission_classes = [IsAuthenticated, IsServiceProvider]
+
+    def get(self, request):
+        qs = ServiceRequest.objects.filter(provider=request.user)
+        pending = qs.filter(status=ServiceRequest.Status.PENDING).count()
+        actioned = qs.filter(status=ServiceRequest.Status.ACTIONED).count()
+        return Response({"pending": pending, "actioned": actioned})
+
+
+class MySentRequestsCountView(APIView):
+    """GET /marketplace/my-sent-requests/count/ - total/pending/actioned for user (dashboard card)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = ServiceRequest.objects.filter(user=request.user)
+        total = qs.count()
+        pending = qs.filter(status=ServiceRequest.Status.PENDING).count()
+        actioned = qs.filter(status=ServiceRequest.Status.ACTIONED).count()
+        return Response({"total": total, "pending": pending, "actioned": actioned})
+
+
 class ServiceRequestDetailView(APIView):
     """
     GET /marketplace/requests/<pk>/ - retrieve (requester or provider).

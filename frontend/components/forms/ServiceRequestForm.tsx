@@ -54,6 +54,7 @@ export default function ServiceRequestForm({
       setMessage("");
       setPreferredDate("");
       onSuccess();
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("marketplace-request-created"));
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

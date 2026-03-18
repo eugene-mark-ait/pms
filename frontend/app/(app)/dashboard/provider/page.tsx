@@ -3,12 +3,28 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
+import { format } from "date-fns";
+
+interface RequestCounts {
+  pending: number;
+  actioned: number;
+}
+
+interface IncomingRequestItem {
+  id: string;
+  service_title: string;
+  requester_email: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
 
 export default function ProviderDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [servicesCount, setServicesCount] = useState(0);
-  const [requestsCount, setRequestsCount] = useState(0);
+  const [requestCounts, setRequestCounts] = useState<RequestCounts>({ pending: 0, actioned: 0 });
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequestItem[]>([]);
   const isProvider = user?.role_names?.includes("service_provider");
 
   useEffect(() => {
@@ -17,9 +33,15 @@ export default function ProviderDashboardPage() {
 
   useEffect(() => {
     if (!isProvider) return;
-    // Stub: replace with real APIs when backend marketplace exists
-    api.get<{ count?: number }>("/marketplace/my-services/").then((r) => setServicesCount(r.data?.count ?? 0)).catch(() => setServicesCount(0));
-    api.get<unknown[]>("/marketplace/my-requests/").then((r) => setRequestsCount(Array.isArray(r.data) ? r.data.length : 0)).catch(() => setRequestsCount(0));
+    api.get<{ results?: unknown[]; count?: number }>("/marketplace/my-services/").then((r) => {
+      const d = r.data as { count?: number; results?: unknown[] };
+      setServicesCount(d?.count ?? (Array.isArray(d?.results) ? d.results.length : 0));
+    }).catch(() => setServicesCount(0));
+    api.get<RequestCounts>("/marketplace/my-requests/counts/").then((r) => setRequestCounts(r.data ?? { pending: 0, actioned: 0 })).catch(() => setRequestCounts({ pending: 0, actioned: 0 }));
+    api.get<{ results?: IncomingRequestItem[] }>("/marketplace/my-requests/").then((r) => {
+      const raw = (r.data as { results?: IncomingRequestItem[] })?.results ?? r.data;
+      setIncomingRequests(Array.isArray(raw) ? raw.slice(0, 5) : []);
+    }).catch(() => setIncomingRequests([]));
   }, [isProvider]);
 
   if (loading) {
@@ -57,7 +79,19 @@ export default function ProviderDashboardPage() {
         </div>
         <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
           <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Incoming requests</p>
-          <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{requestsCount}</p>
+          <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{requestCounts.pending + requestCounts.actioned}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {requestCounts.pending > 0 && (
+              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
+                Pending: {requestCounts.pending}
+              </span>
+            )}
+            {requestCounts.actioned > 0 && (
+              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                Actioned: {requestCounts.actioned}
+              </span>
+            )}
+          </div>
           <Link href="/dashboard/provider/requests" className="mt-2 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">View requests →</Link>
         </div>
         <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
@@ -103,9 +137,36 @@ export default function ProviderDashboardPage() {
       </section>
 
       <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-2">Service requests (bookings)</h2>
-        <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">Incoming requests from property owners, managers, caretakers, and tenants.</p>
-        <Link href="/dashboard/provider/requests" className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium">View requests →</Link>
+        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-2">My Incoming Requests</h2>
+        <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">Incoming requests from property owners, managers, caretakers, and tenants. Mark as actioned when done; actioned requests can be rated by users.</p>
+        {incomingRequests.length === 0 ? (
+          <p className="text-sm text-surface-500 dark:text-surface-400">No requests yet. They will appear here when users request your services.</p>
+        ) : (
+          <ul className="space-y-3 mb-4">
+            {incomingRequests.map((req) => (
+              <li key={req.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-surface-200 dark:border-surface-700 p-3 bg-surface-50/50 dark:bg-surface-800/50">
+                <div className="min-w-0">
+                  <p className="font-medium text-surface-900 dark:text-surface-100">{req.service_title}</p>
+                  <p className="text-sm text-surface-600 dark:text-surface-400">From: {req.requester_email}</p>
+                  <p className="text-sm text-surface-700 dark:text-surface-300 mt-0.5 line-clamp-2">{req.message}</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">{format(new Date(req.created_at), "MMM d, yyyy HH:mm")}</p>
+                </div>
+                <span
+                  className={`shrink-0 inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
+                    req.status === "pending"
+                      ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                      : req.status === "actioned"
+                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
+                        : "bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-300"
+                  }`}
+                >
+                  {req.status === "pending" ? "Pending" : req.status === "actioned" ? "Actioned" : "Cancelled"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link href="/dashboard/provider/requests" className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium">View all requests →</Link>
       </section>
     </div>
   );

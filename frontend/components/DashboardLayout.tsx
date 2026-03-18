@@ -57,6 +57,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [navLoading, setNavLoading] = useState(true);
   const [openComplaintsCount, setOpenComplaintsCount] = useState<number>(0);
+  const [myRequestsTotal, setMyRequestsTotal] = useState<number>(0);
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null)).finally(() => setNavLoading(false));
@@ -65,18 +66,29 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!user?.role_names?.length || pathname === "/choose-role") return;
     if (!user.role_names.some((r) => ["property_owner", "manager", "tenant", "caretaker", "service_provider"].includes(r))) return;
-    const fetchCount = () => {
+    const fetchComplaints = () => {
       api.get<{ count: number }>("/complaints/open_count/").then((res) => setOpenComplaintsCount(res.data.count)).catch(() => {});
     };
-    fetchCount();
-    const t = setInterval(fetchCount, 45000);
-    const onComplaintsUpdated = () => fetchCount();
+    fetchComplaints();
+    const t = setInterval(fetchComplaints, 45000);
+    const onComplaintsUpdated = () => fetchComplaints();
     window.addEventListener("complaints-updated", onComplaintsUpdated);
     return () => {
       clearInterval(t);
       window.removeEventListener("complaints-updated", onComplaintsUpdated);
     };
   }, [user?.role_names, pathname]);
+
+  useEffect(() => {
+    if (!user?.role_names?.some((r) => ["property_owner", "manager", "tenant", "caretaker"].includes(r))) return;
+    const fetchRequests = () => {
+      api.get<{ total: number }>("/marketplace/my-sent-requests/count/").then((res) => setMyRequestsTotal(res.data?.total ?? 0)).catch(() => {});
+    };
+    fetchRequests();
+    const onRequestCreated = () => fetchRequests();
+    window.addEventListener("marketplace-request-created", onRequestCreated);
+    return () => window.removeEventListener("marketplace-request-created", onRequestCreated);
+  }, [user?.role_names]);
 
   useEffect(() => {
     if (navLoading || !user) return;
@@ -127,6 +139,7 @@ export default function DashboardLayout({
           ) : (
             nav.map((item) => {
               const showBadge = item.href === "/complaints" && openComplaintsCount > 0;
+              const showRequestsBadge = item.href === "/marketplace/requests" && myRequestsTotal > 0;
               const link = (
                 <Link
                   key={item.href}
@@ -145,6 +158,11 @@ export default function DashboardLayout({
                   {showBadge && (
                     <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-xs font-medium">
                       {openComplaintsCount > 99 ? "99+" : openComplaintsCount}
+                    </span>
+                  )}
+                  {showRequestsBadge && (
+                    <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary-500 dark:bg-primary-600 text-white text-xs font-medium">
+                      {myRequestsTotal > 99 ? "99+" : myRequestsTotal}
                     </span>
                   )}
                 </Link>

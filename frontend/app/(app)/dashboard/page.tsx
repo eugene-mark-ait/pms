@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [prefError, setPrefError] = useState("");
   const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  const [requestCounts, setRequestCounts] = useState<{ total: number; pending: number; actioned: number } | null>(null);
 
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
@@ -147,6 +148,9 @@ export default function DashboardPage() {
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
         }
+        if (roles.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
+          api.get<{ total: number; pending: number; actioned: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => setRequestCounts(null));
+        }
       } catch (err) {
         setStats({});
         setDashboardError("Failed to load dashboard.");
@@ -164,6 +168,16 @@ export default function DashboardPage() {
       setMatches(Array.isArray(data) ? data : (data?.results ?? []));
     }).catch(() => setMatches([])).finally(() => setMatchesLoading(false));
   }, [isTenant, preference?.is_looking]);
+
+  useEffect(() => {
+    const refetch = () => {
+      if (user?.role_names?.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
+        api.get<{ total: number; pending: number; actioned: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => {});
+      }
+    };
+    window.addEventListener("marketplace-request-created", refetch);
+    return () => window.removeEventListener("marketplace-request-created", refetch);
+  }, [user?.role_names]);
 
   if (loading) {
     return (
@@ -268,6 +282,21 @@ export default function DashboardPage() {
               <span className="font-medium text-surface-900 dark:text-surface-100">Complaints</span>
               <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">View and submit complaints</p>
             </Link>
+            {requestCounts !== null && (
+              <Link href="/marketplace/requests" className="block rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+                <span className="font-medium text-surface-900 dark:text-surface-100">Total Requests / Bookings</span>
+                <p className="mt-1 text-xl font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {requestCounts.pending > 0 && (
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">Pending: {requestCounts.pending}</span>
+                  )}
+                  {requestCounts.actioned > 0 && (
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">Actioned: {requestCounts.actioned}</span>
+                  )}
+                </div>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">Marketplace service requests</p>
+              </Link>
+            )}
           </div>
         </div>
       )}
@@ -330,6 +359,20 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Open Complaints</p>
               <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{stats.complaintsCount}</p>
             </div>
+          )}
+          {requestCounts !== null && (
+            <Link href="/marketplace/requests" className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm inline-block hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Total Requests / Bookings</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {requestCounts.pending > 0 && (
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">Pending: {requestCounts.pending}</span>
+                )}
+                {requestCounts.actioned > 0 && (
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">Actioned: {requestCounts.actioned}</span>
+                )}
+              </div>
+            </Link>
           )}
         </>
       )}

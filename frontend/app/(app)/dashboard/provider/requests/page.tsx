@@ -8,6 +8,7 @@ interface ServiceRequestItem {
   id: string;
   user: string;
   requester_email: string;
+  requester_phone?: string;
   provider: string;
   service: string;
   service_title: string;
@@ -99,6 +100,9 @@ export default function ProviderRequestsPage() {
                 <div className="min-w-0">
                   <p className="font-semibold text-surface-900 dark:text-surface-100">{req.service_title}</p>
                   <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">From: {req.requester_email}</p>
+                  {req.requester_phone && (
+                    <p className="text-sm text-surface-600 dark:text-surface-400 mt-0.5">Phone: {req.requester_phone}</p>
+                  )}
                   <p className="text-sm text-surface-700 dark:text-surface-300 mt-2 whitespace-pre-wrap">{req.message}</p>
                   {req.preferred_date && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">Preferred date: {new Date(req.preferred_date).toLocaleDateString()}</p>

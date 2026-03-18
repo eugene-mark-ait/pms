@@ -127,45 +127,50 @@ export default function MyUnitsPage() {
                   </dd>
                 </div>
               </dl>
-              <div className="mt-6 flex gap-3">
-                {lease.payment_status === "paid" ? (
-                  <span className="flex-1 inline-flex items-center justify-center py-2.5 px-4 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 font-medium ring-1 ring-emerald-600/20 dark:ring-emerald-500/30">
-                    Paid · Up to date
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setPayModalLease(lease)}
-                    disabled={lease.eviction_active === true}
-                    title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
-                    className="flex-1 py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition"
-                  >
-                    Pay Rent
-                  </button>
-                )}
-                {lease.has_active_notice && lease.active_notice_id && !lease.eviction_active ? (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await api.post(`/vacancies/notice/${lease.active_notice_id}/cancel/`);
-                        load();
-                      } catch {
-                        alert("Failed to revoke notice.");
-                      }
-                    }}
-                    className="flex-1 py-2.5 px-4 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 font-medium rounded-lg transition"
-                  >
-                    Revoke Notice
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setNoticeModalLease(lease)}
-                    disabled={lease.eviction_active === true}
-                    title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
-                    className="flex-1 py-2.5 px-4 border border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50 disabled:cursor-not-allowed text-surface-700 dark:text-surface-200 font-medium rounded-lg transition"
-                  >
-                    Give Notice
-                  </button>
-                )}
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-800/50">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm text-surface-600 dark:text-surface-400">{lease.unit?.property?.name ?? "Unit"} · Unit {lease.unit?.unit_number ?? "—"}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {lease.payment_status === "paid" ? (
+                    <span className="inline-flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 ring-1 ring-emerald-600/20 dark:ring-emerald-500/30">
+                      Paid · Up to date
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setPayModalLease(lease)}
+                      disabled={lease.eviction_active === true}
+                      title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
+                      className="inline-flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition"
+                    >
+                      Pay Rent
+                    </button>
+                  )}
+                  {lease.has_active_notice && lease.active_notice_id && !lease.eviction_active ? (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.post(`/vacancies/notice/${lease.active_notice_id}/cancel/`);
+                          load();
+                        } catch {
+                          alert("Failed to revoke notice.");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 transition"
+                    >
+                      Revoke Notice
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setNoticeModalLease(lease)}
+                      disabled={lease.eviction_active === true}
+                      title={lease.eviction_active ? "Disabled due to eviction notice" : undefined}
+                      className="inline-flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg border border-surface-300 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 disabled:opacity-50 disabled:cursor-not-allowed text-surface-700 dark:text-surface-200 transition"
+                    >
+                      Give Notice
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

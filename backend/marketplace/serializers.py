@@ -116,12 +116,13 @@ class ServiceReviewSerializer(serializers.ModelSerializer):
 class ServiceRequestSerializer(serializers.ModelSerializer):
     service_title = serializers.CharField(source="service.title", read_only=True)
     service_category = serializers.CharField(source="service.category", read_only=True)
-    requester_email = serializers.CharField(source="user.email", read_only=True)
+    requester_email = serializers.EmailField(source="user.email", read_only=True)
+    requester_phone = serializers.CharField(source="user.phone", read_only=True, allow_blank=True)
 
     class Meta:
         model = ServiceRequest
         fields = [
-            "id", "user", "requester_email", "provider", "service", "service_title", "service_category",
+            "id", "user", "requester_email", "requester_phone", "provider", "service", "service_title", "service_category",
             "message", "preferred_date", "status", "created_at",
         ]
         read_only_fields = ["id", "user", "provider", "service", "status", "created_at"]
