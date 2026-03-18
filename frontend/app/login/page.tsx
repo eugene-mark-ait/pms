@@ -59,7 +59,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 p-8">
             <h1 className="text-2xl font-bold text-center text-surface-900 dark:text-white mb-2">
-              Property Management
+              Mahaliwise
             </h1>
             <p className="text-center text-surface-600 dark:text-surface-400 mb-8">
               Sign in to your account

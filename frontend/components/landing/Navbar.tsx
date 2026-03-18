@@ -31,7 +31,6 @@ export default function Navbar({ user = null }: { user?: User | null }) {
           <span className="text-xl font-semibold tracking-tight text-surface-900 dark:text-surface-100">
             Mahaliwise
           </span>
-          <span className="hidden text-sm text-surface-500 dark:text-surface-400 sm:inline">Rental Housing OS</span>
         </Link>
 
         <div className="hidden md:flex md:items-center md:gap-1">

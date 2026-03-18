@@ -68,8 +68,8 @@ export default function RegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface-100 dark:bg-surface-900 px-4 py-8">
         <div className="w-full max-w-lg">
           <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 p-6 sm:p-8">
-            <h1 className="text-2xl font-bold text-center text-surface-900 dark:text-white mb-2">Create account</h1>
-            <p className="text-center text-surface-600 dark:text-surface-400 mb-6">Step 1: Enter your details. You will choose your role next.</p>
+            <h1 className="text-2xl font-bold text-center text-surface-900 dark:text-white mb-2">Mahaliwise</h1>
+            <p className="text-center text-surface-600 dark:text-surface-400 mb-6">Create account — enter your details. You will choose your role next.</p>
 
             <div className="flex justify-center mb-6">
               <GoogleLoginButton
