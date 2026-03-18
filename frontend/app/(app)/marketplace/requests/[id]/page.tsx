@@ -15,6 +15,7 @@ interface RequestDetail {
   message: string;
   preferred_date: string | null;
   status: string;
+  is_rated: boolean;
   created_at: string;
 }
 
@@ -39,10 +40,10 @@ export default function RequestDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (request?.status === "actioned" && !reviewDone) {
+    if (request?.status === "actioned" && !request?.is_rated && !reviewDone) {
       setShowReview(true);
     }
-  }, [request?.status, reviewDone]);
+  }, [request?.status, request?.is_rated, reviewDone]);
 
   async function submitReview() {
     if (!request?.service) return;
@@ -51,11 +52,15 @@ export default function RequestDetailPage() {
       await api.post(`/marketplace/services/${request.service}/reviews/`, {
         rating: reviewRating,
         review: reviewComment.trim() || "",
+        request_id: request.id,
       });
       setReviewDone(true);
       setShowReview(false);
-    } catch {
-      alert("Failed to submit review.");
+      setRequest((prev) => (prev ? { ...prev, is_rated: true } : null));
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("marketplace-request-created"));
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { detail?: string } } };
+      alert(ax?.response?.data?.detail ?? "Failed to submit review.");
     } finally {
       setReviewSubmitting(false);
     }
@@ -94,7 +99,9 @@ export default function RequestDetailPage() {
 
       <div
         className={`rounded-xl border p-6 shadow-sm ${
-          request.status === "actioned"
+          request.status === "actioned" && !request.is_rated
+            ? "border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/20"
+            : request.status === "actioned" && request.is_rated
             ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20"
             : request.status === "cancelled"
             ? "border-surface-200 dark:border-surface-700 opacity-75"
@@ -105,14 +112,16 @@ export default function RequestDetailPage() {
           <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">{request.service_title}</h1>
           <span
             className={`inline-flex items-center rounded-md px-2 py-1 text-sm font-medium ${
-              request.status === "actioned"
+              request.status === "pending"
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                : request.status === "actioned" && !request.is_rated
+                ? "bg-amber-200 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200"
+                : request.status === "actioned" && request.is_rated
                 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
-                : request.status === "cancelled"
-                ? "bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400"
-                : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                : "bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400"
             }`}
           >
-            {request.status === "pending" ? "Pending" : request.status === "actioned" ? "Actioned" : "Cancelled"}
+            {request.status === "pending" ? "Pending" : request.status === "actioned" && !request.is_rated ? "Awaiting Rating" : request.status === "actioned" ? "Rated" : "Cancelled"}
           </span>
         </div>
         {request.service_category && (
@@ -136,53 +145,55 @@ export default function RequestDetailPage() {
       </div>
 
       {request.status === "actioned" && (
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20 p-6">
+        <div className={`rounded-xl border p-6 ${request.is_rated ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20" : "border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/20"}`}>
           <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">How was the service?</h2>
-          <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">Your request was actioned. Leave a review to help others.</p>
-          {!reviewDone ? (
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Rating (1–5)</label>
-                <select
-                  value={reviewRating}
-                  onChange={(e) => setReviewRating(Number(e.target.value))}
-                  className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n} star{n !== 1 ? "s" : ""}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Comment (optional)</label>
-                <textarea
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
-                  placeholder="Share your experience..."
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={submitReview}
-                  disabled={reviewSubmitting}
-                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {reviewSubmitting ? "Submitting…" : "Submit review"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowReview(false)}
-                  className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700"
-                >
-                  Maybe later
-                </button>
-              </div>
-            </div>
-          ) : (
+          {request.is_rated || reviewDone ? (
             <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-300">Thanks for your review.</p>
+          ) : (
+            <>
+              <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">Your request was actioned. Leave a review to help others.</p>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Rating (1–5)</label>
+                  <select
+                    value={reviewRating}
+                    onChange={(e) => setReviewRating(Number(e.target.value))}
+                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} star{n !== 1 ? "s" : ""}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Comment (optional)</label>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
+                    placeholder="Share your experience..."
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={submitReview}
+                    disabled={reviewSubmitting || request.is_rated}
+                    className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {reviewSubmitting ? "Submitting…" : "Rate Service"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReview(false)}
+                    className="rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700"
+                  >
+                    Maybe later
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

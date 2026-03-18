@@ -117,6 +117,10 @@ class ServiceRequest(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
+    is_rated = models.BooleanField(
+        default=False,
+        help_text="True after the requester has submitted a rating for this actioned request.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

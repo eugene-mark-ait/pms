@@ -123,6 +123,6 @@ class ServiceRequestSerializer(serializers.ModelSerializer):
         model = ServiceRequest
         fields = [
             "id", "user", "requester_email", "requester_phone", "provider", "service", "service_title", "service_category",
-            "message", "preferred_date", "status", "created_at",
+            "message", "preferred_date", "status", "is_rated", "created_at",
         ]
-        read_only_fields = ["id", "user", "provider", "service", "status", "created_at"]
+        read_only_fields = ["id", "user", "provider", "service", "status", "is_rated", "created_at"]

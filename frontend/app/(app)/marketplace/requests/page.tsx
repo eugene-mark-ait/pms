@@ -16,6 +16,7 @@ export interface ServiceRequestItem {
   message: string;
   preferred_date: string | null;
   status: string;
+  is_rated?: boolean;
   created_at: string;
 }
 
@@ -169,7 +170,9 @@ export default function MyRequestsPage() {
               <li
                 key={req.id}
                 className={`rounded-xl border p-4 shadow-sm ${
-                  req.status === "actioned"
+                  req.status === "actioned" && !req.is_rated
+                    ? "border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/20"
+                    : req.status === "actioned" && req.is_rated
                     ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20"
                     : req.status === "cancelled"
                     ? "border-surface-200 dark:border-surface-700 opacity-75"
@@ -190,23 +193,25 @@ export default function MyRequestsPage() {
                       {req.preferred_date && ` · Preferred: ${format(new Date(req.preferred_date), "MMM d, yyyy")}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span
                       className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                        req.status === "actioned"
+                        req.status === "pending"
+                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                          : req.status === "actioned" && !req.is_rated
+                          ? "bg-amber-200 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200"
+                          : req.status === "actioned" && req.is_rated
                           ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
-                          : req.status === "cancelled"
-                          ? "bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400"
-                          : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+                          : "bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400"
                       }`}
                     >
-                      {req.status === "pending" ? "Pending" : req.status === "actioned" ? "Actioned" : "Cancelled"}
+                      {req.status === "pending" ? "Pending" : req.status === "actioned" && !req.is_rated ? "Awaiting Rating" : req.status === "actioned" ? "Rated" : "Cancelled"}
                     </span>
                     <Link
                       href={`/marketplace/requests/${req.id}`}
                       className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
                     >
-                      View details
+                      {req.status === "actioned" && !req.is_rated ? "Rate Service" : "View details"}
                     </Link>
                     {req.status === "pending" && (
                       <button

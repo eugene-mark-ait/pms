@@ -82,7 +82,7 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!user?.role_names?.some((r) => ["property_owner", "manager", "tenant", "caretaker"].includes(r))) return;
     const fetchRequests = () => {
-      api.get<{ total: number }>("/marketplace/my-sent-requests/count/").then((res) => setMyRequestsTotal(res.data?.total ?? 0)).catch(() => {});
+      api.get<{ awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setMyRequestsTotal(res.data?.awaiting_rating ?? 0)).catch(() => {});
     };
     fetchRequests();
     const onRequestCreated = () => fetchRequests();

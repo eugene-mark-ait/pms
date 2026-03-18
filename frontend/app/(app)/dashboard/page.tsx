@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [prefError, setPrefError] = useState("");
   const [matches, setMatches] = useState<VacancyMatchItem[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
-  const [requestCounts, setRequestCounts] = useState<{ total: number; pending: number; actioned: number } | null>(null);
+  const [requestCounts, setRequestCounts] = useState<{ total: number; pending: number; actioned: number; awaiting_rating: number } | null>(null);
 
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
@@ -149,7 +149,7 @@ export default function DashboardPage() {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
         }
         if (roles.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
-          api.get<{ total: number; pending: number; actioned: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => setRequestCounts(null));
+          api.get<{ total: number; pending: number; actioned: number; awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => setRequestCounts(null));
         }
       } catch (err) {
         setStats({});
@@ -172,7 +172,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const refetch = () => {
       if (user?.role_names?.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
-        api.get<{ total: number; pending: number; actioned: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => {});
+        api.get<{ total: number; pending: number; actioned: number; awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => {});
       }
     };
     window.addEventListener("marketplace-request-created", refetch);
@@ -283,18 +283,14 @@ export default function DashboardPage() {
               <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">View and submit complaints</p>
             </Link>
             {requestCounts !== null && (
-              <Link href="/marketplace/requests" className="block rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
-                <span className="font-medium text-surface-900 dark:text-surface-100">Total Requests / Bookings</span>
-                <p className="mt-1 text-xl font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {requestCounts.pending > 0 && (
-                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">Pending: {requestCounts.pending}</span>
-                  )}
-                  {requestCounts.actioned > 0 && (
-                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">Actioned: {requestCounts.actioned}</span>
-                  )}
+              <Link href="/marketplace/requests" className="block p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">Total Requests</h3>
+                  <span className="text-lg font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</span>
                 </div>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">Marketplace service requests</p>
+                {(requestCounts.awaiting_rating ?? 0) > 0 && (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
+                )}
               </Link>
             )}
           </div>
@@ -361,17 +357,14 @@ export default function DashboardPage() {
             </div>
           )}
           {requestCounts !== null && (
-            <Link href="/marketplace/requests" className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm inline-block hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
-              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Total Requests / Bookings</p>
-              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {requestCounts.pending > 0 && (
-                  <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">Pending: {requestCounts.pending}</span>
-                )}
-                {requestCounts.actioned > 0 && (
-                  <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">Actioned: {requestCounts.actioned}</span>
-                )}
+            <Link href="/marketplace/requests" className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm inline-block hover:bg-surface-50 dark:hover:bg-surface-700/50 transition">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">Total Requests</h3>
+                <span className="text-lg font-bold text-surface-900 dark:text-surface-100">{requestCounts.total}</span>
               </div>
+              {(requestCounts.awaiting_rating ?? 0) > 0 && (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">{requestCounts.awaiting_rating} awaiting rating</p>
+              )}
             </Link>
           )}
         </>
@@ -458,6 +451,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {(isTenant || canSeeOverview) && (
       <section>
         <h2 className="text-sm font-semibold text-surface-700 dark:text-surface-300 uppercase tracking-wider mb-4">Recent payments</h2>
         {recentPayments.length === 0 ? (
@@ -506,6 +500,7 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }
