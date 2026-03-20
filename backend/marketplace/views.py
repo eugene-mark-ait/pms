@@ -287,6 +287,11 @@ class ServiceRequestCreateView(APIView):
 
     def post(self, request, pk):
         service = get_object_or_404(Service, pk=pk)
+        if service.provider_id == request.user.id:
+            return Response(
+                {"detail": "You cannot request your own service."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = ServiceRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user, provider=service.provider, service=service)

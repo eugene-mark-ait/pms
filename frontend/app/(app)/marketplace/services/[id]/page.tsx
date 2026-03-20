@@ -75,6 +75,8 @@ export default function ServiceDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    setRequestDrawerOpen(false);
+    setRequestSuccess(false);
     api
       .get<MarketplaceService>(`/marketplace/services/${id}/`)
       .then((res) => setService(res.data))
@@ -117,6 +119,7 @@ export default function ServiceDetailPage() {
   const reviewCount = service.review_count ?? 0;
   const reviewsHeadingCount =
     ratingFilter && reviewsFilteredCount != null ? reviewsFilteredCount : reviewCount;
+  const isOwnService = Boolean(user && service.provider && user.id === String(service.provider));
 
   return (
     <div className="space-y-6">
@@ -156,7 +159,7 @@ export default function ServiceDetailPage() {
         {service.contact_info && (
           <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Contact: {service.contact_info}</p>
         )}
-        {user && (
+        {user && !isOwnService && (
           <div className="mt-6">
             <button
               type="button"
@@ -165,6 +168,18 @@ export default function ServiceDetailPage() {
             >
               Request Service
             </button>
+          </div>
+        )}
+        {user && isOwnService && (
+          <div className="mt-6 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800/80 px-4 py-3 text-sm text-surface-600 dark:text-surface-400">
+            <p className="font-medium text-surface-800 dark:text-surface-200">This is your listing</p>
+            <p className="mt-1">
+              You can’t request your own service. Manage it from{" "}
+              <Link href="/dashboard/provider/services" className="text-primary-600 dark:text-primary-400 font-medium hover:underline">
+                My services
+              </Link>
+              .
+            </p>
           </div>
         )}
       </div>
@@ -239,42 +254,44 @@ export default function ServiceDetailPage() {
         )}
       </div>
 
-      <SlideOverForm
-        isOpen={requestDrawerOpen}
-        onClose={() => setRequestDrawerOpen(false)}
-        title="Request service"
-        width="md"
-        footer={(onRequestClose) => (
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onRequestClose}
-              className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300"
-            >
-              Cancel
-            </button>
-            <button
-              form={SERVICE_REQUEST_FORM_ID}
-              type="submit"
-              disabled={formSubmitting}
-              className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-            >
-              {formSubmitting ? "Sending…" : "Send request"}
-            </button>
-          </div>
-        )}
-      >
-        <ServiceRequestForm
-          serviceId={id}
-          onSuccess={() => {
-            setRequestSuccess(true);
-            setRequestDrawerOpen(false);
-            router.refresh();
-            refreshReviews();
-          }}
-          onSubmittingChange={setFormSubmitting}
-        />
-      </SlideOverForm>
+      {user && !isOwnService && (
+        <SlideOverForm
+          isOpen={requestDrawerOpen}
+          onClose={() => setRequestDrawerOpen(false)}
+          title="Request service"
+          width="md"
+          footer={(onRequestClose) => (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onRequestClose}
+                className="flex-1 py-2.5 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300"
+              >
+                Cancel
+              </button>
+              <button
+                form={SERVICE_REQUEST_FORM_ID}
+                type="submit"
+                disabled={formSubmitting}
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              >
+                {formSubmitting ? "Sending…" : "Send request"}
+              </button>
+            </div>
+          )}
+        >
+          <ServiceRequestForm
+            serviceId={id}
+            onSuccess={() => {
+              setRequestSuccess(true);
+              setRequestDrawerOpen(false);
+              router.refresh();
+              refreshReviews();
+            }}
+            onSubmittingChange={setFormSubmitting}
+          />
+        </SlideOverForm>
+      )}
     </div>
   );
 }
