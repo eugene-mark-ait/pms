@@ -1,5 +1,23 @@
 from django.contrib import admin
-from .models import Payment, Transaction, PaymentReceipt, CreditScoreRecord
+from .models import CreditScoreRecord, MpesaStkPayment, Payment, PaymentReceipt, Transaction
+
+
+@admin.register(MpesaStkPayment)
+class MpesaStkPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "lease",
+        "amount",
+        "status",
+        "checkout_request_id",
+        "mpesa_receipt_number",
+        "created_at",
+    )
+    list_filter = ("status", "created_at")
+    search_fields = ("checkout_request_id", "phone", "user__email", "mpesa_receipt_number")
+    raw_id_fields = ("user", "lease", "payment")
+    readonly_fields = ("id", "created_at", "updated_at")
 
 
 class TransactionInline(admin.TabularInline):

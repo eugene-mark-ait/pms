@@ -180,7 +180,7 @@ export default function MyUnitsPage() {
       <PayRentModal
         lease={payModalLease}
         onClose={() => setPayModalLease(null)}
-        onSuccess={() => { setPayModalLease(null); load(); }}
+        onSuccess={() => load()}
       />
       <GiveNoticeDrawer
         lease={noticeModalLease}

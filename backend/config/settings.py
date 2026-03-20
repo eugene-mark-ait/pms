@@ -130,6 +130,22 @@ SIMPLE_JWT = {
 
 # Social auth (scalable: add keys for each provider)
 GOOGLE_OAUTH2_CLIENT_ID = env("GOOGLE_OAUTH2_CLIENT_ID", default="")
+
+# M-PESA Daraja (STK Push) — never commit real secrets; use environment only
+MPESA_ENV = env("MPESA_ENV", default="sandbox")  # sandbox | production
+MPESA_CONSUMER_KEY = env("MPESA_CONSUMER_KEY", default="")
+MPESA_CONSUMER_SECRET = env("MPESA_CONSUMER_SECRET", default="")
+MPESA_PASSKEY = env("MPESA_PASSKEY", default="")
+MPESA_SHORTCODE = env("MPESA_SHORTCODE", default="174379")
+# Public URL Safaricom can POST to, e.g. https://your-ngrok-url.ngrok.io/api/mpesa/callback/
+MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "pms-mpesa-token",
+    }
+}
 # GOOGLE_OAUTH2_CLIENT_SECRET not needed for ID token verification (used for backend OAuth flow if needed)
 # FACEBOOK_APP_ID = env("FACEBOOK_APP_ID", default="")
 # GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")

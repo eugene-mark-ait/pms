@@ -134,6 +134,18 @@ export default function ProviderDashboardPage() {
           >
             Account settings
           </Link>
+          <Link
+            href="/marketplace"
+            className="inline-flex items-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+          >
+            Browse marketplace
+          </Link>
+          <Link
+            href="/marketplace/requests"
+            className="inline-flex items-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+          >
+            My sent requests
+          </Link>
         </div>
       </section>
 

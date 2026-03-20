@@ -21,8 +21,8 @@ const navItems: { href: string; label: string; roles: string[]; icon: React.Reac
   { href: "/vacancies", label: "Vacancies", roles: ["property_owner", "manager", "caretaker"], icon: <VacancyIcon /> },
   { href: "/complaints", label: "Complaints", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <AlertIcon /> },
   { href: "/messages", label: "Messages", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <MessageIcon /> },
-  { href: "/marketplace", label: "Marketplace", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <MarketplaceIcon /> },
-  { href: "/marketplace/requests", label: "My requests", roles: ["property_owner", "manager", "tenant", "caretaker"], icon: <BellIcon /> },
+  { href: "/marketplace", label: "Marketplace", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <MarketplaceIcon /> },
+  { href: "/marketplace/requests", label: "My requests", roles: ["property_owner", "manager", "tenant", "caretaker", "service_provider"], icon: <BellIcon /> },
   { href: "/dashboard/provider", label: "Provider Dashboard", roles: ["service_provider"], icon: <ProviderDashboardIcon /> },
   { href: "/dashboard/provider/requests", label: "Requests", roles: ["service_provider"], icon: <InboxRequestsIcon /> },
   { href: "/dashboard/provider/reviews", label: "Reviews", roles: ["service_provider"], icon: <StarReviewsIcon /> },
@@ -86,7 +86,7 @@ export default function DashboardLayout({
   }, [user?.role_names, pathname]);
 
   useEffect(() => {
-    if (!user?.role_names?.some((r) => ["property_owner", "manager", "tenant", "caretaker"].includes(r))) return;
+    if (!user?.role_names?.some((r) => ["property_owner", "manager", "tenant", "caretaker", "service_provider"].includes(r))) return;
     const fetchRequests = () => {
       api.get<{ awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setMyRequestsTotal(res.data?.awaiting_rating ?? 0)).catch(() => {});
     };
@@ -94,6 +94,25 @@ export default function DashboardLayout({
     const onRequestCreated = () => fetchRequests();
     window.addEventListener("marketplace-request-created", onRequestCreated);
     return () => window.removeEventListener("marketplace-request-created", onRequestCreated);
+  }, [user?.role_names]);
+
+  /** Pending incoming requests for service providers (sidebar badge + subtitle). */
+  useEffect(() => {
+    if (!user?.role_names?.includes("service_provider")) return;
+    const fetchProviderRequestCounts = () => {
+      api
+        .get<{ pending: number }>("/marketplace/my-requests/counts/")
+        .then((res) => setProviderPendingRequestsCount(res.data?.pending ?? 0))
+        .catch(() => setProviderPendingRequestsCount(0));
+    };
+    fetchProviderRequestCounts();
+    const interval = setInterval(fetchProviderRequestCounts, 45000);
+    const onProviderRequestsUpdated = () => fetchProviderRequestCounts();
+    window.addEventListener("provider-requests-updated", onProviderRequestsUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("provider-requests-updated", onProviderRequestsUpdated);
+    };
   }, [user?.role_names]);
 
   useEffect(() => {
@@ -147,36 +166,65 @@ export default function DashboardLayout({
             nav.map((item) => {
               const showBadge = item.href === "/complaints" && openComplaintsCount > 0;
               const showRequestsBadge = item.href === "/marketplace/requests" && myRequestsTotal > 0;
-              const showProviderRequestsBadge =
-                item.href === "/dashboard/provider/requests" && providerPendingRequestsCount > 0;
+              const isProviderRequests = item.href === "/dashboard/provider/requests";
+              const pendingProviderRequests = isProviderRequests ? providerPendingRequestsCount : 0;
+              const showProviderRequestsBadge = isProviderRequests && pendingProviderRequests > 0;
               const link = (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 rounded-lg text-sm font-medium transition py-2.5 relative",
+                    "flex items-center gap-3 rounded-lg text-sm font-medium transition py-2.5",
+                    sidebarCollapsed && isProviderRequests && pendingProviderRequests > 0 && "relative",
                     sidebarCollapsed ? "justify-center px-2" : "px-3",
                     pathname === item.href
                       ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
                       : "text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700"
                   )}
-                  title={sidebarCollapsed ? item.label : undefined}
+                  title={
+                    sidebarCollapsed
+                      ? isProviderRequests && pendingProviderRequests > 0
+                        ? `${item.label} (${pendingProviderRequests} pending)`
+                        : item.label
+                      : undefined
+                  }
                 >
                   {item.icon}
-                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                  {showBadge && (
-                    <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-xs font-medium">
-                      {openComplaintsCount > 99 ? "99+" : openComplaintsCount}
-                    </span>
-                  )}
-                  {showRequestsBadge && (
-                    <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary-500 dark:bg-primary-600 text-white text-xs font-medium">
-                      {myRequestsTotal > 99 ? "99+" : myRequestsTotal}
-                    </span>
-                  )}
-                  {showProviderRequestsBadge && (
-                    <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-amber-500 dark:bg-amber-600 text-white text-xs font-medium">
-                      {providerPendingRequestsCount > 99 ? "99+" : providerPendingRequestsCount}
+                  {!sidebarCollapsed &&
+                    (isProviderRequests ? (
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <span className="truncate">{item.label}</span>
+                          {showProviderRequestsBadge && (
+                            <span className="shrink-0 min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-xs font-medium">
+                              {pendingProviderRequests > 99 ? "99+" : pendingProviderRequests}
+                            </span>
+                          )}
+                        </div>
+                        {showProviderRequestsBadge && (
+                          <span className="text-xs font-normal text-surface-500 dark:text-surface-400">
+                            {pendingProviderRequests} pending
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <span className="truncate">{item.label}</span>
+                        {showBadge && (
+                          <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-xs font-medium">
+                            {openComplaintsCount > 99 ? "99+" : openComplaintsCount}
+                          </span>
+                        )}
+                        {showRequestsBadge && (
+                          <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-primary-500 dark:bg-primary-600 text-white text-xs font-medium">
+                            {myRequestsTotal > 99 ? "99+" : myRequestsTotal}
+                          </span>
+                        )}
+                      </>
+                    ))}
+                  {sidebarCollapsed && showProviderRequestsBadge && (
+                    <span className="absolute top-1 right-1 min-w-[1.125rem] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold leading-none">
+                      {pendingProviderRequests > 99 ? "99+" : pendingProviderRequests}
                     </span>
                   )}
                 </Link>

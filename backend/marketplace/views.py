@@ -4,6 +4,7 @@ Marketplace API: services, reviews, requests.
 - Filters: status, service type for requests; category, price, min_rating, sort for services.
 - Image upload for service with validation (type, size).
 """
+import uuid
 from decimal import Decimal
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
@@ -380,7 +381,7 @@ class MyRequestsCountsView(APIView):
 class MyReceivedReviewsView(APIView):
     """
     GET /marketplace/my-reviews/ - reviews for services owned by current provider.
-    Cursor pagination; optional rating=1..5 filter.
+    Cursor pagination; optional rating=1..5 filter; optional service_id=<uuid> (must be your service).
     """
     permission_classes = [IsAuthenticated, IsServiceProvider]
 
@@ -390,6 +391,15 @@ class MyReceivedReviewsView(APIView):
             .select_related("user", "service", "service_request")
             .order_by("-created_at", "-id")
         )
+        service_id_raw = (request.query_params.get("service_id") or "").strip()
+        if service_id_raw:
+            try:
+                sid = uuid.UUID(service_id_raw)
+            except ValueError:
+                return Response({"detail": "Invalid service_id."}, status=status.HTTP_400_BAD_REQUEST)
+            if not Service.objects.filter(pk=sid, provider_id=request.user.id).exists():
+                return Response({"detail": "Service not found."}, status=status.HTTP_404_NOT_FOUND)
+            qs = qs.filter(service_id=sid)
         rating_param = (request.query_params.get("rating") or "").strip()
         if rating_param.isdigit():
             r = int(rating_param)

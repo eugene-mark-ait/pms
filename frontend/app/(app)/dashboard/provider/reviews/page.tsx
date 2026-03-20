@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
 import { useCursorInfiniteScroll } from "@/hooks/useCursorInfiniteScroll";
@@ -15,12 +15,25 @@ export interface ProviderReviewItem {
   service?: string;
 }
 
+interface MyServiceOption {
+  id: string;
+  title: string;
+}
+
 export default function ProviderReviewsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [ratingFilter, setRatingFilter] = useState("");
+  const [serviceIdFilter, setServiceIdFilter] = useState("");
+  const [services, setServices] = useState<MyServiceOption[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const isProvider = user?.role_names?.includes("service_provider");
 
-  const reviewParams = ratingFilter ? { rating: ratingFilter } : {};
+  const reviewParams = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (ratingFilter) p.rating = ratingFilter;
+    if (serviceIdFilter) p.service_id = serviceIdFilter;
+    return p;
+  }, [ratingFilter, serviceIdFilter]);
 
   const {
     items: reviews,
@@ -49,9 +62,29 @@ export default function ProviderReviewsPage() {
     setRatingFilter(value);
   }, []);
 
+  const onServiceFilterChange = useCallback((value: string) => {
+    setServiceIdFilter(value);
+  }, []);
+
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
+
+  useEffect(() => {
+    if (!isProvider) return;
+    setServicesLoading(true);
+    api
+      .get<{ results?: { id: string; title: string }[] }>("/marketplace/my-services/")
+      .then((res) => {
+        const raw = res.data?.results ?? [];
+        const opts = raw
+          .map((s) => ({ id: s.id, title: s.title || "Untitled" }))
+          .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+        setServices(opts);
+      })
+      .catch(() => setServices([]))
+      .finally(() => setServicesLoading(false));
+  }, [isProvider]);
 
   if (!user) {
     return (
@@ -72,14 +105,22 @@ export default function ProviderReviewsPage() {
     );
   }
 
-  const headingCount = ratingFilter && totalCount != null ? totalCount : null;
+  const hasActiveFilter = Boolean(ratingFilter || serviceIdFilter);
+  const headingCount = hasActiveFilter && totalCount != null ? totalCount : null;
+
+  const emptyMessage = (() => {
+    if (!hasActiveFilter) return "No reviews yet.";
+    if (serviceIdFilter && ratingFilter) return "No reviews match these filters.";
+    if (serviceIdFilter) return "No reviews for this service yet.";
+    return "No reviews match this filter.";
+  })();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/provider" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 text-sm">← Provider Dashboard</Link>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Customer reviews</h1>
           <p className="mt-1 text-surface-600 dark:text-surface-400">
@@ -87,21 +128,42 @@ export default function ProviderReviewsPage() {
             {headingCount != null ? ` · ${headingCount} match${headingCount !== 1 ? "es" : ""}` : ""}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="provider-review-rating-filter" className="text-sm text-surface-600 dark:text-surface-400 whitespace-nowrap">
-            Stars
-          </label>
-          <select
-            id="provider-review-rating-filter"
-            value={ratingFilter}
-            onChange={(e) => onRatingFilterChange(e.target.value)}
-            className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm"
-          >
-            <option value="">All ratings</option>
-            {[5, 4, 3, 2, 1].map((n) => (
-              <option key={n} value={String(n)}>{n} stars</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="provider-review-service-filter" className="text-sm text-surface-600 dark:text-surface-400">
+              Service
+            </label>
+            <select
+              id="provider-review-service-filter"
+              value={serviceIdFilter}
+              onChange={(e) => onServiceFilterChange(e.target.value)}
+              disabled={servicesLoading}
+              className="min-w-[12rem] rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm disabled:opacity-60"
+            >
+              <option value="">All services</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="provider-review-rating-filter" className="text-sm text-surface-600 dark:text-surface-400">
+              Stars
+            </label>
+            <select
+              id="provider-review-rating-filter"
+              value={ratingFilter}
+              onChange={(e) => onRatingFilterChange(e.target.value)}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm"
+            >
+              <option value="">All ratings</option>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={String(n)}>{n} stars</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -118,9 +180,7 @@ export default function ProviderReviewsPage() {
         </div>
       ) : reviews.length === 0 ? (
         <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
-          <p className="text-surface-500 dark:text-surface-400 text-sm">
-            {ratingFilter ? "No reviews match this filter." : "No reviews yet."}
-          </p>
+          <p className="text-surface-500 dark:text-surface-400 text-sm">{emptyMessage}</p>
         </div>
       ) : (
         <>

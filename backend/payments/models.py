@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.db import models
 from leases.models import Lease
 
@@ -84,6 +85,62 @@ class PaymentReceipt(models.Model):
 
     def __str__(self):
         return self.receipt_number
+
+
+class MpesaStkPayment(models.Model):
+    """
+    One STK Push attempt for rent. Status becomes success/failed only after Daraja callback.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mpesa_stk_payments",
+    )
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.CASCADE,
+        related_name="mpesa_stk_payments",
+    )
+    months_paid_for = models.PositiveIntegerField()
+    phone = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    deposit_to_add = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    checkout_request_id = models.CharField(max_length=80, unique=True, db_index=True)
+    merchant_request_id = models.CharField(max_length=80, blank=True)
+    mpesa_receipt_number = models.CharField(max_length=80, blank=True)
+    result_code = models.IntegerField(null=True, blank=True)
+    result_desc = models.TextField(blank=True)
+    payment = models.OneToOneField(
+        "Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mpesa_stk",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "mpesa_stk_payments"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"STK {self.checkout_request_id[:12]}… {self.status}"
 
 
 class CreditScoreRecord(models.Model):

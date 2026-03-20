@@ -1,106 +1,246 @@
-from datetime import date
+import logging
 from decimal import Decimal
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
 
-from .models import Payment
-from .serializers import PaymentSerializer, PayRentSerializer
-from leases.models import Lease
-from leases.services import get_next_rent_due_date, get_payment_status, get_last_payment_end
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from accounts.permissions import IsTenant
-from notifications.models import Notification
+
+from .daraja import stk_amount_kes, stk_push
+from .models import MpesaStkPayment, Payment
+from .rent_service import compute_pay_rent_totals, create_completed_rent_payment, get_lease_for_tenant
+from .serializers import MpesaStkStatusSerializer, PayRentStkSerializer, PaymentSerializer
+
+logger = logging.getLogger(__name__)
+
+MPESA_RESULT_HINTS = {
+    0: "Payment completed successfully.",
+    1: "Insufficient balance.",
+    1032: "You cancelled the M-PESA prompt.",
+    1037: "The request timed out. Please try again.",
+    2001: "Wrong PIN entered.",
+}
+
+
+def user_friendly_mpesa_message(code: int | None, desc: str = "") -> str:
+    if code is None:
+        return desc or "Payment could not be completed."
+    return MPESA_RESULT_HINTS.get(code, desc or f"Payment failed (code {code}).")
 
 
 def tenant_payments_queryset(user):
     return Payment.objects.filter(lease__tenant=user).select_related("lease", "lease__unit", "lease__unit__property").order_by("-payment_date")
 
 
-class PayRentView(generics.GenericAPIView):
-    """POST /api/payments/pay-rent/ - tenant pays rent for 1–3 months. First payment must include deposit if not paid."""
+class PayRentStkInitiateView(APIView):
+    """
+    POST /api/pay-rent/ and POST /api/payments/pay-rent/
+    Initiate M-PESA STK Push. Payment is completed only after Daraja callback — never mark paid here.
+    """
+
     permission_classes = [IsAuthenticated, IsTenant]
-    serializer_class = PayRentSerializer
 
     def post(self, request):
-        serializer = PayRentSerializer(data=request.data)
+        if not getattr(settings, "MPESA_CONSUMER_KEY", None) or not getattr(
+            settings, "MPESA_CONSUMER_SECRET", None
+        ):
+            return Response(
+                {
+                    "error": "M-PESA is not configured. Set MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, "
+                    "MPESA_PASSKEY, and MPESA_CALLBACK_URL in the server environment."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if not (getattr(settings, "MPESA_PASSKEY", None) or "").strip():
+            return Response(
+                {"error": "MPESA_PASSKEY is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        callback_url = (getattr(settings, "MPESA_CALLBACK_URL", None) or "").strip()
+        if not callback_url:
+            return Response(
+                {
+                    "error": "MPESA_CALLBACK_URL must be a public HTTPS URL reachable by Safaricom "
+                    "(e.g. ngrok in development)."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        serializer = PayRentStkSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        lease_id = data["lease_id"]
-        months = data["months"]
-        payment_method = data.get("payment_method") or Payment.PaymentMethod.MPESA
 
-        lease = get_object_or_404(
-            Lease,
-            id=lease_id,
-            tenant=request.user,
-            is_active=True,
-        )
+        lease = get_lease_for_tenant(data["lease_id"], request.user)
+        totals = compute_pay_rent_totals(lease, data["months"])
+        if "error" in totals:
+            return Response({"error": totals["error"]}, status=status.HTTP_400_BAD_REQUEST)
 
-        if months < 1 or months > 3:
+        amount: Decimal = totals["amount"]
+        client_amount: Decimal = data["amount"]
+        if amount != client_amount:
             return Response(
-                {"error": "Months must be 1, 2, or 3"},
+                {"error": "Amount does not match expected rent total. Refresh and try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        next_due = get_next_rent_due_date(lease)
-        today = date.today()
-        if get_payment_status(lease) == "paid":
+        phone = data["phone"]
+        kes = stk_amount_kes(amount)
+        if kes < 1:
             return Response(
-                {"error": "Current period is already paid."},
+                {"error": "Amount must be at least 1 KES."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        period_start = next_due
-        from calendar import monthrange
-        end_month = next_due.month + months - 1
-        end_year = next_due.year
-        while end_month > 12:
-            end_month -= 12
-            end_year += 1
-        _, last_day = monthrange(end_year, end_month)
-        period_end = date(end_year, end_month, last_day)
-
-        amount = lease.monthly_rent * months
-        deposit_to_add = Decimal("0")
-        if not lease.deposit_paid and lease.deposit_amount and lease.deposit_amount > 0:
-            last_end = get_last_payment_end(lease)
-            if last_end is None:
-                deposit_to_add = lease.deposit_amount
-        amount += deposit_to_add
-
-        if amount <= 0:
+        try:
+            resp = stk_push(
+                phone=phone,
+                amount=kes,
+                account_reference="RENT",
+                transaction_desc="Rent Payment",
+                callback_url=callback_url,
+            )
+        except RuntimeError as e:
+            logger.warning("STK RuntimeError: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception:
+            logger.exception("STK push failed")
             return Response(
-                {"error": "Payment amount must be greater than zero"},
+                {"error": "Could not reach M-PESA. Try again later."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        rc = str(resp.get("ResponseCode", ""))
+        checkout = (resp.get("CheckoutRequestID") or "").strip()
+        merchant = (resp.get("MerchantRequestID") or "").strip()
+        if rc != "0" or not checkout:
+            msg = resp.get("CustomerMessage") or resp.get("ResponseDescription") or "STK request rejected."
+            return Response(
+                {"error": msg, "daraja": resp},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        payment = Payment.objects.create(
+        stk = MpesaStkPayment.objects.create(
+            user=request.user,
             lease=lease,
+            months_paid_for=data["months"],
+            phone=phone,
             amount=amount,
-            months_paid_for=months,
-            period_start=period_start,
-            period_end=period_end,
-            payment_date=today,
-            payment_method=Payment.PaymentMethod.MPESA,
-            payment_status=Payment.PaymentStatus.COMPLETED,
-        )
-
-        if deposit_to_add > 0:
-            lease.deposit_paid = True
-            lease.save(update_fields=["deposit_paid", "updated_at"])
-
-        Notification.objects.create(
-            user=lease.unit.property.property_owner,
-            notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
-            title="Rent payment received",
-            body=f"Tenant paid {amount} for {lease.unit.unit_number} ({months} month(s)).",
+            deposit_to_add=totals["deposit_to_add"],
+            period_start=totals["period_start"],
+            period_end=totals["period_end"],
+            status=MpesaStkPayment.Status.PENDING,
+            checkout_request_id=checkout,
+            merchant_request_id=merchant,
         )
 
         return Response(
-            PaymentSerializer(payment).data,
+            {
+                "id": str(stk.id),
+                "checkout_request_id": checkout,
+                "status": "pending",
+                "message": "Waiting for M-PESA prompt. Please enter your PIN on your phone.",
+            },
             status=status.HTTP_201_CREATED,
         )
+
+
+class MpesaStkStatusView(APIView):
+    """GET /api/payments/mpesa-stk/<id>/ — poll STK payment status (tenant must own the record)."""
+
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def get(self, request, pk):
+        stk = get_object_or_404(MpesaStkPayment, pk=pk, user=request.user)
+        data = MpesaStkStatusSerializer(stk).data
+        if stk.status == MpesaStkPayment.Status.PENDING:
+            data["user_message"] = "Waiting for M-PESA. Complete the prompt on your phone."
+        elif stk.status == MpesaStkPayment.Status.SUCCESS:
+            data["user_message"] = user_friendly_mpesa_message(0, stk.result_desc or "")
+        else:
+            data["user_message"] = user_friendly_mpesa_message(stk.result_code, stk.result_desc or "")
+        return Response(data)
+
+
+class MpesaCallbackView(APIView):
+    """
+    POST /api/mpesa/callback/ — Daraja STK callback (no auth).
+    Always respond 200 with ResultCode 0 so Safaricom does not retry indefinitely.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        body = request.data if isinstance(request.data, dict) else {}
+        try:
+            stk_cb = body.get("Body", {}).get("stkCallback") or {}
+        except Exception:
+            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+
+        checkout_id = (stk_cb.get("CheckoutRequestID") or "").strip()
+        result_code = stk_cb.get("ResultCode")
+        result_desc = (stk_cb.get("ResultDesc") or "")[:2000]
+
+        if not checkout_id:
+            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+
+        stk = MpesaStkPayment.objects.filter(checkout_request_id=checkout_id).first()
+        if not stk:
+            logger.warning("M-PESA callback unknown CheckoutRequestID=%s", checkout_id)
+            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+
+        if stk.status == MpesaStkPayment.Status.SUCCESS:
+            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+
+        rc = int(result_code) if result_code is not None else -1
+        stk.result_code = rc
+        stk.result_desc = result_desc
+
+        if rc == 0:
+            meta = stk_cb.get("CallbackMetadata") or {}
+            items = meta.get("Item") or []
+            parsed = {}
+            for it in items:
+                if isinstance(it, dict) and it.get("Name"):
+                    parsed[it["Name"]] = it.get("Value")
+            receipt = str(parsed.get("MpesaReceiptNumber") or "")[:80]
+            stk.mpesa_receipt_number = receipt
+            stk.status = MpesaStkPayment.Status.SUCCESS
+            stk.save(
+                update_fields=[
+                    "result_code",
+                    "result_desc",
+                    "mpesa_receipt_number",
+                    "status",
+                    "updated_at",
+                ]
+            )
+            try:
+                pay = create_completed_rent_payment(
+                    lease=stk.lease,
+                    months=stk.months_paid_for,
+                    amount=stk.amount,
+                    deposit_to_add=stk.deposit_to_add,
+                    period_start=stk.period_start,
+                    period_end=stk.period_end,
+                    transaction_reference=receipt or checkout_id,
+                )
+                stk.payment = pay
+                stk.save(update_fields=["payment", "updated_at"])
+            except Exception:
+                logger.exception("Failed to create Payment after STK success id=%s", stk.id)
+                stk.status = MpesaStkPayment.Status.FAILED
+                stk.result_desc = (stk.result_desc or "") + " | Internal error recording payment."
+                stk.save(update_fields=["status", "result_desc", "updated_at"])
+        else:
+            stk.status = MpesaStkPayment.Status.FAILED
+            stk.save(update_fields=["result_code", "result_desc", "status", "updated_at"])
+
+        return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
 
 
 class PaymentHistoryView(generics.ListAPIView):
@@ -208,28 +348,3 @@ class PaymentExportView(generics.GenericAPIView):
             except ImportError:
                 return HttpResponse("PDF export requires reportlab. Install with: pip install reportlab", status=501)
         return HttpResponse("Use format=csv or format=pdf", status=400)
-
-
-class MpesaStkPushView(generics.GenericAPIView):
-    """POST /api/payments/mpesa-stk-push/ - initiate M-Pesa STK Push. Requires M-Pesa credentials (consumer key, secret, passkey) in env."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        from django.conf import settings
-        if not getattr(settings, "MPESA_CONSUMER_KEY", None) or not getattr(settings, "MPESA_CONSUMER_SECRET", None):
-            return Response(
-                {"error": "M-Pesa STK Push is not configured. Set MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, and MPESA_PASSKEY in environment. See Safaricom Daraja API docs."},
-                status=status.HTTP_501_NOT_IMPLEMENTED,
-            )
-        phone = request.data.get("phone", "").strip().replace("+", "").replace(" ", "")
-        amount = request.data.get("amount")
-        lease_id = request.data.get("lease_id")
-        if not phone or not amount or not lease_id:
-            return Response(
-                {"error": "phone, amount, and lease_id are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            {"error": "M-Pesa STK Push integration requires implementing Safaricom Daraja API (STK push). Use a library such as django-mpesa or call the API directly with your credentials."},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
-        )

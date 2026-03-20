@@ -148,7 +148,7 @@ export default function DashboardPage() {
         if (roles.includes("tenant")) {
           api.get<VacancyPreference>("/vacancies/my-preference/").then((res) => setPreference(res.data)).catch(() => setPreference(null));
         }
-        if (roles.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
+        if (roles.some((r) => ["tenant", "property_owner", "manager", "caretaker", "service_provider"].includes(r))) {
           api.get<{ total: number; pending: number; actioned: number; awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => setRequestCounts(null));
         }
       } catch (err) {
@@ -171,7 +171,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const refetch = () => {
-      if (user?.role_names?.some((r) => ["tenant", "property_owner", "manager", "caretaker"].includes(r))) {
+      if (user?.role_names?.some((r) => ["tenant", "property_owner", "manager", "caretaker", "service_provider"].includes(r))) {
         api.get<{ total: number; pending: number; actioned: number; awaiting_rating: number }>("/marketplace/my-sent-requests/count/").then((res) => setRequestCounts(res.data ?? null)).catch(() => {});
       }
     };
@@ -462,12 +462,44 @@ export default function DashboardPage() {
       )}
 
       {isServiceProvider && !canSeeOverview && !isTenant && (
-        <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/20 p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Service Provider</h2>
-          <p className="mt-1 text-sm text-surface-600 dark:text-surface-400">Manage your services, profile, and incoming requests from the Provider Dashboard.</p>
-          <Link href="/dashboard/provider" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
-            Open Provider Dashboard →
-          </Link>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Marketplace</h2>
+            <p className="mt-1 text-sm text-surface-600 dark:text-surface-400">
+              Browse services from other providers, request work, and track your sent requests—same as tenants and owners.
+            </p>
+            {requestCounts !== null && requestCounts.total > 0 && (
+              <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">
+                You have <span className="font-medium text-surface-900 dark:text-surface-100">{requestCounts.total}</span> sent request
+                {requestCounts.total !== 1 ? "s" : ""}
+                {(requestCounts.awaiting_rating ?? 0) > 0
+                  ? ` · ${requestCounts.awaiting_rating} awaiting your rating`
+                  : ""}
+                .
+              </p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href="/marketplace"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                Browse marketplace →
+              </Link>
+              <Link
+                href="/marketplace/requests"
+                className="inline-flex items-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700"
+              >
+                My sent requests
+              </Link>
+            </div>
+          </div>
+          <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/20 p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Service Provider</h2>
+            <p className="mt-1 text-sm text-surface-600 dark:text-surface-400">Manage your listings, profile, and incoming job requests.</p>
+            <Link href="/dashboard/provider" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+              Open Provider Dashboard →
+            </Link>
+          </div>
         </div>
       )}
 
