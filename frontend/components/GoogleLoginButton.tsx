@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { api, setTokens, LoginResponse } from "@/lib/api";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
@@ -31,7 +31,24 @@ function buttonClasses(theme: GoogleLoginButtonProps["theme"], size: GoogleLogin
   return `${sizeCls} rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-800 dark:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-700 font-medium`;
 }
 
-export default function GoogleLoginButton({
+/** No hooks — safe when client ID is missing. */
+function GoogleLoginDisabled({ className }: { className?: string }) {
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        disabled
+        className="w-full max-w-[280px] flex items-center justify-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-4 py-2.5 text-sm text-surface-500 dark:text-surface-400 cursor-not-allowed"
+        title="Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to .env.local (must match backend GOOGLE_OAUTH2_CLIENT_ID). Backend also needs GOOGLE_OAUTH2_CLIENT_SECRET."
+      >
+        Sign in with Google (not configured)
+      </button>
+    </div>
+  );
+}
+
+/** Must render only inside GoogleOAuthProvider. */
+function GoogleLoginButtonInner({
   onSuccess,
   onError,
   disabled,
@@ -66,21 +83,6 @@ export default function GoogleLoginButton({
     onError: () => onError?.("Google sign-in was cancelled or failed"),
   });
 
-  if (!GOOGLE_CLIENT_ID) {
-    return (
-      <div className={className}>
-        <button
-          type="button"
-          disabled
-          className="w-full max-w-[280px] flex items-center justify-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-4 py-2.5 text-sm text-surface-500 dark:text-surface-400 cursor-not-allowed"
-          title="Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to .env.local (must match backend GOOGLE_OAUTH2_CLIENT_ID). Backend also needs GOOGLE_OAUTH2_CLIENT_SECRET."
-        >
-          Sign in with Google (not configured)
-        </button>
-      </div>
-    );
-  }
-
   const baseBtn = `w-full max-w-[280px] inline-flex items-center justify-center gap-2 ${buttonClasses(theme, size)} disabled:opacity-50 disabled:cursor-not-allowed`;
 
   return (
@@ -101,6 +103,22 @@ export default function GoogleLoginButton({
         Sign in with Google
       </button>
     </div>
+  );
+}
+
+/**
+ * Sign in with Google (auth-code flow). Self-wraps with GoogleOAuthProvider when configured
+ * so it works even if a parent omits the provider (e.g. SocialAuthProviders without env).
+ */
+export default function GoogleLoginButton(props: GoogleLoginButtonProps) {
+  if (!GOOGLE_CLIENT_ID) {
+    return <GoogleLoginDisabled className={props.className} />;
+  }
+
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <GoogleLoginButtonInner {...props} />
+    </GoogleOAuthProvider>
   );
 }
 
