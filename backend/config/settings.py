@@ -141,6 +141,10 @@ MPESA_PASSKEY = env("MPESA_PASSKEY", default="")
 MPESA_SHORTCODE = env("MPESA_SHORTCODE", default="174379")
 # Public URL Safaricom can POST to, e.g. https://your-ngrok-url.ngrok.io/api/mpesa/callback/
 MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
+# Sandbox testing: skip OAuth token cache (always hit /oauth/v1/generate). Remove in production.
+MPESA_DARAJA_BYPASS_TOKEN_CACHE = env.bool("MPESA_DARAJA_BYPASS_TOKEN_CACHE", default=False)
+# STK Password timestamp uses this TZ (Daraja expects Kenya local time for Lipa Na M-PESA Online).
+MPESA_STK_TIMESTAMP_TZ = env("MPESA_STK_TIMESTAMP_TZ", default="Africa/Nairobi")
 
 CACHES = {
     "default": {
