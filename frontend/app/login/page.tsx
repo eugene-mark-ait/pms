@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +71,10 @@ export default function LoginPage() {
               <GoogleLoginButton
                 onSuccess={handleGoogleSuccess}
                 onError={setError}
+                onBusyChange={(busy) => {
+                  if (busy) setError("");
+                  setGoogleBusy(busy);
+                }}
                 disabled={loading}
               />
             </div>
@@ -104,7 +109,8 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  disabled={loading || googleBusy}
+                  className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
                   placeholder="you@example.com"
                 />
               </div>
@@ -126,7 +132,7 @@ export default function LoginPage() {
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || googleBusy}
                 className="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium rounded-lg transition"
               >
                 {loading ? "Signing in…" : "Sign in"}

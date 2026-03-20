@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { api, setTokens, LoginResponse } from "@/lib/api";
 
+/** Web client ID from Google Cloud. Popup app name = OAuth consent screen "App name" (set to Mahaliwise in GCP), not this file. See docs/GOOGLE_OAUTH_BRANDING.md */
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 interface GoogleLoginButtonProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
+  /** Fires when Google returns a code and we are exchanging it with your API (until redirect or error). */
+  onBusyChange?: (busy: boolean) => void;
   disabled?: boolean;
   className?: string;
   theme?: "outline" | "filled_blue" | "filled_black";
@@ -48,31 +51,47 @@ function GoogleLoginDisabled({ className }: { className?: string }) {
 }
 
 /** Must render only inside GoogleOAuthProvider. */
+function Spinner({ className }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block shrink-0 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600 dark:border-surface-600 dark:border-t-primary-400 ${className ?? "h-5 w-5"}`}
+      aria-hidden
+    />
+  );
+}
+
 function GoogleLoginButtonInner({
   onSuccess,
   onError,
+  onBusyChange,
   disabled,
   className,
   theme = "outline",
   size = "large",
 }: GoogleLoginButtonProps) {
+  const [completingSignIn, setCompletingSignIn] = useState(false);
+
   const handleCode = useCallback(
     async (code: string | undefined) => {
       if (!code) {
         onError?.("No authorization code from Google");
         return;
       }
+      setCompletingSignIn(true);
+      onBusyChange?.(true);
       try {
         const { data } = await api.post<LoginResponse>("/auth/google/", { code });
         setTokens(data.access, data.refresh);
         onSuccess?.();
       } catch (err: unknown) {
+        setCompletingSignIn(false);
+        onBusyChange?.(false);
         const ax = err as { response?: { data?: { detail?: string } } };
         const msg = ax.response?.data?.detail || "Google sign-in failed";
         onError?.(msg);
       }
     },
-    [onSuccess, onError],
+    [onSuccess, onError, onBusyChange],
   );
 
   const login = useGoogleLogin({
@@ -80,10 +99,15 @@ function GoogleLoginButtonInner({
     onSuccess: (codeResponse) => {
       void handleCode(codeResponse.code);
     },
-    onError: () => onError?.("Google sign-in was cancelled or failed"),
+    onError: () => {
+      setCompletingSignIn(false);
+      onBusyChange?.(false);
+      onError?.("Google sign-in was cancelled or failed");
+    },
   });
 
   const baseBtn = `w-full max-w-[280px] inline-flex items-center justify-center gap-2 ${buttonClasses(theme, size)} disabled:opacity-50 disabled:cursor-not-allowed`;
+  const btnBlocked = Boolean(disabled || completingSignIn);
 
   return (
     <div
@@ -95,12 +119,22 @@ function GoogleLoginButtonInner({
     >
       <button
         type="button"
-        disabled={disabled}
+        disabled={btnBlocked}
         onClick={() => login()}
         className={baseBtn}
+        aria-busy={completingSignIn}
       >
-        <GoogleGIcon />
-        Sign in with Google
+        {completingSignIn ? (
+          <>
+            <Spinner />
+            Signing you in…
+          </>
+        ) : (
+          <>
+            <GoogleGIcon />
+            Sign in with Google
+          </>
+        )}
       </button>
     </div>
   );

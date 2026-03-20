@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,7 +68,21 @@ export default function RegisterPage() {
     <SocialAuthProviders>
       <div className="min-h-screen flex items-center justify-center bg-surface-100 dark:bg-surface-900 px-4 py-8">
         <div className="w-full max-w-lg">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 p-6 sm:p-8">
+          <div className="relative bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-700 p-6 sm:p-8 overflow-hidden">
+            {googleBusy && (
+              <div
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/85 dark:bg-surface-800/90 backdrop-blur-[2px] px-6 text-center"
+                role="status"
+                aria-live="polite"
+                aria-label="Signing in with Google"
+              >
+                <span className="inline-block h-10 w-10 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600 dark:border-surface-600 dark:border-t-primary-400" aria-hidden />
+                <p className="text-sm font-medium text-surface-800 dark:text-surface-100">
+                  Signing you in with Google…
+                </p>
+                <p className="text-xs text-surface-500 dark:text-surface-400">Please wait, almost there.</p>
+              </div>
+            )}
             <h1 className="text-2xl font-bold text-center text-surface-900 dark:text-white mb-2">Mahaliwise</h1>
             <p className="text-center text-surface-600 dark:text-surface-400 mb-6">Create account — enter your details. You will choose your role next.</p>
 
@@ -101,17 +116,18 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white"
+                  disabled={loading || googleBusy}
+                  className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white disabled:opacity-60"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="firstName" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">First name *</label>
-                  <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
+                  <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required disabled={loading || googleBusy} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white disabled:opacity-60" />
                 </div>
                 <div>
                   <label htmlFor="lastName" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Last name</label>
-                  <input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
+                  <input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading || googleBusy} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white disabled:opacity-60" />
                 </div>
               </div>
               <div>
@@ -120,9 +136,9 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Password * (min 8 characters)</label>
-                <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white" />
+                <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} disabled={loading || googleBusy} className="w-full px-4 py-2.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-white disabled:opacity-60" />
               </div>
-              <button type="submit" disabled={loading} className="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium rounded-lg transition">
+              <button type="submit" disabled={loading || googleBusy} className="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-medium rounded-lg transition">
                 {loading ? "Creating account…" : "Continue"}
               </button>
             </form>

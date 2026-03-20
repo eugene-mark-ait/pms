@@ -1,5 +1,5 @@
 """
-Django settings for PMS (Property Management System).
+Django settings for Mahaliwise (property management platform).
 """
 
 import os
@@ -145,7 +145,7 @@ MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "pms-mpesa-token",
+        "LOCATION": "mahaliwise-mpesa-token",
     }
 }
 # FACEBOOK_APP_ID = env("FACEBOOK_APP_ID", default="")
