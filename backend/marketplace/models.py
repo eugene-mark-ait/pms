@@ -70,6 +70,14 @@ class ServiceReview(models.Model):
     )
     rating = models.PositiveSmallIntegerField()  # 1-5
     review = models.TextField(blank=True)
+    # One review per completed service request; NULL for legacy rows (at most one per user+service without request)
+    service_request = models.OneToOneField(
+        "ServiceRequest",
+        on_delete=models.CASCADE,
+        related_name="service_review",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -77,9 +85,14 @@ class ServiceReview(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
+                fields=["service_request"],
+                condition=Q(service_request__isnull=False),
+                name="unique_marketplace_review_per_request",
+            ),
+            models.UniqueConstraint(
                 fields=["user", "service"],
-                condition=Q(service__isnull=False),
-                name="unique_user_service_review",
+                condition=Q(service_request__isnull=True, service__isnull=False),
+                name="unique_user_service_review_legacy",
             ),
         ]
 

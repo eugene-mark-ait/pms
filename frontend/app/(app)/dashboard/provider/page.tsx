@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
 import { format } from "date-fns";
@@ -33,7 +33,7 @@ export default function ProviderDashboardPage() {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null)).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
+  const loadProviderMarketplaceStats = useCallback(() => {
     if (!isProvider) return;
     api.get<{ results?: unknown[]; count?: number }>("/marketplace/my-services/").then((r) => {
       const d = r.data as { count?: number; results?: unknown[] };
@@ -49,6 +49,17 @@ export default function ProviderDashboardPage() {
       setRecentRequests(Array.isArray(raw) ? raw.slice(0, 10) : []);
     }).catch(() => setRecentRequests([]));
   }, [isProvider]);
+
+  useEffect(() => {
+    loadProviderMarketplaceStats();
+  }, [loadProviderMarketplaceStats]);
+
+  useEffect(() => {
+    if (!isProvider) return;
+    const onUpdated = () => loadProviderMarketplaceStats();
+    window.addEventListener("provider-requests-updated", onUpdated);
+    return () => window.removeEventListener("provider-requests-updated", onUpdated);
+  }, [isProvider, loadProviderMarketplaceStats]);
 
   if (loading) {
     return (

@@ -216,7 +216,14 @@ class MarketplaceProvidersListView(APIView):
 
 
 class ServiceReviewListCreateView(APIView):
-    """GET/POST /marketplace/services/<pk>/reviews/ - list reviews, create review (auth)."""
+    """
+    GET /marketplace/services/<pk>/reviews/
+    - Cursor pagination: cursor=, page_size=
+    - Filter: rating=1..5 (optional)
+    - Response: { results, next, count } (count = total matching filter on first page only)
+
+    POST - create review (auth). Prefer request_id for actioned requests (one review per request).
+    """
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -225,8 +232,24 @@ class ServiceReviewListCreateView(APIView):
 
     def get(self, request, pk):
         service = get_object_or_404(Service, pk=pk)
-        qs = ServiceReview.objects.filter(service=service).select_related("user").order_by("-created_at")
-        return Response(ServiceReviewSerializer(qs, many=True).data)
+        qs = ServiceReview.objects.filter(service=service).select_related("user")
+        rating_param = (request.query_params.get("rating") or "").strip()
+        if rating_param.isdigit():
+            r = int(rating_param)
+            if 1 <= r <= 5:
+                qs = qs.filter(rating=r)
+        qs = qs.order_by("-created_at", "-id")
+        paginator = CursorPagination()
+        page = paginator.paginate_queryset(qs, request)
+        if page is None:
+            page = qs[: paginator.get_page_size(paginator.request)]
+        data = ServiceReviewSerializer(page, many=True).data
+        resp = paginator.get_paginated_response(data)
+        if not request.query_params.get(paginator.cursor_query_param):
+            resp.data["count"] = qs.count()
+        else:
+            resp.data["count"] = None
+        return resp
 
     def post(self, request, pk):
         service = get_object_or_404(Service, pk=pk)
@@ -240,14 +263,17 @@ class ServiceReviewListCreateView(APIView):
                 return Response({"detail": "Only actioned requests can be rated."}, status=status.HTTP_400_BAD_REQUEST)
             if req.is_rated:
                 return Response({"detail": "Service already rated for this request."}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = ServiceReviewSerializer(data={
-            **request.data,
-            "provider_id": service.provider_id,
-            "service_id": service.id,
-            "user_id": request.user.id,
-        })
+            if ServiceReview.objects.filter(service_request_id=req.id).exists():
+                return Response({"detail": "This request already has a review."}, status=status.HTTP_400_BAD_REQUEST)
+        payload = {"rating": request.data.get("rating"), "review": request.data.get("review", "")}
+        serializer = ServiceReviewSerializer(data=payload)
         serializer.is_valid(raise_exception=True)
-        serializer.save(user=request.user, provider=service.provider, service=service)
+        serializer.save(
+            user=request.user,
+            provider=service.provider,
+            service=service,
+            service_request=req,
+        )
         if req is not None:
             req.is_rated = True
             req.save(update_fields=["is_rated"])
@@ -317,14 +343,22 @@ class MySentRequestsSummaryView(APIView):
 class MyRequestsView(APIView):
     """
     GET /marketplace/my-requests/ - list requests received by current provider (cursor paginated).
-    Default: only pending (incoming). Use ?status=all for full history (e.g. Recent Requests).
+    Query: status=pending | actioned | all (default pending).
     """
     permission_classes = [IsAuthenticated, IsServiceProvider]
 
     def get(self, request):
-        qs = ServiceRequest.objects.filter(provider=request.user).select_related("user", "service").order_by("-created_at", "-id")
-        if (request.query_params.get("status") or "").strip().lower() != "all":
+        qs = ServiceRequest.objects.filter(provider=request.user).select_related("user", "service")
+        status_filter = (request.query_params.get("status") or "pending").strip().lower()
+        if status_filter == "all":
+            pass
+        elif status_filter == "actioned":
+            qs = qs.filter(status=ServiceRequest.Status.ACTIONED)
+        elif status_filter == "completed":
+            qs = qs.filter(status=ServiceRequest.Status.ACTIONED)
+        else:
             qs = qs.filter(status=ServiceRequest.Status.PENDING)
+        qs = qs.order_by("-created_at", "-id")
         paginator = CursorPagination()
         page = paginator.paginate_queryset(qs, request)
         if page is None:
@@ -333,7 +367,7 @@ class MyRequestsView(APIView):
 
 
 class MyRequestsCountsView(APIView):
-    """GET /marketplace/my-requests/counts/ - pending/actioned counts for provider (rating flow, badges)."""
+    """GET /marketplace/my-requests/counts/ - pending/actioned counts for provider (badges, side nav)."""
     permission_classes = [IsAuthenticated, IsServiceProvider]
 
     def get(self, request):
@@ -341,6 +375,37 @@ class MyRequestsCountsView(APIView):
         pending = qs.filter(status=ServiceRequest.Status.PENDING).count()
         actioned = qs.filter(status=ServiceRequest.Status.ACTIONED).count()
         return Response({"pending": pending, "actioned": actioned})
+
+
+class MyReceivedReviewsView(APIView):
+    """
+    GET /marketplace/my-reviews/ - reviews for services owned by current provider.
+    Cursor pagination; optional rating=1..5 filter.
+    """
+    permission_classes = [IsAuthenticated, IsServiceProvider]
+
+    def get(self, request):
+        qs = (
+            ServiceReview.objects.filter(provider=request.user)
+            .select_related("user", "service", "service_request")
+            .order_by("-created_at", "-id")
+        )
+        rating_param = (request.query_params.get("rating") or "").strip()
+        if rating_param.isdigit():
+            r = int(rating_param)
+            if 1 <= r <= 5:
+                qs = qs.filter(rating=r)
+        paginator = CursorPagination()
+        page = paginator.paginate_queryset(qs, request)
+        if page is None:
+            page = qs[: paginator.get_page_size(paginator.request)]
+        data = ServiceReviewSerializer(page, many=True).data
+        resp = paginator.get_paginated_response(data)
+        if not request.query_params.get(paginator.cursor_query_param):
+            resp.data["count"] = qs.count()
+        else:
+            resp.data["count"] = None
+        return resp
 
 
 class MySentRequestsCountView(APIView):

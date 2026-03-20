@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api, User } from "@/lib/api";
+import { useCursorInfiniteScroll } from "@/hooks/useCursorInfiniteScroll";
 
-interface ServiceRequestItem {
+export interface ProviderServiceRequestItem {
   id: string;
   user: string;
   requester_email: string;
@@ -18,43 +20,61 @@ interface ServiceRequestItem {
   created_at: string;
 }
 
+type StatusFilter = "pending" | "actioned" | "all";
+
 export default function ProviderRequestsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const [requests, setRequests] = useState<ServiceRequestItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const isProvider = user?.role_names?.includes("service_provider");
 
-  function loadRequests() {
-    if (!isProvider) return;
-    api
-      .get<{ results?: ServiceRequestItem[]; next?: string | null; count?: number } | ServiceRequestItem[]>("/marketplace/my-requests/")
-      .then((r) => {
-        const raw = (r.data as { results?: ServiceRequestItem[] })?.results ?? r.data;
-        setRequests(Array.isArray(raw) ? raw : []);
-      })
-      .catch(() => setRequests([]))
-      .finally(() => setLoading(false));
-  }
+  const rawStatus = (searchParams.get("status") ?? "pending").toLowerCase();
+  const statusFilter: StatusFilter =
+    rawStatus === "actioned" || rawStatus === "completed" ? "actioned" : rawStatus === "all" ? "all" : "pending";
+
+  const params: Record<string, string> = { status: statusFilter };
+
+  const {
+    items: requests,
+    loading,
+    loadingMore,
+    hasMore,
+    error,
+    refresh,
+    sentinelRef,
+  } = useCursorInfiniteScroll<ProviderServiceRequestItem>({
+    endpoint: "/marketplace/my-requests/",
+    params,
+    pageSize: 15,
+    enabled: isProvider === true,
+    parseResponse: (data) => {
+      const d = data as { results?: ProviderServiceRequestItem[]; next?: string | null };
+      return { results: d?.results ?? [], next: d?.next ?? null };
+    },
+  });
+
+  const updateFilter = useCallback(
+    (next: StatusFilter) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (next === "pending") p.delete("status");
+      else p.set("status", next);
+      router.replace(`${pathname}?${p.toString()}`);
+    },
+    [searchParams, router, pathname]
+  );
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
-  useEffect(() => {
-    if (!isProvider) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    loadRequests();
-  }, [isProvider]);
-
-  async function handleMarkActioned(req: ServiceRequestItem) {
+  async function handleMarkActioned(req: ProviderServiceRequestItem) {
     setActioningId(req.id);
     try {
       await api.patch(`/marketplace/requests/${req.id}/`, { status: "actioned" });
-      loadRequests();
+      refresh();
+      window.dispatchEvent(new CustomEvent("provider-requests-updated"));
     } catch {
       alert("Failed to update request.");
     } finally {
@@ -62,32 +82,80 @@ export default function ProviderRequestsPage() {
     }
   }
 
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400 py-8">
+        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+        <span>Loading…</span>
+      </div>
+    );
+  }
+
   if (!isProvider) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">My requests</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Requests</h1>
         <p className="text-surface-600 dark:text-surface-400">Service provider access required.</p>
         <Link href="/dashboard/provider" className="text-primary-600 dark:text-primary-400 hover:underline">← Provider Dashboard</Link>
       </div>
     );
   }
 
+  const filterTabs: { key: StatusFilter; label: string }[] = [
+    { key: "pending", label: "Pending" },
+    { key: "actioned", label: "Actioned / completed" },
+    { key: "all", label: "All" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link href="/dashboard/provider" className="text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 text-sm">← Provider Dashboard</Link>
       </div>
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">My requests</h1>
-      <p className="text-surface-600 dark:text-surface-400">Incoming service requests from users. Mark as actioned when you’ve addressed them.</p>
+      <div>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Incoming requests</h1>
+        <p className="mt-1 text-surface-600 dark:text-surface-400">Service requests from users. Mark as actioned when you’ve addressed them.</p>
+      </div>
 
-      {loading ? (
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === tab.key}
+            onClick={() => updateFilter(tab.key)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              statusFilter === tab.key
+                ? "bg-primary-600 text-white"
+                : "border border-surface-300 dark:border-surface-600 text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
+      )}
+
+      {loading && !requests.length ? (
         <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
           <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
           <span>Loading requests…</span>
         </div>
       ) : requests.length === 0 ? (
         <div className="rounded-xl border border-dashed border-surface-300 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-800/50 p-8 text-center">
-          <p className="text-surface-500 dark:text-surface-400">No requests yet. They will appear here when users request your services.</p>
+          <p className="text-surface-500 dark:text-surface-400">
+            {statusFilter === "pending"
+              ? "No pending requests."
+              : statusFilter === "actioned"
+                ? "No actioned requests yet."
+                : "No requests yet."}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -105,7 +173,9 @@ export default function ProviderRequestsPage() {
                   )}
                   <p className="text-sm text-surface-700 dark:text-surface-300 mt-2 whitespace-pre-wrap">{req.message}</p>
                   {req.preferred_date && (
-                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">Preferred date: {new Date(req.preferred_date).toLocaleDateString()}</p>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">
+                      Preferred date: {new Date(req.preferred_date).toLocaleDateString()}
+                    </p>
                   )}
                   <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">Received {new Date(req.created_at).toLocaleString()}</p>
                 </div>
@@ -135,6 +205,13 @@ export default function ProviderRequestsPage() {
               </div>
             </div>
           ))}
+          {hasMore && (
+            <div ref={sentinelRef} className="min-h-[48px] flex justify-center items-center py-4">
+              {loadingMore && (
+                <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

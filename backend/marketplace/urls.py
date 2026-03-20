@@ -12,6 +12,7 @@ urlpatterns = [
     path("marketplace/my-sent-requests/summary/", views.MySentRequestsSummaryView.as_view(), name="marketplace-my-sent-requests-summary"),
     path("marketplace/my-requests/", views.MyRequestsView.as_view(), name="marketplace-my-requests"),
     path("marketplace/my-requests/counts/", views.MyRequestsCountsView.as_view(), name="marketplace-my-requests-counts"),
+    path("marketplace/my-reviews/", views.MyReceivedReviewsView.as_view(), name="marketplace-my-reviews"),
     path("marketplace/my-sent-requests/count/", views.MySentRequestsCountView.as_view(), name="marketplace-my-sent-requests-count"),
     path("marketplace/requests/<uuid:pk>/", views.ServiceRequestDetailView.as_view(), name="marketplace-request-detail"),
     path("marketplace/insights/", views.MarketplaceInsightsView.as_view(), name="marketplace-insights"),

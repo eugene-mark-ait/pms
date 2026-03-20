@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, User } from "@/lib/api";
@@ -8,6 +8,7 @@ import { SERVICE_PLACEHOLDER } from "@/lib/marketplace";
 import SlideOverForm from "@/components/SlideOverForm";
 import ServiceRequestForm, { SERVICE_REQUEST_FORM_ID } from "@/components/forms/ServiceRequestForm";
 import { SERVICE_CATEGORIES, type MarketplaceService } from "@/components/forms/ServiceForm";
+import { useCursorInfiniteScroll } from "@/hooks/useCursorInfiniteScroll";
 
 function getCategoryLabel(value: string) {
   return SERVICE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
@@ -22,11 +23,12 @@ function formatPriceRange(s: MarketplaceService): string {
   return s.price_range || "Price on request";
 }
 
-interface ServiceReviewItem {
+export interface ServiceReviewItem {
   id: string;
   rating: number;
   review: string;
   created_at: string;
+  reviewer_display?: string;
 }
 
 export default function ServiceDetailPage() {
@@ -39,7 +41,33 @@ export default function ServiceDetailPage() {
   const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
-  const [reviews, setReviews] = useState<ServiceReviewItem[]>([]);
+  const [ratingFilter, setRatingFilter] = useState<string>("");
+
+  const reviewParams = ratingFilter ? { rating: ratingFilter } : {};
+
+  const {
+    items: reviews,
+    loading: reviewsLoading,
+    loadingMore: reviewsLoadingMore,
+    hasMore: reviewsHasMore,
+    error: reviewsError,
+    totalCount: reviewsFilteredCount,
+    refresh: refreshReviews,
+    sentinelRef: reviewsSentinelRef,
+  } = useCursorInfiniteScroll<ServiceReviewItem>({
+    endpoint: id ? `/marketplace/services/${id}/reviews/` : "/marketplace/services/00000000-0000-0000-0000-000000000000/reviews/",
+    params: reviewParams,
+    pageSize: 15,
+    enabled: !!id,
+    parseResponse: (data) => {
+      const d = data as { results?: ServiceReviewItem[]; next?: string | null; count?: number | null };
+      return {
+        results: Array.isArray(d?.results) ? d.results : [],
+        next: d?.next ?? null,
+        count: d?.count ?? undefined,
+      };
+    },
+  });
 
   useEffect(() => {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
@@ -54,13 +82,9 @@ export default function ServiceDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    if (!id) return;
-    api
-      .get<ServiceReviewItem[]>(`/marketplace/services/${id}/reviews/`)
-      .then((res) => setReviews(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setReviews([]));
-  }, [id]);
+  const onRatingFilterChange = useCallback((value: string) => {
+    setRatingFilter(value);
+  }, []);
 
   if (!id) {
     return (
@@ -91,6 +115,8 @@ export default function ServiceDetailPage() {
 
   const rating = service.average_rating ?? 0;
   const reviewCount = service.review_count ?? 0;
+  const reviewsHeadingCount =
+    ratingFilter && reviewsFilteredCount != null ? reviewsFilteredCount : reviewCount;
 
   return (
     <div className="space-y-6">
@@ -143,29 +169,75 @@ export default function ServiceDetailPage() {
         )}
       </div>
 
-      {reviews.length > 0 && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Reviews ({reviews.length})</h2>
-          <ul className="mt-4 space-y-4">
-            {reviews.map((r) => (
-              <li key={r.id} className="border-b border-surface-100 dark:border-surface-700 pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
-                    {"★".repeat(Math.min(5, Math.round(r.rating)))}
-                    {"☆".repeat(5 - Math.min(5, Math.round(r.rating)))}
-                  </span>
-                  <span className="text-xs text-surface-500 dark:text-surface-400">
-                    {new Date(r.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
-                  </span>
-                </div>
-                {r.review && (
-                  <p className="mt-2 text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{r.review}</p>
-                )}
-              </li>
-            ))}
-          </ul>
+      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            Reviews ({reviewsHeadingCount}
+            {ratingFilter ? ` · ${ratingFilter}★` : ""})
+          </h2>
+          <div className="flex items-center gap-2">
+            <label htmlFor="review-rating-filter" className="text-sm text-surface-600 dark:text-surface-400 whitespace-nowrap">
+              Filter by stars
+            </label>
+            <select
+              id="review-rating-filter"
+              value={ratingFilter}
+              onChange={(e) => onRatingFilterChange(e.target.value)}
+              className="rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 px-3 py-2 text-sm"
+            >
+              <option value="">All ratings</option>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={String(n)}>{n} stars</option>
+              ))}
+            </select>
+          </div>
         </div>
-      )}
+
+        {reviewsError && (
+          <p className="mt-4 text-sm text-red-600 dark:text-red-400">{reviewsError}</p>
+        )}
+        {reviewsLoading && !reviews.length ? (
+          <div className="mt-6 flex items-center gap-2 text-surface-500 dark:text-surface-400 text-sm">
+            <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" aria-hidden />
+            <span>Loading reviews…</span>
+          </div>
+        ) : reviews.length === 0 ? (
+          <p className="mt-6 text-sm text-surface-500 dark:text-surface-400">
+            {ratingFilter ? "No reviews match this filter." : "No reviews yet."}
+          </p>
+        ) : (
+          <>
+            <ul className="mt-4 space-y-4">
+              {reviews.map((r) => (
+                <li key={r.id} className="border-b border-surface-100 dark:border-surface-700 pb-4 last:border-0 last:pb-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
+                      {"★".repeat(Math.min(5, Math.round(r.rating)))}
+                      {"☆".repeat(5 - Math.min(5, Math.round(r.rating)))}
+                    </span>
+                    {r.reviewer_display && (
+                      <span className="text-sm font-medium text-surface-700 dark:text-surface-300">{r.reviewer_display}</span>
+                    )}
+                    <span className="text-xs text-surface-500 dark:text-surface-400">
+                      {new Date(r.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                    </span>
+                  </div>
+                  {r.review && (
+                    <p className="mt-2 text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{r.review}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {reviewsHasMore && (
+              <div ref={reviewsSentinelRef} className="min-h-[48px] flex justify-center items-center py-4">
+                {reviewsLoadingMore && (
+                  <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" aria-hidden />
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <SlideOverForm
         isOpen={requestDrawerOpen}
@@ -198,6 +270,7 @@ export default function ServiceDetailPage() {
             setRequestSuccess(true);
             setRequestDrawerOpen(false);
             router.refresh();
+            refreshReviews();
           }}
           onSubmittingChange={setFormSubmitting}
         />

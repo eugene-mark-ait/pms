@@ -14,7 +14,7 @@ export interface UseCursorInfiniteScrollOptions<T> {
   pageSize?: number;
   enabled?: boolean;
   /** Parse API response. Return { results, next } where next is cursor string or page number. */
-  parseResponse?: (data: unknown) => { results: T[]; next: string | null };
+  parseResponse?: (data: unknown) => { results: T[]; next: string | null; count?: number | null };
 }
 
 export interface UseCursorInfiniteScrollResult<T> {
@@ -23,6 +23,8 @@ export interface UseCursorInfiniteScrollResult<T> {
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  /** Total count from API when first page includes `count` (e.g. filtered reviews). */
+  totalCount: number | null;
   loadMore: () => void;
   refresh: () => void;
   sentinelRef: React.RefObject<HTMLDivElement | null>;
@@ -40,14 +42,16 @@ export function useCursorInfiniteScroll<T>({
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const nextRef = useRef<string | null>(null);
 
   const defaultParse = useCallback((data: unknown) => {
-    const d = data as { results?: T[]; next?: string | null };
+    const d = data as { results?: T[]; next?: string | null; count?: number | null };
     return {
       results: Array.isArray(d?.results) ? d.results : [],
       next: d?.next ?? null,
+      count: d?.count !== undefined ? d.count : undefined,
     };
   }, []);
 
@@ -77,9 +81,24 @@ export function useCursorInfiniteScroll<T>({
         const { api } = await import("@/lib/api");
         const res = await api.get<unknown>(endpoint, { params: buildParams(cursorOrPage) });
         const parse = parseResponse ?? defaultParse;
-        const { results, next } = parse(res.data);
+        const { results, next, count } = parse(res.data);
+        if (isFirst) {
+          setTotalCount(count !== undefined ? count : null);
+        }
         if (append) {
-          setItems((prev) => (isFirst ? results : [...prev, ...results]));
+          setItems((prev) => {
+            if (isFirst) return results;
+            const seen = new Set(
+              prev.map((x) => (x as { id?: string }).id).filter(Boolean) as string[]
+            );
+            const extra = results.filter((r) => {
+              const id = (r as { id?: string }).id;
+              if (!id || seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            });
+            return [...prev, ...extra];
+          });
         } else {
           setItems(results);
         }
@@ -117,6 +136,7 @@ export function useCursorInfiniteScroll<T>({
       setLoading(false);
       setItems([]);
       setNextCursor(null);
+      setTotalCount(null);
       return;
     }
     fetchPage(null, false);
@@ -142,6 +162,7 @@ export function useCursorInfiniteScroll<T>({
     loadingMore,
     hasMore: !!nextCursor,
     error,
+    totalCount,
     loadMore,
     refresh,
     sentinelRef,

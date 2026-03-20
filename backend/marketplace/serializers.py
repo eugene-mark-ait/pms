@@ -102,10 +102,43 @@ class ServiceCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class ServiceReviewSerializer(serializers.ModelSerializer):
+    reviewer_display = serializers.SerializerMethodField()
+    service_title = serializers.SerializerMethodField()
+
     class Meta:
         model = ServiceReview
-        fields = ["id", "user", "provider", "service", "rating", "review", "created_at"]
-        read_only_fields = ["id", "user", "provider", "service", "created_at"]
+        fields = [
+            "id",
+            "user",
+            "reviewer_display",
+            "provider",
+            "service",
+            "service_title",
+            "service_request",
+            "rating",
+            "review",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "user",
+            "reviewer_display",
+            "provider",
+            "service",
+            "service_title",
+            "service_request",
+            "created_at",
+        ]
+
+    def get_reviewer_display(self, obj):
+        u = obj.user
+        if not u:
+            return "Customer"
+        name = f"{u.first_name or ''} {u.last_name or ''}".strip()
+        return name or "Customer"
+
+    def get_service_title(self, obj):
+        return obj.service.title if obj.service_id else None
 
     def validate_rating(self, value):
         if value is None or value < 1 or value > 5:
