@@ -25,7 +25,8 @@ export interface UseInfiniteScrollResult<T> {
   error: string | null;
   loadMore: () => void;
   refresh: () => void;
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  /** Attach to a scroll sentinel div; typed for JSX ref compatibility. */
+  sentinelRef: React.RefObject<HTMLDivElement>;
 }
 
 export function useInfiniteScroll<T>({
@@ -40,7 +41,7 @@ export function useInfiniteScroll<T>({
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const nextPageRef = useRef(1);
 
   const defaultParse = useCallback((data: unknown) => {

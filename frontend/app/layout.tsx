@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   description: "The financial operating system for rental housing. Property owners, tenants, and embedded financial services.",
 };
 
+/** Pages use useSearchParams(); avoid static prerender errors (missing Suspense boundary). */
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{

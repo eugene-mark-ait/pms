@@ -27,7 +27,7 @@ export interface UseCursorInfiniteScrollResult<T> {
   totalCount: number | null;
   loadMore: () => void;
   refresh: () => void;
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  sentinelRef: React.RefObject<HTMLDivElement>;
 }
 
 export function useCursorInfiniteScroll<T>({
@@ -43,7 +43,7 @@ export function useCursorInfiniteScroll<T>({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<string | null>(null);
 
   const defaultParse = useCallback((data: unknown) => {

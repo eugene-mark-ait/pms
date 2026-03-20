@@ -46,25 +46,25 @@ export default function AlertsPage() {
     api.get<User>("/auth/me/").then((res) => setUser(res.data)).catch(() => setUser(null));
   }, []);
 
-  async function handleToggleActive(alert: TenantUnitAlertType) {
+  async function handleToggleActive(row: TenantUnitAlertType) {
     try {
-      await api.patch(`/vacancies/alerts/${alert.id}/`, {
-        is_active: !alert.is_active,
+      await api.patch(`/vacancies/alerts/${row.id}/`, {
+        is_active: !row.is_active,
       });
       refresh();
     } catch {
-      alert("Failed to update alert.");
+      window.alert("Failed to update alert.");
     }
   }
 
-  async function handleDelete(alert: TenantUnitAlertType) {
+  async function handleDelete(row: TenantUnitAlertType) {
     if (!confirm("Delete this alert? You will no longer get notifications for it.")) return;
     try {
-      await api.delete(`/vacancies/alerts/${alert.id}/`);
+      await api.delete(`/vacancies/alerts/${row.id}/`);
       setEditAlert(null);
       refresh();
     } catch {
-      alert("Failed to delete alert.");
+      window.alert("Failed to delete alert.");
     }
   }
 

@@ -24,7 +24,10 @@ interface PaymentRow {
   amount: string;
   payment_date: string;
   payment_status: string;
-  lease?: { unit?: { unit_number?: string }; tenant?: { first_name?: string; last_name?: string } };
+  lease?: {
+    unit?: { unit_number?: string };
+    tenant?: { first_name?: string; last_name?: string; email?: string };
+  };
 }
 
 interface VacancyPreference {
