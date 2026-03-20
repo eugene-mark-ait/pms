@@ -29,13 +29,62 @@ def _issue_jwt_response(user: User) -> dict[str, Any]:
     }
 
 
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+
+
+def exchange_google_auth_code_for_id_token(code: str) -> str | None:
+    """
+    Exchange an authorization code (Sign-In with Google, auth-code flow) for tokens.
+    Uses client_id + client_secret on the server only. redirect_uri must be "postmessage".
+    Returns id_token string or None on failure.
+    """
+    import requests
+
+    client_id = getattr(settings, "GOOGLE_OAUTH2_CLIENT_ID", None) or getattr(
+        settings, "SOCIAL_AUTH_GOOGLE_OAUTH2_KEY", None
+    )
+    client_secret = getattr(settings, "GOOGLE_OAUTH2_CLIENT_SECRET", None) or ""
+    if not client_id or not client_secret or not code:
+        logger.warning("Google code exchange missing client_id, client_secret, or code")
+        return None
+    try:
+        r = requests.post(
+            GOOGLE_TOKEN_ENDPOINT,
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": "postmessage",
+                "grant_type": "authorization_code",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+    except Exception:
+        logger.exception("Google token exchange request failed")
+        return None
+    if r.status_code != 200:
+        logger.warning("Google token exchange failed: %s %s", r.status_code, (r.text or "")[:500])
+        return None
+    try:
+        body = r.json()
+    except Exception:
+        logger.warning("Google token response not JSON")
+        return None
+    id_tok = body.get("id_token")
+    if not id_tok:
+        logger.warning("Google token response missing id_token")
+        return None
+    return id_tok
+
+
 def verify_google_id_token(id_token: str) -> dict[str, Any] | None:
     """
     Verify Google OAuth2 ID token and return payload (email, sub, given_name, family_name).
     Returns None if invalid. Requires GOOGLE_OAUTH2_CLIENT_ID in settings (or env).
     """
     try:
-        from google.oauth2 import id_token
+        from google.oauth2 import id_token as google_id_token
         from google.auth.transport import requests as google_requests
     except ImportError:
         logger.exception("google-auth not installed")
@@ -51,7 +100,7 @@ def verify_google_id_token(id_token: str) -> dict[str, Any] | None:
         return None
 
     try:
-        payload = id_token.verify_oauth2_token(
+        payload = google_id_token.verify_oauth2_token(
             id_token,
             google_requests.Request(),
             client_id,
@@ -139,6 +188,14 @@ def get_or_create_user_from_social(
         extra_data=extra_data or {},
     )
     return user
+
+
+def exchange_google_code_and_issue_jwt(code: str) -> dict[str, Any] | None:
+    """Validate Google auth code with client secret, verify returned ID token, issue JWT."""
+    id_tok = exchange_google_auth_code_for_id_token(code)
+    if not id_tok:
+        return None
+    return exchange_social_token_and_issue_jwt(PROVIDER_GOOGLE, id_tok)
 
 
 def exchange_social_token_and_issue_jwt(

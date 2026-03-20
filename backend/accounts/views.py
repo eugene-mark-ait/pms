@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
 from .serializers import UserSerializer, UserCreateSerializer, UserUpdateRolesSerializer, ChooseRoleSerializer
-from .social_auth import exchange_social_token_and_issue_jwt, PROVIDER_GOOGLE
+from .social_auth import exchange_google_code_and_issue_jwt
 from .models import Role
 
 User = get_user_model()
@@ -169,23 +169,36 @@ class AssignRolesView(APIView):
 
 class GoogleAuthView(APIView):
     """
-    POST /api/auth/google/ - exchange Google ID token for JWT.
-    Body: { "id_token": "<google_id_token>" }.
+    POST /api/auth/google/ - exchange Google authorization code for JWT.
+    Body: { "code": "<auth_code>" } from Sign-In with Google (auth-code flow).
+    Backend uses GOOGLE_OAUTH2_CLIENT_ID + GOOGLE_OAUTH2_CLIENT_SECRET (secret never on frontend).
     Returns same shape as login: { access, refresh, user }.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
-        id_token = (request.data.get("id_token") or request.data.get("idToken") or "").strip()
-        if not id_token:
+        from django.conf import settings as dj_settings
+
+        code = (request.data.get("code") or "").strip()
+        if not code:
             return Response(
-                {"detail": "id_token is required"},
+                {"detail": "code is required (use Google auth-code flow from the client)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        result = exchange_social_token_and_issue_jwt(PROVIDER_GOOGLE, id_token)
+        if not getattr(dj_settings, "GOOGLE_OAUTH2_CLIENT_ID", None):
+            return Response(
+                {"detail": "Google OAuth is not configured (GOOGLE_OAUTH2_CLIENT_ID)."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if not (getattr(dj_settings, "GOOGLE_OAUTH2_CLIENT_SECRET", None) or "").strip():
+            return Response(
+                {"detail": "Google OAuth client secret is not configured (GOOGLE_OAUTH2_CLIENT_SECRET)."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        result = exchange_google_code_and_issue_jwt(code)
         if not result:
             return Response(
-                {"detail": "Invalid or expired Google token"},
+                {"detail": "Invalid or expired Google authorization code"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(result)

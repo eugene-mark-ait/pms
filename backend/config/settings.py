@@ -128,8 +128,10 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# Social auth (scalable: add keys for each provider)
+# Social auth — Google: frontend uses NEXT_PUBLIC_GOOGLE_CLIENT_ID (same Web client ID);
+# backend exchanges auth codes with client_id + client_secret (secret never in frontend).
 GOOGLE_OAUTH2_CLIENT_ID = env("GOOGLE_OAUTH2_CLIENT_ID", default="")
+GOOGLE_OAUTH2_CLIENT_SECRET = env("GOOGLE_OAUTH2_CLIENT_SECRET", default="")
 
 # M-PESA Daraja (STK Push) — never commit real secrets; use environment only
 MPESA_ENV = env("MPESA_ENV", default="sandbox")  # sandbox | production
@@ -146,6 +148,5 @@ CACHES = {
         "LOCATION": "pms-mpesa-token",
     }
 }
-# GOOGLE_OAUTH2_CLIENT_SECRET not needed for ID token verification (used for backend OAuth flow if needed)
 # FACEBOOK_APP_ID = env("FACEBOOK_APP_ID", default="")
 # GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")
