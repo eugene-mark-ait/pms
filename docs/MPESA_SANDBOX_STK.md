@@ -53,3 +53,13 @@ curl -sS "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_cr
 ```
 
 Use the `access_token` from the JSON in `Authorization: Bearer …` for STK push.
+
+## STK callback (`POST /api/mpesa/callback/`)
+
+- **CSRF exempt**; **no JWT**; accepts JSON in Daraja shape `Body.stkCallback`.
+- Updates row in **`mpesa_stk_payments`** matching `CheckoutRequestID` (`result_code`, `result_desc`, `completed_at`, `merchant_request_id`, …).
+- Responds **`200`** with `{"status": "ok", "ResultCode": 0, "ResultDesc": "Accepted"}` even on parse errors (so Daraja does not retry forever).
+
+Set `MPESA_CALLBACK_URL` to your public URL, e.g. `https://xxxx.ngrok-free.app/api/mpesa/callback/`.
+
+Run migrations after pull: `python manage.py migrate`.

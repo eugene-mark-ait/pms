@@ -17,7 +17,7 @@ class MpesaStkPaymentAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("checkout_request_id", "phone", "user__email", "mpesa_receipt_number")
     raw_id_fields = ("user", "lease", "payment")
-    readonly_fields = ("id", "created_at", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at", "completed_at")
 
 
 class TransactionInline(admin.TabularInline):

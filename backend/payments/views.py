@@ -1,8 +1,12 @@
+import json
 import logging
 from decimal import Decimal
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -24,6 +28,52 @@ MPESA_RESULT_HINTS = {
     1037: "The request timed out. Please try again.",
     2001: "Wrong PIN entered.",
 }
+
+
+def _parse_mpesa_callback_body(request) -> dict:
+    """
+    Parse JSON from raw body first (Daraja/ngrok), then DRF request.data.
+    With parser_classes=[], DRF may not populate .data — body is authoritative.
+    """
+    raw = getattr(request, "body", b"") or b""
+    if raw.strip():
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+            if isinstance(parsed, dict):
+                return parsed
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+            logger.warning(
+                "M-PESA callback: could not parse JSON body (%s); len=%s prefix=%r",
+                e,
+                len(raw),
+                raw[:200],
+            )
+    data = getattr(request, "data", None)
+    if isinstance(data, dict) and data:
+        return data
+    return {}
+
+
+def _extract_stk_callback(payload: dict) -> dict | None:
+    """Daraja nests STK result under Body.stkCallback (case variants)."""
+    body = payload.get("Body")
+    if body is None:
+        body = payload.get("body")
+    if not isinstance(body, dict):
+        return None
+    cb = body.get("stkCallback")
+    if cb is None:
+        cb = body.get("stkcallback") or body.get("StkCallback")
+    return cb if isinstance(cb, dict) else None
+
+
+def _coerce_mpesa_result_code(value) -> int:
+    if value is None:
+        return -1
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return -1
 
 
 def user_friendly_mpesa_message(code: int | None, desc: str = "") -> str:
@@ -165,40 +215,70 @@ class MpesaStkStatusView(APIView):
         return Response(data)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class MpesaCallbackView(APIView):
     """
-    POST /api/mpesa/callback/ — Daraja STK callback (no auth).
-    Always respond 200 with ResultCode 0 so Safaricom does not retry indefinitely.
+    POST /api/mpesa/callback/ — Daraja STK callback (no auth, CSRF exempt).
+    Parses Body.stkCallback, updates mpesa_stk_payments (CheckoutRequestID match).
+    Always HTTP 200 + JSON so Safaricom does not retry; use status field for app logic.
     """
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    # Empty parsers: avoid DRF 400/415 when Content-Type is not exactly application/json (ngrok/Daraja).
+    # We parse request.body in _parse_mpesa_callback_body().
+    parser_classes = []
 
     def post(self, request):
-        body = request.data if isinstance(request.data, dict) else {}
         try:
-            stk_cb = body.get("Body", {}).get("stkCallback") or {}
+            return self._process_callback(request)
         except Exception:
-            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+            logger.exception("M-PESA callback: unhandled error (returning 200 to avoid Daraja retries)")
+            return Response(
+                {"status": "ok", "ResultCode": 0, "ResultDesc": "Accepted"},
+                status=status.HTTP_200_OK,
+            )
+
+    def _ok(self, **extra):
+        body = {"status": "ok", "ResultCode": 0, "ResultDesc": "Accepted"}
+        body.update(extra)
+        return Response(body, status=status.HTTP_200_OK)
+
+    def _process_callback(self, request):
+        payload = _parse_mpesa_callback_body(request)
+        stk_cb = _extract_stk_callback(payload) or {}
+
+        if not stk_cb:
+            logger.info(
+                "M-PESA callback: no Body.stkCallback in payload (keys=%s)",
+                list(payload.keys()) if isinstance(payload, dict) else type(payload),
+            )
+            return self._ok()
 
         checkout_id = (stk_cb.get("CheckoutRequestID") or "").strip()
+        merchant_id = (stk_cb.get("MerchantRequestID") or "").strip()[:80]
         result_code = stk_cb.get("ResultCode")
         result_desc = (stk_cb.get("ResultDesc") or "")[:2000]
 
         if not checkout_id:
-            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+            logger.warning("M-PESA callback: stkCallback missing CheckoutRequestID raw=%r", stk_cb)
+            return self._ok()
 
         stk = MpesaStkPayment.objects.filter(checkout_request_id=checkout_id).first()
         if not stk:
-            logger.warning("M-PESA callback unknown CheckoutRequestID=%s", checkout_id)
-            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+            logger.warning("M-PESA callback: unknown CheckoutRequestID=%s", checkout_id)
+            return self._ok()
 
         if stk.status == MpesaStkPayment.Status.SUCCESS:
-            return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+            return self._ok()
 
-        rc = int(result_code) if result_code is not None else -1
+        now = timezone.now()
+        rc = _coerce_mpesa_result_code(result_code)
         stk.result_code = rc
         stk.result_desc = result_desc
+        stk.completed_at = now
+        if merchant_id:
+            stk.merchant_request_id = merchant_id
 
         if rc == 0:
             meta = stk_cb.get("CallbackMetadata") or {}
@@ -215,7 +295,9 @@ class MpesaCallbackView(APIView):
                     "result_code",
                     "result_desc",
                     "mpesa_receipt_number",
+                    "merchant_request_id",
                     "status",
+                    "completed_at",
                     "updated_at",
                 ]
             )
@@ -235,12 +317,23 @@ class MpesaCallbackView(APIView):
                 logger.exception("Failed to create Payment after STK success id=%s", stk.id)
                 stk.status = MpesaStkPayment.Status.FAILED
                 stk.result_desc = (stk.result_desc or "") + " | Internal error recording payment."
-                stk.save(update_fields=["status", "result_desc", "updated_at"])
+                stk.save(
+                    update_fields=["status", "result_desc", "updated_at"],
+                )
         else:
             stk.status = MpesaStkPayment.Status.FAILED
-            stk.save(update_fields=["result_code", "result_desc", "status", "updated_at"])
+            stk.save(
+                update_fields=[
+                    "result_code",
+                    "result_desc",
+                    "merchant_request_id",
+                    "status",
+                    "completed_at",
+                    "updated_at",
+                ]
+            )
 
-        return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+        return self._ok()
 
 
 class PaymentHistoryView(generics.ListAPIView):

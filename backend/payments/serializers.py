@@ -74,6 +74,7 @@ class MpesaStkStatusSerializer(serializers.ModelSerializer):
             "payment_id",
             "created_at",
             "updated_at",
+            "completed_at",
         ]
         read_only_fields = fields
 

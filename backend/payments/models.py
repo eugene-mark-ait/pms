@@ -125,6 +125,8 @@ class MpesaStkPayment(models.Model):
     mpesa_receipt_number = models.CharField(max_length=80, blank=True)
     result_code = models.IntegerField(null=True, blank=True)
     result_desc = models.TextField(blank=True)
+    # Set when Daraja STK callback is received (success or failure).
+    completed_at = models.DateTimeField(null=True, blank=True, db_index=True)
     payment = models.OneToOneField(
         "Payment",
         on_delete=models.SET_NULL,
