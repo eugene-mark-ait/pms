@@ -134,15 +134,21 @@ GOOGLE_OAUTH2_CLIENT_ID = env("GOOGLE_OAUTH2_CLIENT_ID", default="")
 GOOGLE_OAUTH2_CLIENT_SECRET = env("GOOGLE_OAUTH2_CLIENT_SECRET", default="")
 
 # M-PESA Daraja (STK Push) — never commit real secrets; use environment only
-MPESA_ENV = env("MPESA_ENV", default="sandbox")  # sandbox | production
+MPESA_ENV = env("MPESA_ENV", default="sandbox")  # sandbox | production (Daraja host still forced if below is True)
 MPESA_CONSUMER_KEY = env("MPESA_CONSUMER_KEY", default="")
 MPESA_CONSUMER_SECRET = env("MPESA_CONSUMER_SECRET", default="")
 MPESA_PASSKEY = env("MPESA_PASSKEY", default="")
 MPESA_SHORTCODE = env("MPESA_SHORTCODE", default="174379")
 # Public URL Safaricom can POST to, e.g. https://your-ngrok-url.ngrok.io/api/mpesa/callback/
 MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
-# Sandbox testing: skip OAuth token cache (always hit /oauth/v1/generate). Remove in production.
-MPESA_DARAJA_BYPASS_TOKEN_CACHE = env.bool("MPESA_DARAJA_BYPASS_TOKEN_CACHE", default=False)
+# When True: OAuth + STK always use https://sandbox.safaricom.co.ke (avoids 404.001.03 from env mismatch).
+# Set False when using live credentials + MPESA_ENV=production.
+MPESA_DARAJA_FORCE_SANDBOX = env.bool("MPESA_DARAJA_FORCE_SANDBOX", default=True)
+# When True: never cache OAuth token (always fetch; pairs with sandbox debugging). Default follows FORCE_SANDBOX.
+MPESA_DARAJA_BYPASS_TOKEN_CACHE = env.bool(
+    "MPESA_DARAJA_BYPASS_TOKEN_CACHE",
+    default=MPESA_DARAJA_FORCE_SANDBOX,
+)
 # STK Password timestamp uses this TZ (Daraja expects Kenya local time for Lipa Na M-PESA Online).
 MPESA_STK_TIMESTAMP_TZ = env("MPESA_STK_TIMESTAMP_TZ", default="Africa/Nairobi")
 

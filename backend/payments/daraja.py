@@ -2,9 +2,9 @@
 Safaricom Daraja API client: OAuth token (cached) and Lipa Na M-PESA Online (STK Push).
 Credentials must be set via environment variables — never hardcode secrets.
 
-OAuth and STK must use the same host: sandbox https://sandbox.safaricom.co.ke or
-production https://api.safaricom.co.ke. Mixing sandbox keys with production base (or vice versa)
-causes Invalid Access Token (404.001.03).
+OAuth and STK always use the same host from `_base_url()`. Set `MPESA_DARAJA_FORCE_SANDBOX=True`
+(default) to always use https://sandbox.safaricom.co.ke for both OAuth and STK (sandbox consumer
+key/secret only). Mixing sandbox keys with production host causes 404.001.03.
 
 STK Password = Base64(BusinessShortCode + PassKey + Timestamp) with Timestamp in
 YYYYMMDDHHmmss using MPESA_STK_TIMESTAMP_TZ (default Africa/Nairobi — Safaricom Kenya local time).
@@ -39,8 +39,33 @@ def _mpesa_env_label() -> str:
     return "sandbox"
 
 
+def _daraja_force_sandbox() -> bool:
+    """When True, OAuth and STK always hit sandbox host (ignore MPESA_ENV for base URL)."""
+    return bool(getattr(settings, "MPESA_DARAJA_FORCE_SANDBOX", False))
+
+
+def _daraja_effective_env_label() -> str:
+    """Label for logs: sandbox whenever host is forced to sandbox."""
+    if _daraja_force_sandbox():
+        return "sandbox"
+    return _mpesa_env_label()
+
+
+def _is_sandbox_daraja_rules() -> bool:
+    """Shortcode 174379 etc. apply when using sandbox Daraja."""
+    if _daraja_force_sandbox():
+        return True
+    return _mpesa_env_label() == "sandbox"
+
+
 def _base_url() -> str:
-    """Daraja API host; identical for OAuth token and STK push."""
+    """
+    Single source of truth for Daraja API host.
+    OAuth: {base}/oauth/v1/generate
+    STK:   {base}/mpesa/stkpush/v1/processrequest
+    """
+    if _daraja_force_sandbox():
+        return "https://sandbox.safaricom.co.ke"
     if _mpesa_env_label() == "production":
         return "https://api.safaricom.co.ke"
     return "https://sandbox.safaricom.co.ke"
@@ -129,16 +154,15 @@ def _validate_callback_https(callback_url: str) -> None:
 
 
 def _validate_env_matches_shortcode() -> None:
-    env = _mpesa_env_label()
     sc = str(getattr(settings, "MPESA_SHORTCODE", SANDBOX_SHORTCODE) or SANDBOX_SHORTCODE).strip()
-    if env == "sandbox" and sc != SANDBOX_SHORTCODE:
+    if _is_sandbox_daraja_rules() and sc != SANDBOX_SHORTCODE:
         raise RuntimeError(
             f"Sandbox Daraja requires Business Shortcode {SANDBOX_SHORTCODE} with sandbox consumer "
             f"key/secret and passkey. MPESA_SHORTCODE is {sc!r} — mismatch causes invalid tokens or STK errors."
         )
-    if env == "production" and sc == SANDBOX_SHORTCODE:
+    if not _is_sandbox_daraja_rules() and sc == SANDBOX_SHORTCODE:
         logger.warning(
-            "MPESA_ENV=production but MPESA_SHORTCODE is sandbox test till %s — use your live Paybill/Till.",
+            "Production Daraja host but MPESA_SHORTCODE is sandbox test till %s — use your live Paybill/Till.",
             SANDBOX_SHORTCODE,
         )
 
@@ -152,40 +176,64 @@ def fetch_new_token() -> tuple[str, int]:
         )
 
     base = _base_url()
-    env_label = _mpesa_env_label()
+    env_label = _daraja_effective_env_label()
     auth = base64.b64encode(f"{key}:{secret}".encode()).decode()
-    url = f"{base}/oauth/v1/generate?grant_type=client_credentials"
+    oauth_path = "/oauth/v1/generate"
+    url = f"{base}{oauth_path}"
 
     logger.info(
-        "Daraja OAuth: fetching token env=%s base_url=%s",
+        "Daraja OAuth: GET %s env=%s (forced_sandbox=%s)",
+        url,
         env_label,
-        base,
+        _daraja_force_sandbox(),
     )
 
     try:
-        r = requests.get(url, headers={"Authorization": f"Basic {auth}"}, timeout=30)
+        r = requests.get(
+            url,
+            params={"grant_type": "client_credentials"},
+            headers={"Authorization": f"Basic {auth}"},
+            timeout=30,
+        )
     except requests.RequestException as e:
         logger.exception("Daraja OAuth request failed: %s", e)
         raise RuntimeError(f"Failed to reach Daraja OAuth endpoint: {e}") from e
 
+    raw_text = r.text or ""
     if r.status_code >= 400:
-        body_preview = (r.text or "")[:2000]
-        logger.error("Daraja OAuth HTTP %s body: %s", r.status_code, body_preview)
+        logger.error(
+            "Daraja OAuth HTTP %s base_url=%s full_response_body=%s",
+            r.status_code,
+            base,
+            raw_text[:8000] or "(empty)",
+        )
         raise RuntimeError(
-            f"Daraja OAuth failed with HTTP {r.status_code}: {body_preview or 'no body'}"
+            f"Daraja OAuth failed with HTTP {r.status_code}: {(raw_text[:2000] or 'no body')}"
         )
 
     try:
         data = r.json()
     except ValueError as e:
-        body_preview = (r.text or "")[:2000]
-        logger.exception("Daraja OAuth invalid JSON: %s", body_preview)
+        logger.error(
+            "Daraja OAuth invalid JSON base_url=%s body=%s",
+            base,
+            raw_text[:8000],
+        )
         raise RuntimeError("Daraja OAuth returned invalid JSON.") from e
 
     token = data.get("access_token")
-    if not token:
-        logger.error("Daraja OAuth missing access_token: %r", data)
-        raise RuntimeError(f"Daraja token response missing access_token: {data!r}")
+    if not isinstance(token, str) or not token.strip():
+        logger.error(
+            "Daraja OAuth missing or empty access_token base_url=%s parsed_json=%r raw_body=%s",
+            base,
+            data,
+            raw_text[:8000],
+        )
+        raise RuntimeError(
+            "Daraja OAuth response had no non-empty access_token. "
+            "Use sandbox Consumer Key/Secret from the same Daraja app as your passkey/shortcode 174379."
+        )
+    token = token.strip()
 
     raw_expires = data.get("expires_in", 3599)
     try:
@@ -198,21 +246,35 @@ def fetch_new_token() -> tuple[str, int]:
     if expires_in <= 0:
         raise RuntimeError(f"Daraja token response has non-positive expires_in: {expires_in}")
 
+    tok_prefix = (token[:10] + "…") if len(token) > 10 else token
+    logger.info(
+        "Daraja OAuth success base_url=%s token_prefix=%s expires_in=%ss access_token_nonempty=True",
+        base,
+        tok_prefix,
+        expires_in,
+    )
+
     return str(token), expires_in
 
 
 def get_access_token(*, force_refresh: bool = False) -> str:
     """
-    Return OAuth access token. Cached unless MPESA_DARAJA_BYPASS_TOKEN_CACHE is True.
+    Return OAuth access token from `_base_url()` (sandbox when MPESA_DARAJA_FORCE_SANDBOX).
 
-    force_refresh: invalidate cache first, then fetch a new token (no stale reads).
+    Cached unless MPESA_DARAJA_BYPASS_TOKEN_CACHE is True (default follows FORCE_SANDBOX).
+
+    force_refresh: clear cache keys then fetch a new token (used after STK invalid token).
     """
     base = _base_url()
-    env_label = _mpesa_env_label()
+    env_label = _daraja_effective_env_label()
 
     if _daraja_token_cache_bypass():
+        if force_refresh:
+            invalidate_daraja_token_cache()
         logger.warning(
-            "MPESA_DARAJA_BYPASS_TOKEN_CACHE=1 — OAuth token cache skipped (sandbox testing only)"
+            "MPESA_DARAJA_BYPASS_TOKEN_CACHE=1 — OAuth not cached; fresh token from %s force_refresh=%s",
+            base,
+            force_refresh,
         )
         token, _expires_in = fetch_new_token()
         return token
@@ -281,18 +343,19 @@ def _build_stk_payload(
 ) -> tuple[dict[str, Any], str]:
     ts = _stk_timestamp_string()
     password = generate_stk_password(shortcode, passkey, ts)
+    # PartyA / PhoneNumber as strings per Daraja sandbox JSON examples (MSISDN 254…)
     payload: dict[str, Any] = {
         "BusinessShortCode": int(shortcode),
         "Password": password,
         "Timestamp": ts,
         "TransactionType": "CustomerPayBillOnline",
         "Amount": int(amount),
-        "PartyA": int(phone_digits),
+        "PartyA": phone_digits,
         "PartyB": int(shortcode),
-        "PhoneNumber": int(phone_digits),
+        "PhoneNumber": phone_digits,
         "CallBackURL": callback_url.strip(),
-        "AccountReference": (account_reference or "TEST")[:12],
-        "TransactionDesc": (transaction_desc or "Payment")[:13],
+        "AccountReference": (account_reference or "RENT")[:12],
+        "TransactionDesc": (transaction_desc or "Rent Payment")[:13],
     }
     return payload, ts
 
@@ -345,7 +408,7 @@ def stk_push(
     phone_digits = normalize_kenya_stk_phone(phone)
 
     base = _base_url()
-    env_label = _mpesa_env_label()
+    env_label = _daraja_effective_env_label()
     stk_url = f"{base}/mpesa/stkpush/v1/processrequest"
 
     def post_stk(*, force_new_oauth: bool) -> tuple[requests.Response, Any, str, str]:
@@ -363,13 +426,17 @@ def stk_push(
             tok = get_access_token(force_refresh=True)
         else:
             tok = get_access_token()
+        tok_prefix = (tok[:10] + "…") if len(tok) > 10 else tok
         logger.info(
-            "Daraja STK POST env=%s base_url=%s shortcode=%s timestamp=%s amount=%s oauth_fresh=%s",
-            env_label,
+            "Daraja STK pre-request base_url=%s stk_url=%s token_prefix=%s timestamp=%s shortcode=%s "
+            "env=%s forced_sandbox=%s oauth_fresh=%s",
             base,
-            shortcode,
+            stk_url,
+            tok_prefix,
             ts,
-            amount,
+            shortcode,
+            env_label,
+            _daraja_force_sandbox(),
             force_new_oauth,
         )
         r, data = _stk_push_request(token=tok, url=stk_url, payload=payload)
@@ -404,7 +471,7 @@ def stk_push(
             or data.get("requestId")
             or (
                 "M-PESA Daraja rejected the OAuth token (404.001.03). "
-                "Confirm MPESA_ENV=sandbox with sandbox consumer key/secret, shortcode 174379, "
+                "Confirm MPESA_DARAJA_FORCE_SANDBOX=true, sandbox consumer key/secret, shortcode 174379, "
                 "and sandbox passkey; OAuth and STK must both use https://sandbox.safaricom.co.ke."
             )
         )

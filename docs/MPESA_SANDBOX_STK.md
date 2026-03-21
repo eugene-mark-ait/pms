@@ -3,6 +3,7 @@
 ## Environment variables
 
 ```env
+MPESA_DARAJA_FORCE_SANDBOX=true
 MPESA_ENV=sandbox
 MPESA_SHORTCODE=174379
 MPESA_PASSKEY=<sandbox passkey from Daraja app>
@@ -15,7 +16,7 @@ MPESA_DARAJA_BYPASS_TOKEN_CACHE=false
 MPESA_STK_TIMESTAMP_TZ=Africa/Nairobi
 ```
 
-Both OAuth and STK use **`https://sandbox.safaricom.co.ke`** when `MPESA_ENV=sandbox`.
+With **`MPESA_DARAJA_FORCE_SANDBOX=true`** (default in settings), both OAuth and STK use **`https://sandbox.safaricom.co.ke`** regardless of `MPESA_ENV`. Set **`MPESA_DARAJA_FORCE_SANDBOX=false`** when switching to live credentials and production host.
 
 ## Example sandbox STK fields (from Daraja test app)
 
