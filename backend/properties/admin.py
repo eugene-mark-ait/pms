@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     Property,
     PropertyImage,
+    PropertyPayoutSettings,
     Unit,
     UnitImage,
     PropertyRule,
@@ -44,6 +45,15 @@ class CaretakerAssignmentInline(admin.TabularInline):
     model = CaretakerAssignment
     extra = 0
     raw_id_fields = ("caretaker",)
+
+
+@admin.register(PropertyPayoutSettings)
+class PropertyPayoutSettingsAdmin(admin.ModelAdmin):
+    list_display = ("property", "method", "phone_number", "till_number", "paybill_number", "updated_at")
+    list_filter = ("method",)
+    search_fields = ("property__name", "phone_number", "till_number", "paybill_number")
+    raw_id_fields = ("property", "updated_by")
+    readonly_fields = ("id", "created_at", "updated_at")
 
 
 @admin.register(Property)

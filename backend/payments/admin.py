@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CreditScoreRecord, MpesaStkPayment, Payment, PaymentReceipt, Transaction
+from .models import CreditScoreRecord, MpesaStkPayment, Payment, PaymentReceipt, RentCollectionTransaction, Transaction
 
 
 @admin.register(MpesaStkPayment)
@@ -51,6 +51,26 @@ class PaymentReceiptAdmin(admin.ModelAdmin):
     search_fields = ("receipt_number",)
     raw_id_fields = ("payment",)
     readonly_fields = ("id", "created_at")
+
+
+@admin.register(RentCollectionTransaction)
+class RentCollectionTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "property",
+        "lease",
+        "amount",
+        "platform_cut",
+        "owner_amount",
+        "status",
+        "payout_status",
+        "intasend_invoice_id",
+        "created_at",
+    )
+    list_filter = ("status", "payout_status", "created_at")
+    search_fields = ("intasend_invoice_id", "intasend_api_ref", "tenant_phone", "user__email")
+    raw_id_fields = ("user", "lease", "property", "payment")
+    readonly_fields = ("id", "created_at", "updated_at", "completed_at")
 
 
 @admin.register(CreditScoreRecord)

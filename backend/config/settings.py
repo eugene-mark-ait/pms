@@ -4,6 +4,7 @@ Django settings for Mahaliwise (property management platform).
 
 import os
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import environ
@@ -151,6 +152,22 @@ MPESA_DARAJA_BYPASS_TOKEN_CACHE = env.bool(
 )
 # STK Password timestamp uses this TZ (Daraja expects Kenya local time for Lipa Na M-PESA Online).
 MPESA_STK_TIMESTAMP_TZ = env("MPESA_STK_TIMESTAMP_TZ", default="Africa/Nairobi")
+
+# IntaSend — collection (STK to platform) + disbursement (owner share). Never commit real keys.
+INTASEND_PUBLISHABLE_KEY = env("INTASEND_PUBLISHABLE_KEY", default="")
+INTASEND_SECRET_KEY = env("INTASEND_SECRET_KEY", default="")
+INTASEND_TEST_MODE = env.bool("INTASEND_TEST_MODE", default=True)
+# Public URL IntaSend POSTs to, e.g. https://your-domain/api/payments/intasend/webhook/
+INTASEND_WEBHOOK_URL = env("INTASEND_WEBHOOK_URL", default="")
+# Optional shared secret if you verify webhook signatures (see IntaSend docs).
+INTASEND_WEBHOOK_SECRET = env("INTASEND_WEBHOOK_SECRET", default="")
+# Must match the challenge configured in IntaSend Dashboard → Webhooks (payload includes "challenge").
+# https://developers.intasend.com/docs/setup
+INTASEND_WEBHOOK_CHALLENGE = env("INTASEND_WEBHOOK_CHALLENGE", default="")
+# Platform commission on collected rent (default 3%).
+PLATFORM_COMMISSION_RATE = Decimal(str(env("PLATFORM_COMMISSION_RATE", default="0.03")))
+# Minimum owner payout in KES (below → manual queue).
+INTASEND_MIN_PAYOUT_KES = Decimal(str(env("INTASEND_MIN_PAYOUT_KES", default="1")))
 
 CACHES = {
     "default": {

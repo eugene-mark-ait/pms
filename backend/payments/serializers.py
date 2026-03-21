@@ -1,7 +1,7 @@
 import re
 
 from rest_framework import serializers
-from .models import Payment, PaymentReceipt, MpesaStkPayment
+from .models import Payment, PaymentReceipt, MpesaStkPayment, RentCollectionTransaction
 from leases.serializers import LeaseSerializer
 
 MPESA_PHONE_RE = re.compile(r"^254[17]\d{8}$")
@@ -79,4 +79,40 @@ class MpesaStkStatusSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_payment_id(self, obj: MpesaStkPayment):
+        return str(obj.payment_id) if obj.payment_id else None
+
+
+class RentCollectionStatusSerializer(serializers.ModelSerializer):
+    """Tenant polling: map DB status to pending | success | failed."""
+
+    status = serializers.SerializerMethodField()
+    payment_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RentCollectionTransaction
+        fields = [
+            "id",
+            "status",
+            "amount",
+            "platform_cut",
+            "owner_amount",
+            "payout_status",
+            "intasend_invoice_id",
+            "intasend_reference",
+            "failure_reason",
+            "payment_id",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]
+        read_only_fields = fields
+
+    def get_status(self, obj: RentCollectionTransaction) -> str:
+        if obj.status == RentCollectionTransaction.Status.PENDING:
+            return "pending"
+        if obj.status == RentCollectionTransaction.Status.COLLECTED:
+            return "success"
+        return "failed"
+
+    def get_payment_id(self, obj: RentCollectionTransaction) -> str | None:
         return str(obj.payment_id) if obj.payment_id else None

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import (
     Property,
     PropertyImage,
+    PropertyPayoutSettings,
     Unit,
     UnitImage,
     PropertyRule,
@@ -108,6 +109,55 @@ class AssignManagerSerializer(serializers.Serializer):
 
 class AssignCaretakerSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
+
+
+class PropertyPayoutSettingsSerializer(serializers.ModelSerializer):
+    """
+    Owner payout destination after IntaSend collects rent (tenants never see these fields in checkout).
+    """
+
+    class Meta:
+        model = PropertyPayoutSettings
+        fields = [
+            "id",
+            "property",
+            "method",
+            "phone_number",
+            "till_number",
+            "paybill_number",
+            "account_number",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "property", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        inst = self.instance
+        method = attrs.get("method", inst.method if inst else PropertyPayoutSettings.PayoutMethod.MPESA_PHONE)
+        phone = attrs.get("phone_number", getattr(inst, "phone_number", "") if inst else "")
+        till = attrs.get("till_number", getattr(inst, "till_number", "") if inst else "")
+        paybill = attrs.get("paybill_number", getattr(inst, "paybill_number", "") if inst else "")
+        acct = attrs.get("account_number", getattr(inst, "account_number", "") if inst else "")
+
+        if method == PropertyPayoutSettings.PayoutMethod.MPESA_PHONE:
+            if not (phone or "").strip():
+                raise serializers.ValidationError(
+                    {"phone_number": "M-Pesa phone number is required for this payout method."}
+                )
+        elif method == PropertyPayoutSettings.PayoutMethod.MPESA_TILL:
+            if not (till or "").strip():
+                raise serializers.ValidationError(
+                    {"till_number": "Till number is required for this payout method."}
+                )
+        elif method == PropertyPayoutSettings.PayoutMethod.MPESA_PAYBILL:
+            errs = {}
+            if not (paybill or "").strip():
+                errs["paybill_number"] = "Paybill number is required."
+            if not (acct or "").strip():
+                errs["account_number"] = "Account number is required."
+            if errs:
+                raise serializers.ValidationError(errs)
+        return attrs
 
 
 class PropertyListSerializer(serializers.ModelSerializer):

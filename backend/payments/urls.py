@@ -6,6 +6,16 @@ urlpatterns = [
     path("payments/pay-rent/", views.PayRentStkInitiateView.as_view(), name="pay-rent"),
     path("mpesa/callback/", views.MpesaCallbackView.as_view(), name="mpesa-callback"),
     path(
+        "payments/intasend/webhook/",
+        views.IntaSendWebhookView.as_view(),
+        name="intasend-webhook",
+    ),
+    path(
+        "payments/rent-collection/<uuid:pk>/",
+        views.RentCollectionStatusView.as_view(),
+        name="rent-collection-status",
+    ),
+    path(
         "payments/mpesa-stk/<uuid:pk>/",
         views.MpesaStkStatusView.as_view(),
         name="mpesa-stk-status",

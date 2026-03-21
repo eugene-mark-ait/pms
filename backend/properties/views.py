@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from .models import Property, Unit, PropertyRule, ManagerAssignment, CaretakerAssignment, PropertyImage
+from .models import Property, Unit, PropertyRule, ManagerAssignment, CaretakerAssignment, PropertyImage, PropertyPayoutSettings
 from vacancies.models import UnitVacancyInfo
 from .serializers import (
     PropertyListSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     CaretakerAssignmentSerializer,
     AssignManagerSerializer,
     AssignCaretakerSerializer,
+    PropertyPayoutSettingsSerializer,
 )
 from accounts.permissions import IsPropertyOwner, IsPropertyOwnerOrManager, IsPropertyOwnerOrManagerOrCaretaker
 from leases.models import Lease
@@ -522,3 +523,36 @@ class PropertyComplaintRecipientsView(APIView):
                 "role": "Caretaker",
             })
         return Response(out)
+
+
+class PropertyPayoutSettingsView(APIView):
+    """
+    GET/PATCH /api/properties/<id>/payout-settings/
+    Where rent is sent after IntaSend collection (phone / till / paybill — not shown to tenants).
+    """
+
+    permission_classes = [IsAuthenticated, IsPropertyOwner]
+
+    def get(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk, property_owner=request.user)
+        ps, _ = PropertyPayoutSettings.objects.get_or_create(
+            property=prop,
+            defaults={"method": PropertyPayoutSettings.PayoutMethod.MPESA_PHONE},
+        )
+        return Response(PropertyPayoutSettingsSerializer(ps, context={"request": request}).data)
+
+    def patch(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk, property_owner=request.user)
+        ps, _ = PropertyPayoutSettings.objects.get_or_create(
+            property=prop,
+            defaults={"method": PropertyPayoutSettings.PayoutMethod.MPESA_PHONE},
+        )
+        ser = PropertyPayoutSettingsSerializer(
+            ps,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        ser.is_valid(raise_exception=True)
+        ser.save(updated_by=request.user)
+        return Response(ser.data)

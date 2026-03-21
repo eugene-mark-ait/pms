@@ -219,3 +219,46 @@ class CaretakerAssignment(models.Model):
 
     def __str__(self):
         return f"{self.caretaker.email} -> {self.property.name}"
+
+
+class PropertyPayoutSettings(models.Model):
+    """
+    How the property owner receives their share after IntaSend collects rent (platform fee deducted).
+    Not used for tenant checkout — tenants only see phone + amount for STK.
+    """
+
+    class PayoutMethod(models.TextChoices):
+        MPESA_PHONE = "phone", "M-Pesa phone number"
+        MPESA_TILL = "till", "M-Pesa till number"
+        MPESA_PAYBILL = "paybill", "M-Pesa paybill"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    property = models.OneToOneField(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="payout_settings",
+    )
+    method = models.CharField(
+        max_length=20,
+        choices=PayoutMethod.choices,
+        default=PayoutMethod.MPESA_PHONE,
+    )
+    phone_number = models.CharField(max_length=20, blank=True)
+    till_number = models.CharField(max_length=32, blank=True)
+    paybill_number = models.CharField(max_length=32, blank=True)
+    account_number = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_payout_settings",
+    )
+
+    class Meta:
+        db_table = "property_payout_settings"
+
+    def __str__(self) -> str:
+        return f"Payout {self.property.name} ({self.method})"

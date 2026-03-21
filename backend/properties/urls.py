@@ -5,6 +5,11 @@ urlpatterns = [
     path("properties/", views.PropertyListCreateView.as_view(), name="property-list"),
     path("properties/options/", views.PropertyOptionsView.as_view(), name="property-options"),
     path("properties/<uuid:pk>/", views.PropertyDetailView.as_view(), name="property-detail"),
+    path(
+        "properties/<uuid:pk>/payout-settings/",
+        views.PropertyPayoutSettingsView.as_view(),
+        name="property-payout-settings",
+    ),
     path("properties/<uuid:pk>/complaint-recipients/", views.PropertyComplaintRecipientsView.as_view(), name="property-complaint-recipients"),
     path("properties/<uuid:pk>/images/", views.PropertyImageUploadView.as_view(), name="property-images-upload"),
     path("properties/<uuid:pk>/images/<uuid:image_id>/", views.PropertyImageDeleteView.as_view(), name="property-image-delete"),

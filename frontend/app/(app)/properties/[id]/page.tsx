@@ -98,6 +98,16 @@ export default function PropertyDetailPage() {
   const [publicListingError, setPublicListingError] = useState("");
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [propertyFormSubmitting, setPropertyFormSubmitting] = useState(false);
+  const [payoutSettings, setPayoutSettings] = useState<{
+    method: "phone" | "till" | "paybill";
+    phone_number: string;
+    till_number: string;
+    paybill_number: string;
+    account_number: string;
+  } | null>(null);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutSaving, setPayoutSaving] = useState(false);
+  const [payoutError, setPayoutError] = useState("");
 
   const isPropertyOwner = user?.role_names?.includes("property_owner");
   const isManager = user?.role_names?.includes("manager");
@@ -118,6 +128,34 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     refresh();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !isPropertyOwner) {
+      setPayoutSettings(null);
+      return;
+    }
+    setPayoutLoading(true);
+    setPayoutError("");
+    api
+      .get<{
+        method: "phone" | "till" | "paybill";
+        phone_number: string;
+        till_number: string;
+        paybill_number: string;
+        account_number: string;
+      }>(`/properties/${id}/payout-settings/`)
+      .then((res) =>
+        setPayoutSettings({
+          method: res.data.method,
+          phone_number: res.data.phone_number ?? "",
+          till_number: res.data.till_number ?? "",
+          paybill_number: res.data.paybill_number ?? "",
+          account_number: res.data.account_number ?? "",
+        })
+      )
+      .catch(() => setPayoutError("Could not load payout settings."))
+      .finally(() => setPayoutLoading(false));
+  }, [id, isPropertyOwner]);
 
   useEffect(() => {
     if (!property) return;
@@ -361,6 +399,93 @@ export default function PropertyDetailPage() {
           {canEdit && <Link href={`/units?property=${property.id}`} className="text-primary-600 dark:text-primary-400 hover:underline">View and manage units →</Link>}
         </p>
       </section>
+
+      {isPropertyOwner && (
+        <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">
+          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Rent payout (after collection)</h2>
+          <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
+            Tenants pay via M-Pesa STK only. This tells the platform where to send your share (about 97% after platform fee) after IntaSend collects rent.
+          </p>
+          {payoutLoading || !payoutSettings ? (
+            <p className="text-sm text-surface-500 dark:text-surface-400">{payoutLoading ? "Loading…" : "—"}</p>
+          ) : (
+            <form onSubmit={savePayoutSettings} className="space-y-4 max-w-lg">
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Payout method</label>
+                <select
+                  value={payoutSettings.method}
+                  onChange={(e) =>
+                    setPayoutSettings((p) =>
+                      p ? { ...p, method: e.target.value as "phone" | "till" | "paybill" } : p
+                    )
+                  }
+                  className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                >
+                  <option value="phone">M-Pesa phone number</option>
+                  <option value="till">M-Pesa till number</option>
+                  <option value="paybill">M-Pesa paybill</option>
+                </select>
+              </div>
+              {payoutSettings.method === "phone" && (
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Phone (2547…)</label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={payoutSettings.phone_number}
+                    onChange={(e) => setPayoutSettings((p) => (p ? { ...p, phone_number: e.target.value } : p))}
+                    placeholder="254712345678"
+                    className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                  />
+                </div>
+              )}
+              {payoutSettings.method === "till" && (
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Till number</label>
+                  <input
+                    type="text"
+                    value={payoutSettings.till_number}
+                    onChange={(e) => setPayoutSettings((p) => (p ? { ...p, till_number: e.target.value } : p))}
+                    className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                  />
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">Till payouts may be settled manually or via a future wallet.</p>
+                </div>
+              )}
+              {payoutSettings.method === "paybill" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Paybill number</label>
+                    <input
+                      type="text"
+                      value={payoutSettings.paybill_number}
+                      onChange={(e) => setPayoutSettings((p) => (p ? { ...p, paybill_number: e.target.value } : p))}
+                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Account number</label>
+                    <input
+                      type="text"
+                      value={payoutSettings.account_number}
+                      onChange={(e) => setPayoutSettings((p) => (p ? { ...p, account_number: e.target.value } : p))}
+                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-700"
+                    />
+                  </div>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">Paybill payouts may be settled manually or via supported rails later.</p>
+                </>
+              )}
+              {payoutError && <p className="text-sm text-red-600 dark:text-red-400">{payoutError}</p>}
+              <button
+                type="submit"
+                disabled={payoutSaving}
+                className="rounded-lg bg-primary-600 text-white px-4 py-2 text-sm hover:bg-primary-700 disabled:opacity-50"
+              >
+                {payoutSaving ? "Saving…" : "Save payout settings"}
+              </button>
+            </form>
+          )}
+        </section>
+      )}
 
       {property.upcoming_vacancies && property.upcoming_vacancies.length > 0 && (
         <section className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6">

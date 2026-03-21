@@ -12,6 +12,10 @@ interface StkInitResponse {
   checkout_request_id: string;
   status: string;
   message?: string;
+  /** IntaSend vs legacy Daraja — determines polling URL. */
+  provider?: "daraja" | "intasend";
+  /** Relative path under /api/, e.g. /payments/rent-collection/<id>/ */
+  status_poll_path?: string;
 }
 
 interface StkStatusResponse {
@@ -98,9 +102,9 @@ export default function PayRentModal({
   }, []);
 
   const pollStatus = useCallback(
-    async (id: string) => {
+    async (statusPath: string) => {
       try {
-        const res = await api.get<StkStatusResponse>(`/payments/mpesa-stk/${id}/`);
+        const res = await api.get<StkStatusResponse>(statusPath);
         const data = res.data;
         if (data.status === "success") {
           stopPolling();
@@ -153,10 +157,12 @@ export default function PayRentModal({
       setStkId(res.data.id);
       setPhase("waiting");
       pollStartRef.current = Date.now();
+      const statusPath =
+        res.data.status_poll_path?.startsWith("/") ? res.data.status_poll_path : `/payments/mpesa-stk/${res.data.id}/`;
       timerRef.current = setInterval(() => {
-        void pollStatus(res.data.id);
+        void pollStatus(statusPath);
       }, POLL_INTERVAL_MS);
-      void pollStatus(res.data.id);
+      void pollStatus(statusPath);
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string; detail?: string } } };
       setError(ax.response?.data?.error || ax.response?.data?.detail || "Could not start M-PESA payment.");
