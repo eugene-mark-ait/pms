@@ -77,12 +77,14 @@ def invalidate_daraja_token_cache() -> None:
 
 
 def _is_invalid_access_token_response(status_code: int, data: Any) -> bool:
+    """True for 401 or Daraja 404.001.03 / Invalid Access Token (including some HTTP 200 JSON bodies)."""
     if status_code == 401:
         return True
     if not isinstance(data, dict):
         return False
     code = str(data.get("errorCode") or data.get("error_code") or "")
-    msg = str(data.get("errorMessage") or data.get("error_message") or "").lower()
+    msg = str(data.get("errorMessage") or data.get("error_message") or data.get("errorDescription") or "").lower()
+    # Some responses nest or use requestId with message text
     if "404.001.03" in code:
         return True
     if "invalid access token" in msg:
@@ -408,9 +410,11 @@ def stk_push(
         )
 
     if r.status_code >= 400:
+        tok_prefix = (token[:10] + "…") if len(token) > 10 else token
         logger.error(
-            "STK HTTP %s env=%s shortcode=%s timestamp=%s body=%s",
+            "STK HTTP %s token_prefix=%s env=%s shortcode=%s timestamp=%s body=%s",
             r.status_code,
+            tok_prefix,
             env_label,
             shortcode,
             ts,

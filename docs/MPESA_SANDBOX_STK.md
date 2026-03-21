@@ -17,13 +17,32 @@ MPESA_STK_TIMESTAMP_TZ=Africa/Nairobi
 
 Both OAuth and STK use **`https://sandbox.safaricom.co.ke`** when `MPESA_ENV=sandbox`.
 
+## Example sandbox STK fields (from Daraja test app)
+
+| Field | Example |
+|-------|---------|
+| BusinessShortCode | 174379 |
+| PartyA / PhoneNumber | 254708374149 |
+| PartyB | 174379 |
+| Amount | 1 |
+| TransactionType | CustomerPayBillOnline |
+| Timestamp | **Live** `YYYYMMDDHHmmss` in `Africa/Nairobi` (not a fixed past value) |
+| AccountReference | Test |
+| TransactionDesc | Test |
+| CallBackURL | `https://…` (HTTPS) |
+
+Do **not** hardcode a historical timestamp (e.g. `20260320203302`) in production code — the STK password must use the **current** time in the configured TZ or Daraja will reject the request.
+
 ## Rules enforced in code
 
-- Sandbox **must** use shortcode **174379** with sandbox keys/passkey.
+- Sandbox **must** use shortcode **174379** with sandbox keys/passkey (same Daraja app).
 - Callback URL **must** be **HTTPS**.
 - Phone must normalize to **254…** (e.g. `254708374149`).
 - STK password: `Base64(BusinessShortCode + PassKey + Timestamp)` with `Timestamp` = `YYYYMMDDHHmmss` in `MPESA_STK_TIMESTAMP_TZ`.
+- `get_access_token(force_refresh=True)` invalidates cached OAuth keys before fetching from the same host as STK.
+- `MPESA_DARAJA_BYPASS_TOKEN_CACHE=true`: always calls OAuth (no read/write cache) for sandbox debugging.
 - On **404.001.03** / invalid access token: cache cleared, new OAuth token, **new** timestamp/password, **one** retry.
+- Success: full Daraja JSON returned (`MerchantRequestID`, `CheckoutRequestID`, `ResponseCode`, …).
 
 ## Manual OAuth check (curl)
 
