@@ -290,6 +290,28 @@ export default function PropertyDetailPage() {
     }
   }
 
+  async function savePayoutSettings(e: React.FormEvent) {
+    e.preventDefault();
+    if (!payoutSettings || !isPropertyOwner) return;
+    setPayoutSaving(true);
+    setPayoutError("");
+    try {
+      await api.patch(`/properties/${id}/payout-settings/`, payoutSettings);
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: Record<string, unknown> } };
+      const d = ax.response?.data;
+      const msg =
+        typeof d?.detail === "string"
+          ? d.detail
+          : d && typeof d === "object"
+            ? JSON.stringify(d)
+            : "Failed to save payout settings.";
+      setPayoutError(msg);
+    } finally {
+      setPayoutSaving(false);
+    }
+  }
+
   async function savePublicListing(e: React.FormEvent) {
     e.preventDefault();
     setPublicListingError("");
