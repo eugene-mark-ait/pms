@@ -469,3 +469,56 @@ class ServiceRequestDetailView(APIView):
         req.status = ServiceRequest.Status.CANCELLED
         req.save(update_fields=["status"])
         return Response(ServiceRequestSerializer(req).data)
+
+
+class MarketplaceMatchPreviewView(APIView):
+    """
+    GET /marketplace/match-preview/?category=&location=&min_price=&max_price=
+    Returns ranked provider-service matches using proximity proxy (service area text), availability,
+    pricing, and trust signals (rating + review count).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        category = (request.query_params.get("category") or "").strip()
+        location = (request.query_params.get("location") or "").strip().lower()
+        min_price = (request.query_params.get("min_price") or "").strip()
+        max_price = (request.query_params.get("max_price") or "").strip()
+
+        qs = _services_queryset_with_ratings()
+        if category:
+            qs = qs.filter(category=category)
+        if min_price:
+            try:
+                qs = qs.filter(max_price__gte=Decimal(min_price))
+            except Exception:
+                pass
+        if max_price:
+            try:
+                qs = qs.filter(min_price__lte=Decimal(max_price))
+            except Exception:
+                pass
+
+        ranked = []
+        for svc in qs[:200]:
+            proximity = 100 if location and location in (svc.service_area or "").lower() else 60
+            availability = 100 if svc.availability else 70
+            trust = min(100, int((float(svc.avg_rating or 0) / 5.0) * 80 + min(20, int(svc.review_count_val or 0))))
+            pricing = 90 if svc.min_price is not None or svc.max_price is not None else 70
+            total = (0.30 * proximity) + (0.25 * availability) + (0.30 * trust) + (0.15 * pricing)
+            ranked.append(
+                {
+                    "service_id": str(svc.id),
+                    "provider_id": str(svc.provider_id),
+                    "title": svc.title,
+                    "category": svc.category,
+                    "service_area": svc.service_area,
+                    "availability": svc.availability,
+                    "avg_rating": round(float(svc.avg_rating or 0), 2),
+                    "review_count": int(svc.review_count_val or 0),
+                    "match_score": round(total, 2),
+                    "reason_codes": ["skill_category_fit", "availability", "trust_score", "price_fit"],
+                }
+            )
+        ranked.sort(key=lambda x: x["match_score"], reverse=True)
+        return Response({"results": ranked[:20], "count": len(ranked[:20])})

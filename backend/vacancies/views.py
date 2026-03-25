@@ -1,10 +1,11 @@
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.db.models import Avg
 
 from leases.models import LeaseHistory
 from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitApplication, TenantUnitAlert
@@ -15,10 +16,18 @@ from .serializers import (
     VacancyDiscoverySerializer,
     UnitApplicationSerializer,
     TenantUnitAlertSerializer,
+    TenantScoreSerializer,
+    VacancyPredictionSerializer,
+    UnitTenantRankingSerializer,
+    UnitAllocationReservationSerializer,
 )
 from config.pagination import OptionalPageSizePagination
 from accounts.permissions import IsPropertyOwnerOrManagerOrCaretaker, IsTenant
 from properties.models import Unit, Property
+from marketplace.models import ServiceRequest, ServiceReview
+from payments.models import Payment
+from complaints.models import Complaint
+from .models import TenantScore, VacancyPrediction, UnitTenantRanking, UnitAllocationReservation
 
 
 def process_due_notices():
@@ -337,3 +346,229 @@ class TenantUnitAlertDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return TenantUnitAlert.objects.filter(user=self.request.user)
+
+
+def _clamp(value, lower=0, upper=100):
+    return max(lower, min(upper, int(round(value))))
+
+
+def recompute_tenant_score(tenant):
+    """Compute platform-native tenant score using local payment/complaint/service data."""
+    completed_payments = Payment.objects.filter(
+        lease__tenant=tenant,
+        payment_status=Payment.PaymentStatus.COMPLETED,
+    ).count()
+    failed_payments = Payment.objects.filter(
+        lease__tenant=tenant,
+        payment_status=Payment.PaymentStatus.FAILED,
+    ).count()
+    payment_consistency = _clamp(50 + (completed_payments * 3) - (failed_payments * 8))
+
+    open_complaints = Complaint.objects.filter(tenant=tenant, status__in=["open", "in_progress"]).count()
+    resolved_complaints = Complaint.objects.filter(tenant=tenant, status__in=["resolved", "closed"]).count()
+    maintenance_behavior = _clamp(70 + (resolved_complaints * 2) - (open_complaints * 12))
+    dispute_history = _clamp(100 - (open_complaints * 15))
+
+    service_requests = ServiceRequest.objects.filter(user=tenant).count()
+    cancelled_requests = ServiceRequest.objects.filter(user=tenant, status=ServiceRequest.Status.CANCELLED).count()
+    service_reliability = _clamp(70 + (service_requests * 2) - (cancelled_requests * 8))
+
+    landlord_rating_avg = ServiceReview.objects.filter(user=tenant).aggregate(avg=Avg("rating")).get("avg")
+    landlord_rating = _clamp((float(landlord_rating_avg or 3.5) / 5.0) * 100)
+
+    weighted_percent = (
+        0.35 * payment_consistency
+        + 0.20 * maintenance_behavior
+        + 0.15 * service_reliability
+        + 0.15 * landlord_rating
+        + 0.15 * dispute_history
+    )
+    overall_score = _clamp(300 + (weighted_percent / 100.0) * 600, 300, 900)
+    explainability = {
+        "completed_payments": completed_payments,
+        "failed_payments": failed_payments,
+        "open_complaints": open_complaints,
+        "resolved_complaints": resolved_complaints,
+        "service_requests": service_requests,
+        "cancelled_requests": cancelled_requests,
+    }
+    score_obj, _ = TenantScore.objects.update_or_create(
+        tenant=tenant,
+        defaults={
+            "overall_score": overall_score,
+            "payment_consistency": payment_consistency,
+            "maintenance_behavior": maintenance_behavior,
+            "service_reliability": service_reliability,
+            "landlord_rating": landlord_rating,
+            "dispute_history": dispute_history,
+            "explainability": explainability,
+        },
+    )
+    return score_obj
+
+
+def predict_unit_vacancy(unit):
+    """Predict likely vacancy date for active lease and store the latest prediction."""
+    from leases.models import Lease
+    active_lease = Lease.objects.filter(unit=unit, is_active=True).order_by("end_date").first()
+    if not active_lease:
+        return None
+
+    today = timezone.now().date()
+    days_to_end = (active_lease.end_date - today).days
+    failed_payments = Payment.objects.filter(
+        lease=active_lease,
+        payment_status=Payment.PaymentStatus.FAILED,
+    ).count()
+    open_complaints = Complaint.objects.filter(
+        lease=active_lease,
+        status__in=[Complaint.Status.OPEN, Complaint.Status.IN_PROGRESS],
+    ).count()
+
+    risk_points = 0
+    factors = []
+    if days_to_end <= 90:
+        risk_points += 40
+        factors.append("lease_expiry_within_90_days")
+    if failed_payments > 0:
+        risk_points += min(30, failed_payments * 10)
+        factors.append("failed_payments_detected")
+    if open_complaints > 0:
+        risk_points += min(20, open_complaints * 8)
+        factors.append("active_complaints")
+
+    confidence = min(0.95, max(0.10, risk_points / 100.0))
+    if days_to_end <= 0:
+        predicted_date = today
+    elif risk_points >= 60:
+        predicted_date = today + timedelta(days=min(max(days_to_end, 7), 45))
+    else:
+        predicted_date = active_lease.end_date
+
+    risk_level = "high" if risk_points >= 70 else "medium" if risk_points >= 40 else "low"
+    prediction, _ = VacancyPrediction.objects.update_or_create(
+        unit=unit,
+        defaults={
+            "lease": active_lease,
+            "predicted_vacancy_date": predicted_date,
+            "confidence": confidence,
+            "risk_level": risk_level,
+            "factors": factors,
+        },
+    )
+    return prediction
+
+
+def build_unit_rankings(unit):
+    """Build dynamic priority queue from applications and tenant score."""
+    now = timezone.now()
+    UnitTenantRanking.objects.filter(unit=unit).delete()
+    waiting_apps = UnitApplication.objects.filter(unit=unit, status=UnitApplication.Status.WAITING).select_related("applicant")
+    ranked = []
+    for app in waiting_apps:
+        score_obj = recompute_tenant_score(app.applicant)
+        latest_alert = (
+            TenantUnitAlert.objects.filter(user=app.applicant, is_active=True)
+            .order_by("-updated_at")
+            .first()
+        )
+        budget_alignment = 80
+        if latest_alert and latest_alert.max_rent is not None:
+            budget_alignment = 100 if app.unit.monthly_rent <= latest_alert.max_rent else 40
+        elif latest_alert and latest_alert.min_rent is not None:
+            budget_alignment = 100 if app.unit.monthly_rent >= latest_alert.min_rent else 60
+        total = (0.60 * score_obj.overall_score) + (0.40 * budget_alignment)
+        reasons = ["tenant_platform_score", "application_recency"]
+        ranked.append((app, total, reasons))
+    ranked.sort(key=lambda x: x[1], reverse=True)
+    for idx, (app, total, reasons) in enumerate(ranked, start=1):
+        UnitTenantRanking.objects.create(
+            unit=unit,
+            tenant=app.applicant,
+            score=total,
+            rank=idx,
+            reason_codes=reasons,
+            generated_at=now,
+        )
+    return UnitTenantRanking.objects.filter(unit=unit).order_by("rank")
+
+
+class TenantScoreView(APIView):
+    """GET /api/vacancies/tenant-score/me/ - compute and return current tenant score."""
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def get(self, request):
+        score_obj = recompute_tenant_score(request.user)
+        return Response(TenantScoreSerializer(score_obj).data)
+
+
+class VacancyForecastView(APIView):
+    """GET /api/vacancies/units/<unit_id>/vacancy-forecast/ - retrieve unit vacancy prediction."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, unit_id):
+        unit = get_object_or_404(Unit, pk=unit_id)
+        prediction = predict_unit_vacancy(unit)
+        if not prediction:
+            return Response({"detail": "No active lease to predict from."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(VacancyPredictionSerializer(prediction).data)
+
+
+class UnitRankedTenantsView(APIView):
+    """GET /api/vacancies/units/<unit_id>/ranked-tenants/ - dynamic tenant ranking queue for a unit."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
+
+    def get(self, request, unit_id):
+        unit = get_object_or_404(_unit_queryset_property_owner_or_manager(request), pk=unit_id)
+        rankings = build_unit_rankings(unit)
+        return Response({"results": UnitTenantRankingSerializer(rankings, many=True).data, "count": rankings.count()})
+
+
+class UnitAllocateNextView(APIView):
+    """POST /api/vacancies/units/<unit_id>/allocate-next/ - reserve the unit for the next top-ranked tenant."""
+    permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
+
+    def post(self, request, unit_id):
+        unit = get_object_or_404(_unit_queryset_property_owner_or_manager(request), pk=unit_id)
+        window_minutes = int(request.data.get("window_minutes", 120))
+        now = timezone.now()
+        UnitAllocationReservation.objects.filter(
+            unit=unit,
+            status=UnitAllocationReservation.Status.ACTIVE,
+            window_end__lt=now,
+        ).update(status=UnitAllocationReservation.Status.EXPIRED, updated_at=now)
+        if UnitAllocationReservation.objects.filter(
+            unit=unit,
+            status=UnitAllocationReservation.Status.ACTIVE,
+            window_end__gte=now,
+        ).exists():
+            active = UnitAllocationReservation.objects.filter(
+                unit=unit,
+                status=UnitAllocationReservation.Status.ACTIVE,
+                window_end__gte=now,
+            ).order_by("-created_at").first()
+            return Response(UnitAllocationReservationSerializer(active).data, status=status.HTTP_200_OK)
+
+        rankings = build_unit_rankings(unit)
+        for ranking in rankings:
+            already = UnitAllocationReservation.objects.filter(
+                unit=unit,
+                tenant=ranking.tenant,
+                status__in=[
+                    UnitAllocationReservation.Status.ACTIVE,
+                    UnitAllocationReservation.Status.ACCEPTED,
+                ],
+                window_end__gte=now,
+            ).exists()
+            if already:
+                continue
+            reservation = UnitAllocationReservation.objects.create(
+                unit=unit,
+                tenant=ranking.tenant,
+                ranking=ranking,
+                status=UnitAllocationReservation.Status.ACTIVE,
+                window_start=now,
+                window_end=now + timedelta(minutes=max(15, min(window_minutes, 1440))),
+            )
+            return Response(UnitAllocationReservationSerializer(reservation).data, status=status.HTTP_201_CREATED)
+        return Response({"detail": "No ranked tenant available for reservation."}, status=status.HTTP_404_NOT_FOUND)

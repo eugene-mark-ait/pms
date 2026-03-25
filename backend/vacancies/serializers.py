@@ -1,7 +1,19 @@
 from datetime import date as date_type
 
 from rest_framework import serializers
-from .models import VacateNotice, VacancyListing, TenantVacancyPreference, UnitVacancyInfo, UnitNotificationSubscription, UnitApplication, TenantUnitAlert
+from .models import (
+    VacateNotice,
+    VacancyListing,
+    TenantVacancyPreference,
+    UnitVacancyInfo,
+    UnitNotificationSubscription,
+    UnitApplication,
+    TenantUnitAlert,
+    TenantScore,
+    VacancyPrediction,
+    UnitTenantRanking,
+    UnitAllocationReservation,
+)
 from properties.serializers import UnitSerializer, PropertyListSerializer
 from properties.models import Unit
 
@@ -290,3 +302,89 @@ class VacancyDiscoverySerializer(serializers.Serializer):
                 return request.build_absolute_uri(prop_img.image.url)
             return prop_img.image.url
         return None
+
+
+class TenantScoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TenantScore
+        fields = [
+            "id",
+            "tenant",
+            "overall_score",
+            "payment_consistency",
+            "maintenance_behavior",
+            "service_reliability",
+            "landlord_rating",
+            "dispute_history",
+            "explainability",
+            "updated_at",
+        ]
+
+
+class VacancyPredictionSerializer(serializers.ModelSerializer):
+    unit_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VacancyPrediction
+        fields = [
+            "id",
+            "unit_id",
+            "lease",
+            "predicted_vacancy_date",
+            "confidence",
+            "risk_level",
+            "factors",
+            "updated_at",
+        ]
+
+    def get_unit_id(self, obj):
+        return str(obj.unit_id)
+
+
+class UnitTenantRankingSerializer(serializers.ModelSerializer):
+    tenant_email = serializers.SerializerMethodField()
+    tenant_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UnitTenantRanking
+        fields = [
+            "id",
+            "unit",
+            "tenant",
+            "tenant_email",
+            "tenant_name",
+            "score",
+            "rank",
+            "reason_codes",
+            "generated_at",
+        ]
+
+    def get_tenant_email(self, obj):
+        return obj.tenant.email if obj.tenant_id else ""
+
+    def get_tenant_name(self, obj):
+        if not obj.tenant_id:
+            return ""
+        name = f"{obj.tenant.first_name or ''} {obj.tenant.last_name or ''}".strip()
+        return name or obj.tenant.email
+
+
+class UnitAllocationReservationSerializer(serializers.ModelSerializer):
+    tenant_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UnitAllocationReservation
+        fields = [
+            "id",
+            "unit",
+            "tenant",
+            "tenant_email",
+            "ranking",
+            "status",
+            "window_start",
+            "window_end",
+            "created_at",
+        ]
+
+    def get_tenant_email(self, obj):
+        return obj.tenant.email if obj.tenant_id else ""

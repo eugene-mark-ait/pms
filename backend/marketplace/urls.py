@@ -17,4 +17,5 @@ urlpatterns = [
     path("marketplace/requests/<uuid:pk>/", views.ServiceRequestDetailView.as_view(), name="marketplace-request-detail"),
     path("marketplace/insights/", views.MarketplaceInsightsView.as_view(), name="marketplace-insights"),
     path("marketplace/providers/", views.MarketplaceProvidersListView.as_view(), name="marketplace-providers-list"),
+    path("marketplace/match-preview/", views.MarketplaceMatchPreviewView.as_view(), name="marketplace-match-preview"),
 ]

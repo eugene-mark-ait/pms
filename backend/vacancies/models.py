@@ -201,3 +201,126 @@ class VacancyListing(models.Model):
 
     def __str__(self):
         return f"{self.unit} - available {self.available_from}"
+
+
+class TenantScore(models.Model):
+    """Platform-native tenant score built from payments, complaints, marketplace reliability, and landlord ratings."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="platform_tenant_score",
+    )
+    overall_score = models.PositiveSmallIntegerField(default=500, help_text="Range 300-900")
+    payment_consistency = models.PositiveSmallIntegerField(default=50, help_text="Range 0-100")
+    maintenance_behavior = models.PositiveSmallIntegerField(default=50, help_text="Range 0-100")
+    service_reliability = models.PositiveSmallIntegerField(default=50, help_text="Range 0-100")
+    landlord_rating = models.PositiveSmallIntegerField(default=50, help_text="Range 0-100")
+    dispute_history = models.PositiveSmallIntegerField(default=50, help_text="Range 0-100")
+    explainability = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenant_scores"
+
+    def __str__(self):
+        return f"{self.tenant.email} score={self.overall_score}"
+
+
+class VacancyPrediction(models.Model):
+    """Prediction artifact for expected upcoming vacancy for an occupied unit."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    unit = models.OneToOneField(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="vacancy_prediction",
+    )
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.CASCADE,
+        related_name="vacancy_predictions",
+    )
+    predicted_vacancy_date = models.DateField()
+    confidence = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="0.00-1.00")
+    risk_level = models.CharField(max_length=16, default="low")
+    factors = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "vacancy_predictions"
+
+    def __str__(self):
+        return f"{self.unit} prediction={self.predicted_vacancy_date} ({self.confidence})"
+
+
+class UnitTenantRanking(models.Model):
+    """Dynamic ranking queue for tenants interested in a specific unit."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="tenant_rankings",
+    )
+    tenant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="unit_rankings",
+    )
+    score = models.DecimalField(max_digits=8, decimal_places=4)
+    rank = models.PositiveIntegerField()
+    reason_codes = models.JSONField(default=list, blank=True)
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "unit_tenant_rankings"
+        ordering = ["rank", "-score", "generated_at"]
+        unique_together = [["unit", "tenant", "generated_at"]]
+
+    def __str__(self):
+        return f"{self.unit} -> {self.tenant.email} rank={self.rank}"
+
+
+class UnitAllocationReservation(models.Model):
+    """Timed hold for a ranked tenant during smart allocation."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        EXPIRED = "expired", "Expired"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    unit = models.ForeignKey(
+        Unit,
+        on_delete=models.CASCADE,
+        related_name="allocation_reservations",
+    )
+    tenant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="allocation_reservations",
+    )
+    ranking = models.ForeignKey(
+        UnitTenantRanking,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reservations",
+    )
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
+    window_start = models.DateTimeField()
+    window_end = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "unit_allocation_reservations"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.unit} reserved for {self.tenant.email} ({self.status})"

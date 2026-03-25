@@ -14,4 +14,8 @@ urlpatterns = [
     path("vacancies/units/<uuid:unit_id>/applications/", views.UnitApplicationListView.as_view(), name="unit-application-list"),
     path("vacancies/applications/<uuid:pk>/approve/", views.ApplicationApproveView.as_view(), name="application-approve"),
     path("vacancies/applications/<uuid:pk>/decline/", views.ApplicationDeclineView.as_view(), name="application-decline"),
+    path("vacancies/tenant-score/me/", views.TenantScoreView.as_view(), name="tenant-score-me"),
+    path("vacancies/units/<uuid:unit_id>/vacancy-forecast/", views.VacancyForecastView.as_view(), name="unit-vacancy-forecast"),
+    path("vacancies/units/<uuid:unit_id>/ranked-tenants/", views.UnitRankedTenantsView.as_view(), name="unit-ranked-tenants"),
+    path("vacancies/units/<uuid:unit_id>/allocate-next/", views.UnitAllocateNextView.as_view(), name="unit-allocate-next"),
 ]
