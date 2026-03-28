@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import CreditScoreRecord, MpesaStkPayment, Payment, PaymentReceipt, Transaction
+from .models import (
+    CreditScoreRecord,
+    FlutterwaveRentCharge,
+    FlutterwaveSubaccount,
+    MpesaStkPayment,
+    Payment,
+    PaymentReceipt,
+    Transaction,
+)
 
 
 @admin.register(MpesaStkPayment)
@@ -51,6 +59,21 @@ class PaymentReceiptAdmin(admin.ModelAdmin):
     search_fields = ("receipt_number",)
     raw_id_fields = ("payment",)
     readonly_fields = ("id", "created_at")
+
+
+@admin.register(FlutterwaveSubaccount)
+class FlutterwaveSubaccountAdmin(admin.ModelAdmin):
+    list_display = ("phone_normalized", "subaccount_id", "is_stale", "updated_at")
+    list_filter = ("is_stale",)
+    search_fields = ("phone_normalized", "subaccount_id")
+
+
+@admin.register(FlutterwaveRentCharge)
+class FlutterwaveRentChargeAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "lease", "amount", "status", "tx_ref", "created_at")
+    list_filter = ("status",)
+    search_fields = ("tx_ref", "user__email", "flw_ref")
+    raw_id_fields = ("user", "lease", "payment")
 
 
 @admin.register(CreditScoreRecord)

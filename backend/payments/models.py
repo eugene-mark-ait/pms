@@ -13,7 +13,8 @@ class Payment(models.Model):
         REFUNDED = "refunded", "Refunded"
 
     class PaymentMethod(models.TextChoices):
-        MPESA = "mpesa", "M-Pesa"
+        MPESA = "mpesa", "M-Pesa (Daraja)"
+        FLUTTERWAVE_MPESA = "flutterwave_mpesa", "M-Pesa (Flutterwave)"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lease = models.ForeignKey(
@@ -67,6 +68,83 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.amount} - {self.description}"
+
+
+class FlutterwaveSubaccount(models.Model):
+    """
+    Maps a normalized landlord payout phone (2547…) to a Flutterwave subaccount id.
+    One row per phone; reused across properties that share the same payment number.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    phone_normalized = models.CharField(max_length=15, unique=True, db_index=True)
+    subaccount_id = models.CharField(max_length=80)
+    is_stale = models.BooleanField(
+        default=False,
+        help_text="True when no property currently uses this phone for payouts.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "flutterwave_subaccounts"
+
+    def __str__(self):
+        return f"{self.phone_normalized} → {self.subaccount_id}"
+
+
+class FlutterwaveRentCharge(models.Model):
+    """Pending or completed rent payment initiated via Flutterwave M-Pesa (webhook completes)."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="flutterwave_rent_charges",
+    )
+    lease = models.ForeignKey(
+        Lease,
+        on_delete=models.CASCADE,
+        related_name="flutterwave_rent_charges",
+    )
+    months_paid_for = models.PositiveIntegerField()
+    phone = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    deposit_to_add = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    tx_ref = models.CharField(max_length=120, unique=True, db_index=True)
+    flw_charge_id = models.PositiveIntegerField(null=True, blank=True)
+    flw_ref = models.CharField(max_length=80, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    result_message = models.TextField(blank=True)
+    payment = models.OneToOneField(
+        "Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="flutterwave_rent_charge",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "flutterwave_rent_charges"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"FLW {self.tx_ref[:16]}… {self.status}"
 
 
 class PaymentReceipt(models.Model):

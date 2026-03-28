@@ -79,6 +79,10 @@ class ChooseRoleView(APIView):
         role_name = serializer.validated_data["role"]
         role, _ = Role.objects.get_or_create(name=role_name)
         request.user.roles.set([role])
+        if role_name == "tenant":
+            from payments.flutterwave.customers import ensure_flutterwave_customer
+
+            ensure_flutterwave_customer(request.user)
         return Response(UserSerializer(request.user).data)
 
 

@@ -42,6 +42,12 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    flutterwave_customer_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Flutterwave customer id for recurring M-Pesa charges.",
+    )
     roles = models.ManyToManyField(Role, related_name="users", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

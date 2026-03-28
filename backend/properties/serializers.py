@@ -1,4 +1,7 @@
 from rest_framework import serializers
+
+from payments.kenya_phone import normalize_kenya_payment_phone
+
 from .models import (
     Property,
     PropertyImage,
@@ -141,13 +144,42 @@ class PropertyOptionsSerializer(serializers.ModelSerializer):
 
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     """Create/update: name, address, location, is_closed + public listing fields. Only property owner/manager can set is_closed."""
+    payment_phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Kenyan M-Pesa number for landlord payouts: 2547XXXXXXXX (required when creating a property).",
+    )
+
     class Meta:
         model = Property
         fields = [
             "id", "name", "address", "location", "is_closed",
             "public_description", "amenities", "parking_info", "nearby_landmarks", "house_rules", "contact_preference",
+            "payment_phone",
         ]
         read_only_fields = ["id"]
+
+    def validate_payment_phone(self, value):
+        if value is None or not str(value).strip():
+            if getattr(self, "instance", None) and self.partial:
+                return self.instance.payment_phone or ""
+            return ""
+        n = normalize_kenya_payment_phone(value)
+        if not n:
+            raise serializers.ValidationError(
+                "Enter a valid Kenyan payment number in format 2547XXXXXXXX."
+            )
+        return n
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request and request.method == "POST":
+            raw = attrs.get("payment_phone", "")
+            if not (raw and str(raw).strip()):
+                raise serializers.ValidationError(
+                    {"payment_phone": "Payment phone (2547XXXXXXXX) is required to register landlord payouts."}
+                )
+        return attrs
 
 
 class PropertyDetailSerializer(serializers.ModelSerializer):
@@ -177,6 +209,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "nearby_landmarks",
             "house_rules",
             "contact_preference",
+            "payment_phone",
             "images",
             "unit_count",
             "occupied_count",

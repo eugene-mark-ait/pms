@@ -20,7 +20,7 @@ interface PropertyFormProps {
   mode: "create" | "edit";
   propertyId?: string;
   onSuccess: () => void;
-  initialData?: { name: string; address: string; location?: string };
+  initialData?: { name: string; address: string; location?: string; payment_phone?: string };
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
@@ -34,6 +34,7 @@ export default function PropertyForm({
   const [name, setName] = useState(initialData?.name ?? "");
   const [address, setAddress] = useState(initialData?.address ?? "");
   const [location, setLocation] = useState(initialData?.location ?? "");
+  const [paymentPhone, setPaymentPhone] = useState(initialData?.payment_phone ?? "");
   const [images, setImages] = useState<PropertyImageType[]>([]);
   const [loading, setLoading] = useState(mode === "edit" && !!propertyId);
   const [submitting, setSubmitting] = useState(false);
@@ -51,11 +52,18 @@ export default function PropertyForm({
     if (!propertyId) return;
     setLoading(true);
     api
-      .get<{ name: string; address: string; location?: string; images?: PropertyImageType[] }>(`/properties/${propertyId}/`)
+      .get<{
+        name: string;
+        address: string;
+        location?: string;
+        payment_phone?: string;
+        images?: PropertyImageType[];
+      }>(`/properties/${propertyId}/`)
       .then((res) => {
         setName(res.data.name);
         setAddress(res.data.address);
         setLocation(res.data.location ?? "");
+        setPaymentPhone(res.data.payment_phone ?? "");
         setImages(res.data.images ?? []);
       })
       .catch(() => setError("Property not found."))
@@ -68,6 +76,7 @@ export default function PropertyForm({
       setName(initialData.name);
       setAddress(initialData.address);
       setLocation(initialData.location ?? "");
+      setPaymentPhone(initialData.payment_phone ?? "");
     }
   }, [mode, propertyId]);
 
@@ -82,16 +91,19 @@ export default function PropertyForm({
           name,
           address,
           location: location.trim() || undefined,
+          payment_phone: paymentPhone.trim(),
         });
         setName("");
         setAddress("");
         setLocation("");
+        setPaymentPhone("");
         onSuccess();
       } else if (propertyId) {
         await api.patch(`/properties/${propertyId}/`, {
           name,
           address,
           location: location.trim() || undefined,
+          payment_phone: paymentPhone.trim(),
         });
         onSuccess();
       }
@@ -186,6 +198,22 @@ export default function PropertyForm({
           rows={3}
           required
         />
+      </div>
+      <div>
+        <label className={labelClass}>Payment phone (landlord M-Pesa)</label>
+        <input
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          placeholder="2547XXXXXXXX"
+          value={paymentPhone}
+          onChange={(e) => setPaymentPhone(e.target.value)}
+          className={inputBase}
+          required
+        />
+        <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
+          Kenyan Safaricom number for Flutterwave payouts (format 2547XXXXXXXX). Required for rent collection.
+        </p>
       </div>
 
       {mode === "edit" && propertyId && (

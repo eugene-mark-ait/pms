@@ -65,6 +65,7 @@ def create_completed_rent_payment(
     period_start: date,
     period_end: date,
     transaction_reference: str = "",
+    payment_method: str = Payment.PaymentMethod.MPESA,
 ) -> Payment:
     """Persist completed Payment and related lease updates (mirrors former PayRentView)."""
     today = date.today()
@@ -75,7 +76,7 @@ def create_completed_rent_payment(
         period_start=period_start,
         period_end=period_end,
         payment_date=today,
-        payment_method=Payment.PaymentMethod.MPESA,
+        payment_method=payment_method,
         payment_status=Payment.PaymentStatus.COMPLETED,
         transaction_reference=transaction_reference[:255] if transaction_reference else "",
     )
@@ -88,7 +89,7 @@ def create_completed_rent_payment(
         user=lease.unit.property.property_owner,
         notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
         title="Rent payment received",
-        body=f"Tenant paid {amount} for {lease.unit.unit_number} ({months} month(s)) via M-PESA.",
+        body=f"Tenant paid {amount} for {lease.unit.unit_number} ({months} month(s)) via rent payment.",
     )
     return payment
 

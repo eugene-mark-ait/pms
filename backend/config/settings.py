@@ -152,6 +152,12 @@ MPESA_DARAJA_BYPASS_TOKEN_CACHE = env.bool(
 # STK Password timestamp uses this TZ (Daraja expects Kenya local time for Lipa Na M-PESA Online).
 MPESA_STK_TIMESTAMP_TZ = env("MPESA_STK_TIMESTAMP_TZ", default="Africa/Nairobi")
 
+# Flutterwave (OAuth2 + M-Pesa split) — use dashboard Keycloak client id/secret; webhook secret hash from dashboard
+FLUTTERWAVE_CLIENT_ID = env("FLUTTERWAVE_CLIENT_ID", default="")
+FLUTTERWAVE_CLIENT_SECRET = env("FLUTTERWAVE_CLIENT_SECRET", default="")
+FLUTTERWAVE_SECRET_HASH = env("FLUTTERWAVE_SECRET_HASH", default="")
+FLUTTERWAVE_BASE_URL = env("FLUTTERWAVE_BASE_URL", default="https://api.flutterwave.com/v3")
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",

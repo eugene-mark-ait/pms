@@ -9,7 +9,8 @@ type PayPhase = "form" | "waiting" | "success" | "failed";
 
 interface StkInitResponse {
   id: string;
-  checkout_request_id: string;
+  provider?: "flutterwave" | "daraja";
+  checkout_request_id?: string;
   status: string;
   message?: string;
 }
@@ -53,6 +54,7 @@ export default function PayRentModal({
   const [resultMessage, setResultMessage] = useState("");
   const pollStartRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const payProviderRef = useRef<"flutterwave" | "daraja">("daraja");
 
   const resetFlow = useCallback(() => {
     setPhase("form");
@@ -100,7 +102,11 @@ export default function PayRentModal({
   const pollStatus = useCallback(
     async (id: string) => {
       try {
-        const res = await api.get<StkStatusResponse>(`/payments/mpesa-stk/${id}/`);
+        const path =
+          payProviderRef.current === "flutterwave"
+            ? `/payments/flutterwave-rent/${id}/`
+            : `/payments/mpesa-stk/${id}/`;
+        const res = await api.get<StkStatusResponse>(path);
         const data = res.data;
         if (data.status === "success") {
           stopPolling();
@@ -150,6 +156,7 @@ export default function PayRentModal({
         phone: normalized,
         amount: amountForApi,
       });
+      payProviderRef.current = res.data.provider === "flutterwave" ? "flutterwave" : "daraja";
       setStkId(res.data.id);
       setPhase("waiting");
       pollStartRef.current = Date.now();

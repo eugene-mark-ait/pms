@@ -29,6 +29,12 @@ class Property(models.Model):
         blank=True,
         help_text="e.g. Call preferred, WhatsApp, email.",
     )
+    payment_phone = models.CharField(
+        max_length=15,
+        blank=True,
+        default="",
+        help_text="Kenyan M-Pesa number for landlord payouts (2547XXXXXXXX). Required for new properties when using Flutterwave.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

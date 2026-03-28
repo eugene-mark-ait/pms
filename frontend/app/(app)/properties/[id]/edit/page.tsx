@@ -20,6 +20,7 @@ export default function EditPropertyPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState("");
+  const [paymentPhone, setPaymentPhone] = useState("");
   const [images, setImages] = useState<PropertyImageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -35,12 +36,19 @@ export default function EditPropertyPage() {
 
   function refresh() {
     if (!id) return;
-    api.get<{ name: string; address: string; location?: string; images?: PropertyImageType[] }>(`/properties/${id}/`).then((res) => {
-      setName(res.data.name);
-      setAddress(res.data.address);
-      setLocation(res.data.location ?? "");
-      setImages(res.data.images ?? []);
-    }).catch(() => setError("Property not found.")).finally(() => setLoading(false));
+    api
+      .get<{ name: string; address: string; location?: string; payment_phone?: string; images?: PropertyImageType[] }>(
+        `/properties/${id}/`
+      )
+      .then((res) => {
+        setName(res.data.name);
+        setAddress(res.data.address);
+        setLocation(res.data.location ?? "");
+        setPaymentPhone(res.data.payment_phone ?? "");
+        setImages(res.data.images ?? []);
+      })
+      .catch(() => setError("Property not found."))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -52,7 +60,12 @@ export default function EditPropertyPage() {
     setError("");
     setSubmitting(true);
     try {
-      await api.patch(`/properties/${id}/`, { name, address, location: location.trim() || undefined });
+      await api.patch(`/properties/${id}/`, {
+        name,
+        address,
+        location: location.trim() || undefined,
+        payment_phone: paymentPhone.trim(),
+      });
       router.push(`/properties/${id}`);
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "response" in err
@@ -129,6 +142,22 @@ export default function EditPropertyPage() {
             rows={3}
             required
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+            Payment phone (landlord M-Pesa)
+          </label>
+          <input
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="2547XXXXXXXX"
+            value={paymentPhone}
+            onChange={(e) => setPaymentPhone(e.target.value)}
+            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-3 py-2 text-surface-900 dark:text-surface-100 bg-white dark:bg-surface-800"
+            required
+          />
+          <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">Format 2547XXXXXXXX (Flutterwave payouts).</p>
         </div>
         <div className="flex gap-3">
           <button

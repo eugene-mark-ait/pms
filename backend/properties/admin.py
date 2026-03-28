@@ -48,7 +48,7 @@ class CaretakerAssignmentInline(admin.TabularInline):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ("name", "property_owner", "created_at")
+    list_display = ("name", "property_owner", "payment_phone", "created_at")
     list_filter = ("created_at",)
     search_fields = ("name", "address", "property_owner__email")
     raw_id_fields = ("property_owner",)

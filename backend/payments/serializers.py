@@ -1,7 +1,7 @@
 import re
 
 from rest_framework import serializers
-from .models import Payment, PaymentReceipt, MpesaStkPayment
+from .models import Payment, PaymentReceipt, MpesaStkPayment, FlutterwaveRentCharge
 from leases.serializers import LeaseSerializer
 
 MPESA_PHONE_RE = re.compile(r"^254[17]\d{8}$")
@@ -79,4 +79,27 @@ class MpesaStkStatusSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_payment_id(self, obj: MpesaStkPayment):
+        return str(obj.payment_id) if obj.payment_id else None
+
+
+class FlutterwaveRentChargeStatusSerializer(serializers.ModelSerializer):
+    payment_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FlutterwaveRentCharge
+        fields = [
+            "id",
+            "status",
+            "amount",
+            "tx_ref",
+            "flw_ref",
+            "result_message",
+            "payment_id",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]
+        read_only_fields = fields
+
+    def get_payment_id(self, obj: FlutterwaveRentCharge):
         return str(obj.payment_id) if obj.payment_id else None

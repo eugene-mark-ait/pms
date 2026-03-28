@@ -1,5 +1,7 @@
+import logging
 from datetime import date as date_type
 
+from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -26,6 +28,7 @@ from accounts.permissions import IsPropertyOwner, IsPropertyOwnerOrManager, IsPr
 from leases.models import Lease
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class PropertyListCreateView(generics.ListCreateAPIView):
@@ -60,11 +63,25 @@ class PropertyListCreateView(generics.ListCreateAPIView):
             return PropertyCreateUpdateSerializer
         return PropertyListSerializer
 
+    @transaction.atomic
     def perform_create(self, serializer):
         if not self.request.user.has_role("property_owner"):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only property owners can create properties.")
-        serializer.save(property_owner=self.request.user)
+        prop = serializer.save(property_owner=self.request.user)
+        from payments.flutterwave.oauth import flutterwave_configured
+        from payments.flutterwave.subaccounts import refresh_subaccount_after_property_save
+
+        if flutterwave_configured():
+            try:
+                refresh_subaccount_after_property_save(prop, old_phone=None)
+            except Exception as e:
+                logger.exception("Flutterwave subaccount sync failed for property %s", prop.id)
+                from rest_framework.exceptions import APIException
+
+                raise APIException(
+                    "Could not register payment account with Flutterwave. Check credentials and try again."
+                ) from e
 
 
 class PropertyOptionsView(generics.ListAPIView):
@@ -89,6 +106,13 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated, IsPropertyOwnerOrManagerOrCaretaker]
     serializer_class = PropertyDetailSerializer
 
+    def get_serializer_class(self):
+        if self.request.method in ("PUT", "PATCH"):
+            from .serializers import PropertyCreateUpdateSerializer
+
+            return PropertyCreateUpdateSerializer
+        return PropertyDetailSerializer
+
     def get_queryset(self):
         user = self.request.user
         if user.has_role("property_owner"):
@@ -99,11 +123,32 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Property.objects.filter(caretaker_assignments__caretaker=user).distinct()
         return Property.objects.none()
 
+    @transaction.atomic
+    def perform_update(self, serializer):
+        if self.request.user.has_role("caretaker"):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Caretakers cannot edit property details.")
+        old_phone = serializer.instance.payment_phone
+        prop = serializer.save()
+        from payments.flutterwave.oauth import flutterwave_configured
+        from payments.flutterwave.subaccounts import refresh_subaccount_after_property_save
+
+        if flutterwave_configured():
+            try:
+                refresh_subaccount_after_property_save(prop, old_phone=old_phone)
+            except Exception as e:
+                logger.exception("Flutterwave subaccount sync failed for property %s", prop.id)
+                from rest_framework.exceptions import APIException
+
+                raise APIException(
+                    "Could not update payment account with Flutterwave. Check credentials and try again."
+                ) from e
+
     def update(self, request, *args, **kwargs):
         if request.user.has_role("caretaker"):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Caretakers cannot edit property details.")
-        # Only property owner and manager can set is_closed (handled by serializer + same update path)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):

@@ -15,9 +15,17 @@ from rest_framework.views import APIView
 from accounts.permissions import IsTenant
 
 from .daraja import stk_amount_kes, stk_push
-from .models import MpesaStkPayment, Payment
+from .models import FlutterwaveRentCharge, MpesaStkPayment, Payment
 from .rent_service import compute_pay_rent_totals, create_completed_rent_payment, get_lease_for_tenant
-from .serializers import MpesaStkStatusSerializer, PayRentStkSerializer, PaymentSerializer
+from .serializers import (
+    FlutterwaveRentChargeStatusSerializer,
+    MpesaStkStatusSerializer,
+    PayRentStkSerializer,
+    PaymentSerializer,
+)
+from .flutterwave.oauth import flutterwave_configured
+from .flutterwave.rent_flow import handle_webhook_payload, initiate_rent_payment_flutterwave, sync_flutterwave_rent_charge_from_api
+from .flutterwave.webhook_verify import verify_flutterwave_signature
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +97,49 @@ def tenant_payments_queryset(user):
 class PayRentStkInitiateView(APIView):
     """
     POST /api/pay-rent/ and POST /api/payments/pay-rent/
-    Initiate M-PESA STK Push. Payment is completed only after Daraja callback — never mark paid here.
+    When Flutterwave OAuth is configured, initiates M-Pesa via Flutterwave (split payout).
+    Otherwise uses Safaricom Daraja STK; payment completes only after provider callback/webhook.
     """
 
     permission_classes = [IsAuthenticated, IsTenant]
 
     def post(self, request):
+        serializer = PayRentStkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if flutterwave_configured():
+            lease = get_lease_for_tenant(data["lease_id"], request.user)
+            totals = compute_pay_rent_totals(lease, data["months"])
+            if "error" in totals:
+                return Response({"error": totals["error"]}, status=status.HTTP_400_BAD_REQUEST)
+            amount: Decimal = totals["amount"]
+            client_amount: Decimal = data["amount"]
+            if amount != client_amount:
+                return Response(
+                    {"error": "Amount does not match expected rent total. Refresh and try again."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                out = initiate_rent_payment_flutterwave(
+                    user=request.user,
+                    lease_id=data["lease_id"],
+                    months=data["months"],
+                    payer_phone=data["phone"],
+                    amount=amount,
+                )
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except RuntimeError as e:
+                return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            except Exception:
+                logger.exception("Flutterwave rent initiate failed")
+                return Response(
+                    {"error": "Could not start payment with Flutterwave. Try again later."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+            return Response(out, status=status.HTTP_201_CREATED)
+
         if not getattr(settings, "MPESA_CONSUMER_KEY", None) or not getattr(
             settings, "MPESA_CONSUMER_SECRET", None
         ):
@@ -119,10 +164,6 @@ class PayRentStkInitiateView(APIView):
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-        serializer = PayRentStkSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
         lease = get_lease_for_tenant(data["lease_id"], request.user)
         totals = compute_pay_rent_totals(lease, data["months"])
@@ -189,6 +230,7 @@ class PayRentStkInitiateView(APIView):
 
         return Response(
             {
+                "provider": "daraja",
                 "id": str(stk.id),
                 "checkout_request_id": checkout,
                 "status": "pending",
@@ -213,6 +255,60 @@ class MpesaStkStatusView(APIView):
         else:
             data["user_message"] = user_friendly_mpesa_message(stk.result_code, stk.result_desc or "")
         return Response(data)
+
+
+class FlutterwaveRentChargeStatusView(APIView):
+    """GET /api/payments/flutterwave-rent/<id>/ — poll Flutterwave rent charge (tenant must own the record)."""
+
+    permission_classes = [IsAuthenticated, IsTenant]
+
+    def get(self, request, pk):
+        ch = get_object_or_404(FlutterwaveRentCharge, pk=pk, user=request.user)
+        ch = sync_flutterwave_rent_charge_from_api(ch)
+        data = FlutterwaveRentChargeStatusSerializer(ch).data
+        if ch.status == FlutterwaveRentCharge.Status.PENDING:
+            data["user_message"] = "Waiting for M-PESA. Approve the prompt on your phone."
+        elif ch.status == FlutterwaveRentCharge.Status.SUCCESS:
+            data["user_message"] = "Payment completed successfully."
+        else:
+            data["user_message"] = (ch.result_message or "").strip() or "Payment failed or was cancelled."
+        return Response(data)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class FlutterwaveWebhookView(APIView):
+    """
+    POST /api/flutterwave/webhook/ — Flutterwave events (verify flutterwave-signature).
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    parser_classes = []
+
+    def post(self, request):
+        raw = getattr(request, "body", b"") or b""
+        secret = (getattr(settings, "FLUTTERWAVE_SECRET_HASH", None) or "").strip()
+        sig = request.headers.get("flutterwave-signature") or request.headers.get("Flutterwave-Signature")
+        if secret:
+            if not verify_flutterwave_signature(raw, sig, secret):
+                logger.warning("Flutterwave webhook: invalid signature")
+                return Response({"detail": "Invalid signature"}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            logger.warning("FLUTTERWAVE_SECRET_HASH not set; webhook signature not verified")
+
+        try:
+            payload = json.loads(raw.decode("utf-8")) if raw.strip() else {}
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return Response({"detail": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(payload, dict):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            handle_webhook_payload(payload)
+        except Exception:
+            logger.exception("Flutterwave webhook processing failed")
+
+        return Response(status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
